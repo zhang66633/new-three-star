@@ -1,0 +1,9 @@
+services:
+  new-three:
+    build: .
+    container_name: new-three-interpreter
+    ports:
+      - "80:80"
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
