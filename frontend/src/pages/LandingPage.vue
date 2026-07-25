@@ -389,10 +389,10 @@ function enter() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (isMobile) return
   try {
-    initGraph()
+    await initGraph()
     // 返回时直接进入星图状态
     if (hasEntered && graphInstance) {
       graphInstance.cameraPosition({ x: 0, y: 30, z: 250 })
@@ -573,7 +573,7 @@ function createFloatingQuotes(scene: THREE.Scene) {
   })
 }
 
-function initGraph() {
+async function initGraph() {
   if (!graphRef.value) return
 
   const nodes = WORLDS.map((w) => ({
@@ -598,6 +598,27 @@ function initGraph() {
     source: w.id,
     target: WORLDS[(i + 1) % WORLDS.length].id,
   }))
+
+  // 加载用户创建的世界
+  try {
+    const resp = await fetch(`${import.meta.env.VITE_API_BASE || ''}/api/worlds`)
+    if (resp.ok) {
+      const customWorlds = await resp.json()
+      for (const cw of customWorlds) {
+        nodes.push({
+          id: cw.id,
+          name: cw.name,
+          tagline: cw.tagline,
+          color: cw.color || '#aabbff',
+          val: 10,
+          isNebula: true,
+        } as any)
+        links.push({ source: 'create', target: cw.id })
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to load custom worlds:', e)
+  }
 
   graphInstance = ForceGraph3DAny()(graphRef.value)
     .graphData({ nodes, links })

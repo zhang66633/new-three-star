@@ -40,8 +40,8 @@
         <span class="grow-text">世界凝聚中…… {{ grownCount }} 个节点已生成</span>
       </div>
       <div class="grow-done" v-if="phase === 'done'">
-        <button class="share-btn" @click="generateShareCard">生成世界宣言</button>
-        <button class="back-star-btn" @click="goBack">返回星图</button>
+        <button class="share-btn" @click="goBack">在星图中查看</button>
+        <button class="back-star-btn" @click="generateShareCard">生成分享卡片</button>
       </div>
     </div>
 
@@ -99,6 +99,24 @@ function goBack() {
   router.push('/')
 }
 
+async function saveWorld() {
+  if (currentNodes.length === 0) return
+  try {
+    await fetch(`${API_BASE}/api/worlds`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: concept.value.trim().slice(0, 12) || '新世界',
+        tagline: `由"${concept.value.trim()}"诞生`,
+        concept: concept.value.trim(),
+        graph: { nodes: currentNodes, links: currentLinks },
+      }),
+    })
+  } catch (e) {
+    console.warn('Save world failed:', e)
+  }
+}
+
 async function generate() {
   if (!concept.value.trim()) return
   phase.value = 'growing'
@@ -139,6 +157,7 @@ async function generate() {
             graphInstance.graphData({ nodes: [...currentNodes], links: [...currentLinks] })
           } else if (msg.type === 'done') {
             phase.value = 'done'
+            saveWorld()
           }
         } catch {}
       }
