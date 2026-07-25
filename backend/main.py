@@ -1,0 +1,30 @@
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from routers import graph, worldview, worlds
+from db import init_db
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+
+
+app = FastAPI(title="新三国世界观探索器", version="2.0.0", lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(graph.router, prefix="/api")
+app.include_router(worldview.router, prefix="/api")
+app.include_router(worlds.router, prefix="/api")
+
+
+@app.get("/api/health")
+async def health():
+    return {"status": "ok", "service": "new-three-explorer"}

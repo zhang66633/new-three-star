@@ -713,13 +713,44 @@ function initGraph() {
     .onNodeClick((node: any) => {
       if (warpActive.value) return
       hoveredWorld.value = null
-      visionWorld.value = {
-        id: node.id,
-        name: node.name,
-        tagline: node.tagline,
-        color: node.color,
-        desc: WORLDS.find(w => w.id === node.id)?.desc || '',
+      const targetPos = { x: node.x || 0, y: node.y || 0, z: node.z || 0 }
+      const cam = graphInstance.camera()
+      const startPos = { x: cam.position.x, y: cam.position.y, z: cam.position.z }
+      const endPos = {
+        x: targetPos.x + (startPos.x - targetPos.x) * 0.08,
+        y: targetPos.y + (startPos.y - targetPos.y) * 0.08,
+        z: targetPos.z + (startPos.z - targetPos.z) * 0.08,
       }
+
+      const duration = 1200
+      const startTime = performance.now()
+
+      function flyAnimate(now: number) {
+        const elapsed = now - startTime
+        const progress = Math.min(elapsed / duration, 1)
+        const ease = progress < 0.5
+          ? 4 * progress * progress * progress
+          : 1 - Math.pow(-2 * progress + 2, 3) / 2
+
+        cam.position.x = startPos.x + (endPos.x - startPos.x) * ease
+        cam.position.y = startPos.y + (endPos.y - startPos.y) * ease
+        cam.position.z = startPos.z + (endPos.z - startPos.z) * ease
+        cam.lookAt(targetPos.x, targetPos.y, targetPos.z)
+
+        if (progress < 1) {
+          requestAnimationFrame(flyAnimate)
+        } else {
+          // 动画结束，打开全屏幻象页
+          visionWorld.value = {
+            id: node.id,
+            name: node.name,
+            tagline: node.tagline,
+            color: node.color,
+            desc: WORLDS.find(w => w.id === node.id)?.desc || '',
+          }
+        }
+      }
+      requestAnimationFrame(flyAnimate)
     })
     .onNodeHover((node: any) => {
       if (graphRef.value) {
