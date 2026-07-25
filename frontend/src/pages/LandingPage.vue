@@ -35,15 +35,30 @@
     <!-- 跃迁过渡 -->
     <div class="warp-overlay" :class="{ active: warpActive }" :style="{ background: warpColor }"></div>
 
-    <!-- 星球幻象（hover预览） -->
+    <!-- hover文字简介 -->
     <transition name="vision-fade">
-      <div v-if="hoveredWorld" class="vision-overlay">
-        <div class="vision-frame" :style="{ '--vc': hoveredWorld.color }">
-          <img v-if="hoveredWorld.img" :src="hoveredWorld.img" class="vision-img" />
-          <div v-else class="vision-dream"></div>
-          <p class="vision-name">{{ hoveredWorld.name }}</p>
-          <p class="vision-tag">{{ hoveredWorld.tagline }}</p>
+      <div v-if="hoveredWorld && !visionWorld" class="hover-card" :style="{ '--vc': hoveredWorld.color }">
+        <p class="hover-name">{{ hoveredWorld.name }}</p>
+        <p class="hover-tag">{{ hoveredWorld.tagline }}</p>
+        <p class="hover-desc">{{ hoveredWorld.desc }}</p>
+      </div>
+    </transition>
+
+    <!-- 全屏幻象页（点击星球后） -->
+    <transition name="vision-fade">
+      <div v-if="visionWorld" class="fullscreen-vision" @click.self="visionWorld = null">
+        <div class="fv-bg">
+          <img :src="`/textures/previews/${visionWorld.id}.jpg`" class="fv-img" />
         </div>
+        <div class="fv-content">
+          <h1 class="fv-name" :style="{ textShadow: `0 0 40px ${visionWorld.color}` }">{{ visionWorld.name }}</h1>
+          <p class="fv-tag">{{ visionWorld.tagline }}</p>
+          <p class="fv-desc">{{ visionWorld.desc }}</p>
+          <button class="fv-enter" :style="{ borderColor: visionWorld.color, color: visionWorld.color }" @click="enterWorld(visionWorld.id)">
+            进入此世界
+          </button>
+        </div>
+        <button class="fv-close" @click="visionWorld = null">✕</button>
       </div>
     </transition>
   </div>
@@ -97,17 +112,17 @@ function onMobileNavigate(id: string) {
 }
 
 const WORLDS = [
-  { id: 'cthulhu', name: '外神星域', tagline: '天意即不可名状之物', color: '#8b5cf6' },
-  { id: 'game_world', name: '崩坏纪元', tagline: '觉醒NPC的污染世界', color: '#22d3ee' },
-  { id: 'murder_mystery', name: '迷局', tagline: '每人都有胜利条件', color: '#f59e0b' },
-  { id: 'pokemon', name: '属性大陆', tagline: '阵营即属性克制', color: '#ef4444' },
-  { id: 'philosophy', name: '理念天穹', tagline: '天意即世界精神', color: '#a78bfa' },
-  { id: 'cultivation', name: '太虚境', tagline: '作减求空，超脱轮回', color: '#34d399' },
-  { id: 'jojo', name: '命运之轮', tagline: '替身与天堂制造', color: '#f97316' },
-  { id: 'warhammer', name: '亚空间', tagline: '混沌侵蚀一切', color: '#dc2626' },
-  { id: 'zhangjiao', name: '黄天残响', tagline: '两股天意争夺此世', color: '#eab308' },
-  { id: 'trpg', name: '骰子深渊', tagline: '调查员与SAN值', color: '#6366f1' },
-  { id: 'elo', name: '天平竞技场', tagline: '强制五成胜率', color: '#14b8a6' },
+  { id: 'cthulhu', name: '外神星域', tagline: '天意即不可名状之物', color: '#8b5cf6', desc: '域外存在出于好奇污染了三国时间线，神在侵蚀世界，世界又何尝不在侵蚀神' },
+  { id: 'game_world', name: '崩坏纪元', tagline: '觉醒NPC的污染世界', color: '#22d3ee', desc: '世界意志被污染的游戏，角色是觉醒的NPC，关羽张飞只是三组数据' },
+  { id: 'murder_mystery', name: '迷局', tagline: '每人都有胜利条件', color: '#f59e0b', desc: '一场剧本杀，曹操三周目结局是小丑，司马懿是纯人机不玩游戏' },
+  { id: 'pokemon', name: '属性大陆', tagline: '阵营即属性克制', color: '#ef4444', desc: '魏水蜀火吴草，赤壁是开晴天减半水伤，司马懿是恶属性会拍落' },
+  { id: 'philosophy', name: '理念天穹', tagline: '天意即世界精神', color: '#a78bfa', desc: '黑格尔式世界精神通过人物表达自身，一旦成为限制就摧毁它' },
+  { id: 'cultivation', name: '太虚境', tagline: '作减求空，超脱轮回', color: '#34d399', desc: '被污染的轮回世界，诸葛亮超脱留替身，关张灵魂锁链是牢笼' },
+  { id: 'jojo', name: '命运之轮', tagline: '替身与天堂制造', color: '#f97316', desc: '天堂制造加速后的二巡三国，曹操D4C死后穿越，刘备Big死后无敌' },
+  { id: 'warhammer', name: '亚空间', tagline: '混沌侵蚀一切', color: '#dc2626', desc: '战锤宇宙，密谋是灵能遮蔽，新三国道是网道，伏兵是绿皮' },
+  { id: 'zhangjiao', name: '黄天残响', tagline: '两股天意争夺此世', color: '#eab308', desc: '新生天意与张角残存意志争夺控制权，所有反贼行为是黄巾幽灵' },
+  { id: 'trpg', name: '骰子深渊', tagline: '调查员与SAN值', color: '#6366f1', desc: '克苏鲁跑团，曹操灵感检定太多疯了，关张是古神派来的眷族' },
+  { id: 'elo', name: '天平竞技场', tagline: '强制五成胜率', color: '#14b8a6', desc: '天意是ELO匹配算法，骄兵必败是数学必然，司马懿在smurfing' },
 ]
 
 let graphInstance: any = null
@@ -506,7 +521,24 @@ function createNebulaParticles(scene: THREE.Scene) {
 const selectedQuote = ref<string | null>(null)
 const warpActive = ref(false)
 const warpColor = ref('#030306')
-const hoveredWorld = ref<{ name: string; tagline: string; color: string; img?: string } | null>(null)
+const hoveredWorld = ref<{ name: string; tagline: string; color: string; desc?: string; img?: string } | null>(null)
+const visionWorld = ref<{ id: string; name: string; tagline: string; color: string; desc?: string } | null>(null)
+
+function enterWorld(id: string) {
+  visionWorld.value = null
+  const world = WORLDS.find(w => w.id === id)
+  warpColor.value = world?.color || '#aabbff'
+  warpActive.value = true
+  setTimeout(() => {
+    if (id === 'create') {
+      router.push('/create')
+    } else {
+      playGuanyu()
+      router.push(`/worldview/${id}`)
+    }
+    setTimeout(() => { warpActive.value = false }, 100)
+  }, 600)
+}
 
 function createFloatingQuotes(scene: THREE.Scene) {
   const len = QUOTES.length
@@ -679,65 +711,27 @@ function initGraph() {
       return group
     })
     .onNodeClick((node: any) => {
-      if (warpActive.value) return // 防止重复触发
-      const targetPos = { x: node.x || 0, y: node.y || 0, z: node.z || 0 }
-      const cam = graphInstance.camera()
-      const startPos = { x: cam.position.x, y: cam.position.y, z: cam.position.z }
-      // 飞向星球表面（停在半径外一点）
-      const endPos = {
-        x: targetPos.x + (startPos.x - targetPos.x) * 0.08,
-        y: targetPos.y + (startPos.y - targetPos.y) * 0.08,
-        z: targetPos.z + (startPos.z - targetPos.z) * 0.08,
+      if (warpActive.value) return
+      hoveredWorld.value = null
+      visionWorld.value = {
+        id: node.id,
+        name: node.name,
+        tagline: node.tagline,
+        color: node.color,
+        desc: WORLDS.find(w => w.id === node.id)?.desc || '',
       }
-      warpColor.value = node.color || '#030306'
-
-      const duration = 1200
-      const startTime = performance.now()
-
-      function flyAnimate(now: number) {
-        const elapsed = now - startTime
-        const progress = Math.min(elapsed / duration, 1)
-        // easeInOutCubic
-        const ease = progress < 0.5
-          ? 4 * progress * progress * progress
-          : 1 - Math.pow(-2 * progress + 2, 3) / 2
-
-        cam.position.x = startPos.x + (endPos.x - startPos.x) * ease
-        cam.position.y = startPos.y + (endPos.y - startPos.y) * ease
-        cam.position.z = startPos.z + (endPos.z - startPos.z) * ease
-        cam.lookAt(targetPos.x, targetPos.y, targetPos.z)
-
-        // 后半段激活白闪
-        if (progress > 0.55 && !warpActive.value) {
-          warpActive.value = true
-        }
-
-        if (progress < 1) {
-          requestAnimationFrame(flyAnimate)
-        } else {
-          // 动画结束，跳转
-          if (node.id === 'create') {
-            router.push('/create')
-          } else {
-            playGuanyu()
-            router.push(`/worldview/${node.id}`)
-          }
-          // 重置（返回时）
-          setTimeout(() => { warpActive.value = false }, 100)
-        }
-      }
-      requestAnimationFrame(flyAnimate)
     })
     .onNodeHover((node: any) => {
       if (graphRef.value) {
         graphRef.value.style.cursor = node ? 'pointer' : 'default'
       }
-      if (node && !warpActive.value) {
+      if (node && !warpActive.value && !visionWorld.value) {
+        const w = WORLDS.find(w => w.id === node.id)
         hoveredWorld.value = {
           name: node.name,
           tagline: node.tagline,
           color: node.color,
-          img: `/textures/previews/${node.id}.jpg`,
+          desc: w?.desc || '',
         }
       } else {
         hoveredWorld.value = null
@@ -1110,73 +1104,122 @@ function initGraph() {
 }
 
 /* 星球幻象 */
-.vision-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 150;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  background: rgba(3, 3, 6, 0.4);
-}
-.vision-frame {
-  position: relative;
-  width: min(680px, 80vw);
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  overflow: hidden;
-  animation: vision-breathe 4s ease-in-out infinite;
-  box-shadow:
-    0 0 60px color-mix(in srgb, var(--vc) 20%, transparent),
-    0 0 120px color-mix(in srgb, var(--vc) 8%, transparent);
-}
-.vision-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  mask-image: radial-gradient(ellipse at center, black 60%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black 60%, transparent 100%);
-}
-.vision-dream {
-  width: 100%;
-  height: 100%;
-  background:
-    radial-gradient(ellipse at 30% 40%, color-mix(in srgb, var(--vc) 30%, transparent), transparent 60%),
-    radial-gradient(ellipse at 70% 60%, color-mix(in srgb, var(--vc) 20%, #1a1a2e), transparent 50%),
-    linear-gradient(135deg, #0a0a18, #12121f);
-  mask-image: radial-gradient(ellipse at center, black 55%, transparent 100%);
-  -webkit-mask-image: radial-gradient(ellipse at center, black 55%, transparent 100%);
-  animation: dream-shift 6s ease-in-out infinite alternate;
-}
-.vision-name {
-  position: absolute;
-  bottom: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Ma Shan Zheng', serif;
-  font-size: 1.8rem;
-  color: #f0f0f8;
-  letter-spacing: 0.3em;
-  text-shadow: 0 0 30px var(--vc);
-}
-.vision-tag {
+/* hover文字卡片 */
+.hover-card {
   position: absolute;
   bottom: 12%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 0.8rem;
-  color: #8888aa;
-  letter-spacing: 0.15em;
-  white-space: nowrap;
+  z-index: 150;
+  pointer-events: none;
+  text-align: center;
+  padding: 16px 28px;
+  border-radius: 8px;
+  background: rgba(3, 3, 6, 0.75);
+  border: 1px solid color-mix(in srgb, var(--vc) 30%, transparent);
+  backdrop-filter: blur(8px);
 }
+.hover-name {
+  font-family: 'Ma Shan Zheng', serif;
+  font-size: 1.5rem;
+  color: #f0f0f8;
+  letter-spacing: 0.25em;
+  margin: 0 0 4px;
+}
+.hover-tag {
+  font-size: 0.75rem;
+  color: var(--vc);
+  letter-spacing: 0.1em;
+  margin: 0 0 8px;
+}
+.hover-desc {
+  font-size: 0.8rem;
+  color: #9999bb;
+  line-height: 1.5;
+  max-width: 360px;
+  margin: 0;
+}
+
+/* 全屏幻象页 */
+.fullscreen-vision {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 3, 6, 0.92);
+}
+.fv-bg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.fv-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.6;
+  mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 40%, transparent 85%);
+}
+.fv-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 40px;
+}
+.fv-name {
+  font-family: 'Ma Shan Zheng', serif;
+  font-size: 3.5rem;
+  color: #f0f0f8;
+  letter-spacing: 0.3em;
+  margin: 0 0 12px;
+}
+.fv-tag {
+  font-size: 1rem;
+  color: #aaaacc;
+  letter-spacing: 0.15em;
+  margin: 0 0 20px;
+}
+.fv-desc {
+  font-size: 0.95rem;
+  color: #8888aa;
+  line-height: 1.8;
+  max-width: 500px;
+  margin: 0 auto 36px;
+}
+.fv-enter {
+  background: transparent;
+  border: 1px solid;
+  padding: 12px 36px;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+}
+.fv-enter:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: scale(1.05);
+}
+.fv-close {
+  position: absolute;
+  top: 24px;
+  right: 32px;
+  z-index: 3;
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.fv-close:hover { color: #fff; }
+
 @keyframes vision-breathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.02); }
-}
-@keyframes dream-shift {
-  from { filter: blur(2px) brightness(0.9); }
-  to { filter: blur(0px) brightness(1.1); }
 }
 .vision-fade-enter-active { transition: opacity 0.6s ease; }
 .vision-fade-leave-active { transition: opacity 0.4s ease; }
