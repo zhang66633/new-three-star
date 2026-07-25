@@ -113,16 +113,14 @@ function onMobileNavigate(id: string) {
 
 const WORLDS = [
   { id: 'cthulhu', name: '外神星域', tagline: '天意即不可名状之物', color: '#8b5cf6', desc: '域外存在出于好奇污染了三国时间线，神在侵蚀世界，世界又何尝不在侵蚀神' },
-  { id: 'game_world', name: '崩坏纪元', tagline: '觉醒NPC的污染世界', color: '#22d3ee', desc: '世界意志被污染的游戏，角色是觉醒的NPC，关羽张飞只是三组数据' },
-  { id: 'murder_mystery', name: '迷局', tagline: '每人都有胜利条件', color: '#f59e0b', desc: '一场剧本杀，曹操三周目结局是小丑，司马懿是纯人机不玩游戏' },
-  { id: 'pokemon', name: '属性大陆', tagline: '阵营即属性克制', color: '#ef4444', desc: '魏水蜀火吴草，赤壁是开晴天减半水伤，司马懿是恶属性会拍落' },
+  { id: 'game_world', name: '崩坏纪元', tagline: '觉醒NPC的污染世界', color: '#22d3ee', desc: '世界意志被污染的游戏，角色是觉醒的NPC，所有意识底层只是数据' },
+  { id: 'murder_mystery', name: '迷局', tagline: '每人都有胜利条件', color: '#f59e0b', desc: '三国是一场剧本杀，天意只是公开规则之一，每个角色都是带着隐藏胜利条件的玩家' },
+  { id: 'pokemon', name: '属性大陆', tagline: '阵营即属性', color: '#ef4444', desc: '三国阵营对应水/火/草属性循环克制，战役是属性对战，天气和道具改变战局走向' },
   { id: 'philosophy', name: '理念天穹', tagline: '天意即世界精神', color: '#a78bfa', desc: '黑格尔式世界精神通过人物表达自身，一旦成为限制就摧毁它' },
-  { id: 'cultivation', name: '太虚境', tagline: '作减求空，超脱轮回', color: '#34d399', desc: '被污染的轮回世界，诸葛亮超脱留替身，关张灵魂锁链是牢笼' },
-  { id: 'jojo', name: '命运之轮', tagline: '替身与天堂制造', color: '#f97316', desc: '天堂制造加速后的二巡三国，曹操D4C死后穿越，刘备Big死后无敌' },
-  { id: 'warhammer', name: '亚空间', tagline: '混沌侵蚀一切', color: '#dc2626', desc: '战锤宇宙，密谋是灵能遮蔽，新三国道是网道，伏兵是绿皮' },
-  { id: 'zhangjiao', name: '黄天残响', tagline: '两股天意争夺此世', color: '#eab308', desc: '新生天意与张角残存意志争夺控制权，所有反贼行为是黄巾幽灵' },
-  { id: 'trpg', name: '骰子深渊', tagline: '调查员与SAN值', color: '#6366f1', desc: '克苏鲁跑团，曹操灵感检定太多疯了，关张是古神派来的眷族' },
-  { id: 'elo', name: '天平竞技场', tagline: '强制五成胜率', color: '#14b8a6', desc: '天意是ELO匹配算法，骄兵必败是数学必然，司马懿在smurfing' },
+  { id: 'cultivation', name: '太虚境', tagline: '作减求空，超脱轮回', color: '#34d399', desc: '被污染的轮回囚笼，作减求空方能超脱，而最深的牵绊恰恰是牢笼本身' },
+  { id: 'zhangjiao', name: '黄天残响', tagline: '两股天意争夺此世', color: '#eab308', desc: '两股天意争夺此世控制权，未完成的反抗化为幽灵，所有叛乱都是残响' },
+  { id: 'trpg', name: '古神棋局', tagline: '真相令人疯狂', color: '#6366f1', desc: '三国是一局克苏鲁跑团，角色是调查员，知道真相越多越疯狂，而身边的兄弟可能是古神的棋子' },
+  { id: 'elo', name: '天平竞技场', tagline: '尽力了', color: '#14b8a6', desc: '天意是匹配算法，不关心谁赢只关心胜率收敛到五成' },
 ]
 
 let graphInstance: any = null
