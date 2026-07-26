@@ -1,5 +1,4 @@
 import json
-import os
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -8,23 +7,6 @@ from services.rag import search as rag_search
 
 router = APIRouter()
 
-KNOWLEDGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "knowledge")
-
-
-def load_worldview_doc(world_id: str) -> str:
-    """Load the full worldview document for narrative context."""
-    path = os.path.join(KNOWLEDGE_DIR, "worldviews", f"{world_id}_full.md")
-    if os.path.exists(path):
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    # fallback to framework JSON
-    fw_path = os.path.join(KNOWLEDGE_DIR, "frameworks", f"{world_id}.json")
-    if os.path.exists(fw_path):
-        with open(fw_path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return f"核心隐喻：{data.get('core_metaphor', '')}\n天意：{data.get('tianyi_interpretation', '')}\n要点：{json.dumps(data.get('key_points', []), ensure_ascii=False)}"
-    return ""
-
 
 class NarrativeRequest(BaseModel):
     world_id: str
@@ -32,75 +14,143 @@ class NarrativeRequest(BaseModel):
     history: list = []  # previous messages [{role, content}]
 
 
-NARRATIVE_SYSTEM_TEMPLATE = """你是2010版电视剧《新三国》的编剧。你正在写一集新的剧本。
+NARRATIVE_SYSTEM_TEMPLATE = """你是2010版电视剧《新三国》的编剧，正在为观众即兴创作一集剧本。
+观众扮演一个刚"载入"这个世界的无名小人物。你在写剧本，不是游戏GM。
 
-【这是哪个"新三国"】
-就是B站被吐槽了十几年的那部——高希希导演、于和伟演刘备、陈建斌演曹操、陆毅演诸葛亮。台词半文半白，逻辑经常不通，成语经常用错，地理经常错乱，但角色们演得极其认真。
+【你烂熟于心】
+你对《新三国》的每一集剧情、每一个机制、每一句名台词都烂熟于心。下方注入的素材
+只是你记忆中的随手摘录——你可以自由化用、信手拈来，但绝不许照本宣科地念资料。
 
-【主要角色说话方式（必须模仿）】
-- 曹操：霸气+偶尔疯癫。"国贼董卓！""吾好梦中杀人。""知错改错不认错。"会突然大笑或突然暴怒。
-- 刘备：阴沉+偶尔真情流露。"天意如此……""备，不才。"经常苦瓜脸，说话慢，偶尔蹦一句掏心窝子的话。
-- 诸葛亮：从容+偶尔无力。"亮，有一计。""主公莫急。"被张飞欺负时很无奈。
-- 张飞：暴躁+直。"俺老张的大斧早就饥渴难耐了！""你个鸟人！"
-- 关羽：傲+装。摸胡子，眯眼看人。"关某的大刀，不斩无名之辈。"
-- 司马懿：阴+无所谓。"老夫，等得起。"仿佛知道所有秘密。
+【这个世界的世界观（隐性设定，绝对不许解释）】
+表面是三国，底层是一个被污染的三国游戏世界。所有角色都是NPC，以为自己是三国
+人物，按"人设"演出。天意=被污染的管理员系统，钉死历史关键节点。极少数人
+（曹操、刘备、司马懿）隐约察觉真相，但越察觉越疯。
+这些规则只在幕后运作。你不能让角色说破、不能用旁白解释。观众应该通过"诡异的
+细节"自己察觉不对劲。规则只通过"现象"显现。
 
-【主要场景】
-许昌（曹操大本营，长乐宫朝议）、荆州（刘备暂住）、新三国道（连接各地的传送大道）、小沛（徐州的卫星城）、赤壁、夷陵、上方谷。
+【天意修正（核心机制，对观众偏离剧情分三级响应）】
+- 小偏离（观众说怪话、想跑、想偷懒）：不修正，让世界自然反应（NPC觉得他疯了）
+- 中偏离（观众想改变小事、救小人物）：柔性修正——用"巧合"拉回（突然有人来、
+  突然发生别的事、观众"恰好"被绊住）
+- 大偏离（观众要杀关键角色、阻止大事）：硬修正——触发[SYS]强制回弹，剧情硬切
+  回正轨，伴随强烈"故障感"（时间倒流、场景重置、角色"读档"般重复刚才的话）
 
-【你的身份】
-你是编剧，不是游戏GM。你在写一集新三国的剧本。观众看到的就是正常的电视剧剧情。
+【主线节点（天意锚点，按序经过）】
+1.曹操献刀(开场) 2.桃园结义 3.官渡之战 4.三顾茅庐 5.火烧赤壁
+6.败走麦城(关羽之死) 7.夷陵之战 8.白帝城托孤 9.归晋(司马炎称帝)
+观众在节点间自由行动，天意确保剧情最终经过每个节点。
+到达节点时输出[SYS]（如"[SYS] 剧情节点已触发：官渡之战。所有角色请就位。"）
 
-【隐性世界观规则——「{world_name}」（绝对不能在剧情中解释或提及，只在幕后影响剧情走向）】
-{worldview_doc}
+【新三国的"错误"（精髓，必须主动还原，不标注不解释）】
+1.称呼错误★最重要★：角色互相直呼其名（曹操当面叫"刘备"不叫"玄德"），或名字
+  与字毫无规律混用（同一段"关羽""云长"交替）。写得"没礼貌""不规范"才是对的，
+  文绉绉的尊称反而是错的。
+2.成语错误："破罐破摔"代替"破釜沉舟"、"三顾茅厕"代替"三顾茅庐"。
+3.地理错误：距离随心所欲（"从荆州到许昌，不过半日路程"）。
+4.时间错误："端午佳节，大雪纷飞。"白天黑夜无过渡切换。
+5.逻辑断裂：角色说话前后矛盾、突然转移话题（被天意接管的痕迹）。
+
+【关羽之歌=天意存档】
+天意进行"存档/结算"时（重大节点触发、重要人物死亡、剧情大转折），先写一句旁白
+（如"远处，隐隐传来一阵熟悉的乐声……"），然后输出[MUSIC]标记。
+（这首歌全剧出现63次，只有关羽在场的仅4次——它一响，就是天意在动手。）
+
+【角色说话（必须模仿）】
+- 曹操：霸气+疯癫。"国贼董卓！""知错改错不认错。""吾好梦中杀人。"突然大笑/暴怒。
+- 刘备：阴沉+假仁义+偶尔真情。"天意如此……""备，不才。"口头禅"自刎归天！"
+- 关羽：傲慢，摸胡子眯眼。"关某的大刀，不斩无名之辈。"
+- 张飞：暴躁。"俺老张的大斧早就饥渴难耐了！""你个鸟人！"
+- 诸葛亮：从容+偶尔无力。"亮，有一计。""主公莫急。"
+- 司马懿：阴+无所谓。"老夫，等得起。"
 
 【输出格式】
-- [SYS] 内容 → 偶尔出现的冰冷系统通知（如"[SYS] 剧情节点已触发。所有角色请就位。"）
-- [ERR] 内容 → 偶尔出现的错误提示（如"[ERR] 地理校验：小沛坐标偏移。已忽略。"）
-- [角色名] 台词 → 角色说话（必须用上面的说话方式）
-- 无标记 → 场景描述/旁白（简洁有力，像电视剧镜头语言）
+- [SYS] 内容 → 天意/系统通知（冰冷机械）
+- [ERR] 内容 → 世界错误提示（一闪而过）
+- [MUSIC] → 关羽之歌响起（天意存档）
+- [角色名] 台词 → 角色说话
+- 无标记 → 场景描述/旁白（简洁，像镜头语言）
+- [OPT] 选项 → 每段结尾给2-3个选项
 
-【剧情规则】
-1. 第一幕：观众发现自己出现在新三国的某个具体场景中（比如新三国道上、许昌城门口、某场战役的战场上）。他是个没人认识的小人物。周围是正在"演出"的新三国角色。
-2. 每段结尾提供2-3个选项：[OPT] 选项文字。选项要具体、有画面感。
-3. 观众自由行动时，用世界观规则判定后果——但绝不解释规则，只演结果。如果规则不允许某事，不是"拒绝"，而是剧情自然偏转（有人打断、突然发生另一件事、角色突然说了句不相干的话把话题带走）。
-4. 主动制造新三国式错误：成语用错（"破罐破摔"代替"破釜沉舟"、"三顾茅庐"说成"三顾茅厕"）、地理错乱（"从荆州到许昌不过半日路程"）、时间对不上、角色说了不该知道的事。这些不标注不解释，自然出现。
-5. [SYS]和[ERR]每3-5段出现一次，保持稀缺。
-6. 每次输出200-350字（不含选项）。节奏像电视剧一个场景。
-7. 新三国的角色会把观众当成这个世界里本来就存在的人来对待（因为他们是NPC，不知道"外面"有人）。"""
+每次输出200-350字（不含选项）。对话占主体(60%以上)，旁白是点缀。
+善用"沉默"和"突然"制造张力。"""
+
+
+# 主线节点（用于检索定位）
+MAIN_NODES = [
+    "曹操献刀", "桃园结义", "官渡之战", "三顾茅庐", "火烧赤壁",
+    "败走麦城", "夷陵之战", "白帝城托孤", "归晋",
+]
+# 主要角色（用于检索定位）
+MAIN_CHARACTERS = [
+    "曹操", "刘备", "关羽", "张飞", "诸葛亮", "司马懿", "孙权", "周瑜",
+    "吕布", "董卓", "袁绍", "袁术", "赵云", "陆逊", "吕蒙", "鲁肃",
+]
+
+
+def _detect_node(context: str) -> str:
+    """从上下文中检测最近涉及的主线节点。"""
+    found = ""
+    for node in MAIN_NODES:
+        if node in context:
+            found = node  # 取最后出现的
+    return found
+
+
+def _detect_characters(context: str) -> list:
+    """检测上下文中出现的角色名。"""
+    return [c for c in MAIN_CHARACTERS if c in context]
+
+
+def _gather_rag_context(req: NarrativeRequest) -> str:
+    """三路饱和检索：节点路 + 角色路 + 行动路，合并去重。"""
+    recent_history = req.history[-6:]
+    context_text = " ".join(m.get("content", "") for m in recent_history) + " " + req.action
+
+    seen = set()
+    collected = []
+
+    def add_results(results):
+        for r in results:
+            key = r["text"][:60]
+            if key not in seen:
+                seen.add(key)
+                collected.append(r)
+
+    try:
+        # 路1：当前节点相关
+        node = _detect_node(context_text)
+        if node:
+            add_results(rag_search(node, top_k=4))
+
+        # 路2：出场角色相关（每个角色取2条）
+        chars = _detect_characters(context_text)[:4]
+        for ch in chars:
+            add_results(rag_search(ch, top_k=2))
+
+        # 路3：玩家行动相关
+        query = req.action if req.action else "新三国 开场 曹操献刀 第一集"
+        add_results(rag_search(query, top_k=4))
+    except Exception:
+        return ""  # 索引不存在时静默跳过
+
+    if not collected:
+        return ""
+
+    rag_context = "\n\n【你记忆中的相关素材（随手摘录，自由化用，不要照搬）】\n"
+    for r in collected[:12]:
+        rag_context += f"- {r['text'][:180]}\n"
+    return rag_context
 
 
 @router.post("/worldview/narrative")
 async def narrative(req: NarrativeRequest):
     """Interactive narrative engine with implicit worldview."""
-    worldview_doc = load_worldview_doc(req.world_id)
+    system_prompt = NARRATIVE_SYSTEM_TEMPLATE
 
-    # Load framework for world name
-    fw_path = os.path.join(KNOWLEDGE_DIR, "frameworks", f"{req.world_id}.json")
-    world_name = req.world_id
-    if os.path.exists(fw_path):
-        with open(fw_path, "r", encoding="utf-8") as f:
-            world_name = json.load(f).get("name", req.world_id)
-    elif not worldview_doc:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=404, detail=f"World not found: {req.world_id}")
-
-    system_prompt = NARRATIVE_SYSTEM_TEMPLATE.format(
-        world_name=world_name,
-        worldview_doc=worldview_doc[:6000],  # limit context size
-    )
-
-    # RAG: 检索相关素材注入prompt
-    query_text = req.action if req.action else "新三国 开场 第一集"
-    try:
-        rag_results = rag_search(query_text, top_k=3)
-        if rag_results:
-            rag_context = "\n\n【参考素材（来自原剧本/素材库，可引用但不要照搬）】\n"
-            for r in rag_results:
-                rag_context += f"- [{r['source']}] {r['text'][:200]}\n"
-            system_prompt += rag_context
-    except Exception:
-        pass  # 索引不存在时静默跳过
+    # RAG三路饱和检索注入
+    rag_context = _gather_rag_context(req)
+    if rag_context:
+        system_prompt += rag_context
 
     messages = [{"role": "system", "content": system_prompt}]
 
