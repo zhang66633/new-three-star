@@ -321,21 +321,37 @@ async def narrative(req: NarrativeRequest):
     async def generate():
         # 步骤1：收集完整生成（不直接流给客户端）
         draft = ""
-        async for chunk in stream_chat(messages, max_tokens=1000):
-            draft += chunk
+        try:
+            async for chunk in stream_chat(messages, max_tokens=1000):
+                draft += chunk
+        except Exception:
+            pass
 
         if not draft.strip():
             yield f"data: {json.dumps({'type': 'chunk', 'content': '[ERR] 世界意志沉默。请稍后再试。'}, ensure_ascii=False)}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             return
 
-        # 步骤2：独立审查调用，流式输出修正后的成品
-        review_messages = [
-            {"role": "system", "content": REVIEW_PROMPT},
-            {"role": "user", "content": draft},
-        ]
-        async for chunk in stream_chat(review_messages, max_tokens=1200):
-            yield f"data: {json.dumps({'type': 'chunk', 'content': chunk}, ensure_ascii=False)}\n\n"
+        # 步骤2：独立审查调用，收集完整结果（不直接流，便于校验）
+        final_text = draft  # 默认回退用草稿
+        try:
+            review_messages = [
+                {"role": "system", "content": REVIEW_PROMPT},
+                {"role": "user", "content": draft},
+            ]
+            reviewed = ""
+            async for chunk in stream_chat(review_messages, max_tokens=1500):
+                reviewed += chunk
+            # 校验：审查结果非空且长度合理（不低于草稿50%），否则视为截断/失败，回退草稿
+            if reviewed.strip() and len(reviewed.strip()) >= len(draft.strip()) * 0.5:
+                final_text = reviewed
+        except Exception:
+            final_text = draft
+
+        # 步骤3：流式输出成品（切成小块，保留打字机感；已有完整文本，不会截断）
+        chunk_size = 40
+        for i in range(0, len(final_text), chunk_size):
+            yield f"data: {json.dumps({'type': 'chunk', 'content': final_text[i:i+chunk_size]}, ensure_ascii=False)}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream")
