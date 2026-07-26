@@ -477,6 +477,27 @@ function createStarField(scene: THREE.Scene) {
 
   starField = new THREE.Points(geometry, material)
   scene.add(starField)
+
+  // 远景星云（几团大而淡的彩色雾）
+  const nebulaConfigs = [
+    { pos: [-400, 100, -600], color: '#1a0533', size: 250, opacity: 0.06 },
+    { pos: [350, -150, -500], color: '#001a2e', size: 200, opacity: 0.05 },
+    { pos: [0, 200, -700], color: '#0d1a00', size: 300, opacity: 0.04 },
+    { pos: [-200, -200, -400], color: '#1a0a00', size: 180, opacity: 0.05 },
+  ]
+  for (const cfg of nebulaConfigs) {
+    const geo = new THREE.SphereGeometry(cfg.size, 16, 16)
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(cfg.color),
+      transparent: true,
+      opacity: cfg.opacity,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+    const mesh = new THREE.Mesh(geo, mat)
+    mesh.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2])
+    scene.add(mesh)
+  }
 }
 
 function createNebulaParticles(scene: THREE.Scene) {
@@ -1087,12 +1108,18 @@ async function initGraph() {
       }
     }
 
-    // 行星呼吸脉动
+    // 行星自转 + 呼吸脉动 + hover放大
     nodeGroups.forEach((group, id) => {
       const node = nodes.find((n: any) => n.id === id) as any
       if (!node || node.isNebula) return
-      const scale = 1 + Math.sin(t * 0.8 + group.id * 0.5) * 0.03
-      group.scale.setScalar(scale)
+      // 缓慢自转（每个世界速度略不同）
+      group.rotation.y += 0.001 + (group.id % 5) * 0.0003
+      // 呼吸脉动
+      const breathe = 1 + Math.sin(t * 0.8 + group.id * 0.5) * 0.03
+      // hover放大
+      const isHovered = hoveredWorld.value && hoveredWorld.value.name === node.name
+      const targetScale = isHovered ? 1.18 : breathe
+      group.scale.setScalar(THREE.MathUtils.lerp(group.scale.x, targetScale, 0.1))
     })
   }
   animate()
