@@ -774,8 +774,6 @@ async function initGraph() {
         coreGeo = new THREE.IcosahedronGeometry(coreRadius, 2) // 光滑二十面体
       } else if (node.id === 'trpg') {
         coreGeo = new THREE.IcosahedronGeometry(coreRadius, 1) // D20骰子感
-      } else if (node.id === 'game_world') {
-        coreGeo = new THREE.SphereGeometry(coreRadius, 48, 48, 0, Math.PI * 1.7) // 缺一块（被咬了）
       } else if (node.id === 'create') {
         coreGeo = new THREE.SphereGeometry(coreRadius * 0.6, 32, 32) // 小核心，外层是粒子
       } else {
