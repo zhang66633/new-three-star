@@ -24,7 +24,11 @@
         <span class="log-text" v-html="block.html"></span>
       </div>
       <div v-if="isStreaming" class="log-block streaming">
-        <span class="cursor-blink">▌</span>
+        <template v-if="!contentStarted">
+          <span class="loading-dots">◈</span>
+          <span class="loading-quote" :key="loadingQuoteIndex">{{ loadingQuotes[loadingQuoteIndex] }}</span>
+        </template>
+        <span v-else class="cursor-blink">▌</span>
       </div>
     </div>
 
@@ -106,6 +110,41 @@ const initText = ref('正在连接世界意志……')
 const freeInput = ref('')
 const isGlitching = ref(false)
 const musicPlayedCount = ref(0)
+const contentStarted = ref(false)
+
+// 加载动画轮播：新三国名台词+机制介绍
+const loadingQuotes = [
+  '天意让一件事成，就一定成。',
+  '"国贼董卓嘛！"——曹操',
+  '灵魂锁链：刘关张绑定，一损俱损。',
+  '"知错改错不认错。"——曹操',
+  '新三国道：两端是传送门，一夜千里。',
+  '"俺老张的大斧早就饥渴难耐了！"——张飞',
+  '骄兵必败：胜→骄→败→哀→胜。',
+  '"好方略，不过我想稍作修改。"——周瑜',
+  '关羽之歌响起，就是天意在存档。',
+  '"死是凉爽的夏夜，可供人无忧地安眠。"——曹操',
+  '小沛环绕徐州公转，进徐点一晚到达。',
+  '"不可能！我二弟天下无敌！"——刘备',
+]
+const loadingQuoteIndex = ref(0)
+let loadingQuoteTimer: number | null = null
+
+function startLoadingQuotes() {
+  contentStarted.value = false
+  loadingQuoteIndex.value = Math.floor(Math.random() * loadingQuotes.length)
+  if (loadingQuoteTimer) clearInterval(loadingQuoteTimer)
+  loadingQuoteTimer = window.setInterval(() => {
+    loadingQuoteIndex.value = (loadingQuoteIndex.value + 1) % loadingQuotes.length
+  }, 2200)
+}
+
+function stopLoadingQuotes() {
+  if (loadingQuoteTimer) {
+    clearInterval(loadingQuoteTimer)
+    loadingQuoteTimer = null
+  }
+}
 
 // 开局设置
 const showSetup = ref(false)
@@ -203,6 +242,7 @@ function triggerGlitch() {
 async function sendAction(action: string, startNode: string = '', identity: string = '') {
   options.value = []
   isStreaming.value = true
+  startLoadingQuotes()
   scrollToBottom()
 
   history.push({ role: 'user', content: action })
@@ -236,6 +276,11 @@ async function sendAction(action: string, startNode: string = '', identity: stri
         try {
           const msg = JSON.parse(line.slice(6))
           if (msg.type === 'chunk') {
+            // 首个内容到达，停止加载轮播
+            if (!contentStarted.value) {
+              contentStarted.value = true
+              stopLoadingQuotes()
+            }
             const prevLen = fullText.length
             fullText += msg.content
             // Live parse and display
@@ -306,6 +351,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (glitchTimer) clearTimeout(glitchTimer)
   if (ambientNoiseTimer) clearTimeout(ambientNoiseTimer)
+  stopLoadingQuotes()
 })
 </script>
 
@@ -428,6 +474,24 @@ onBeforeUnmount(() => {
 
 .cursor-blink { color: #00ff41; animation: blink 0.8s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }
+
+.loading-dots {
+  color: #00ff41;
+  display: inline-block;
+  margin-right: 10px;
+  animation: spin360 1.6s linear infinite;
+}
+@keyframes spin360 { to { transform: rotate(360deg); } }
+.loading-quote {
+  color: rgba(0, 255, 65, 0.55);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  animation: quote-fade 0.5s ease;
+}
+@keyframes quote-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
 
 /* 选项区 */
 .options-area {
