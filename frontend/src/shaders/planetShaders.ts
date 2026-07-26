@@ -233,16 +233,6 @@ export const PLANET_SHADER_PARAMS: Record<string, PlanetShaderParams> = {
     noiseScale: 2.0, noiseSpeed: 0.06, octaves: 5, style: 2,
     vortexColor: '#33ddaa', vortexOpacity: 0.3,
   },
-  jojo: {
-    color1: '#1a0800', color2: '#ff6600', color3: '#ffee00',
-    noiseScale: 3.0, noiseSpeed: 0.3, octaves: 4, style: 3,
-    vortexColor: '#ff8800', vortexOpacity: 0.4,
-  },
-  warhammer: {
-    color1: '#1a0000', color2: '#aa0000', color3: '#ff4444',
-    noiseScale: 2.8, noiseSpeed: 0.2, octaves: 5, style: 0,
-    vortexColor: '#cc2200', vortexOpacity: 0.45,
-  },
   zhangjiao: {
     color1: '#1a1500', color2: '#ccaa00', color3: '#ffee88',
     noiseScale: 2.2, noiseSpeed: 0.1, octaves: 4, style: 2,

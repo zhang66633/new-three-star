@@ -1,11 +1,14 @@
 import httpx
 import json
+import logging
 from typing import AsyncGenerator
 from config import (
     DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL,
     HY3_API_KEY, HY3_BASE_URL, HY3_MODEL,
     MAX_TOKENS_VERDICT, MAX_TOKENS_WORLDVIEW, TEMPERATURE,
 )
+
+logger = logging.getLogger(__name__)
 
 
 async def stream_chat(
@@ -22,17 +25,22 @@ async def stream_chat(
             max_tokens=max_tokens,
         ):
             yield chunk
-    except Exception:
+    except Exception as e:
+        logger.error(f"DeepSeek failed: {e}, trying fallback...")
         # Fallback to Hy3
         if HY3_API_KEY and HY3_BASE_URL:
-            async for chunk in _stream_openai_compatible(
-                base_url=HY3_BASE_URL,
-                api_key=HY3_API_KEY,
-                model=HY3_MODEL,
-                messages=messages,
-                max_tokens=max_tokens,
-            ):
-                yield chunk
+            try:
+                async for chunk in _stream_openai_compatible(
+                    base_url=HY3_BASE_URL,
+                    api_key=HY3_API_KEY,
+                    model=HY3_MODEL,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                ):
+                    yield chunk
+            except Exception as e2:
+                logger.error(f"Hy3 fallback also failed: {e2}")
+                yield "[错误] LLM服务不可用，请稍后重试。"
         else:
             yield "[错误] LLM服务不可用，请稍后重试。"
 

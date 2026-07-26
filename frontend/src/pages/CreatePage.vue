@@ -40,6 +40,7 @@
         <span class="grow-text">世界凝聚中…… {{ grownCount }} 个节点已生成</span>
       </div>
       <div class="grow-done" v-if="phase === 'done'">
+        <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
         <button class="share-btn" @click="goBack">在星图中查看</button>
         <button class="back-star-btn" @click="generateShareCard">生成分享卡片</button>
       </div>
@@ -74,6 +75,7 @@ const grownCount = ref(0)
 const playGuanyu = inject<() => void>('playGuanyu', () => {})
 
 const showCard = ref(false)
+const errorMsg = ref('')
 const cardDataUrl = ref('')
 
 const verifiedKeywords = [
@@ -162,8 +164,10 @@ async function generate() {
         } catch {}
       }
     }
-  } catch {
+  } catch (e) {
+    console.error('Generation failed:', e)
     phase.value = 'done'
+    errorMsg.value = '世界凝聚失败，请检查网络后重试'
   }
 }
 
@@ -594,6 +598,12 @@ onBeforeUnmount(() => {
   z-index: 10;
   display: flex;
   gap: 16px;
+  align-items: center;
+}
+.error-msg {
+  color: #e05545;
+  font-size: 0.8rem;
+  margin: 0;
 }
 .share-btn {
   padding: 12px 32px;

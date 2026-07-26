@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from db import save_world, get_all_worlds, get_world_graph
@@ -35,7 +36,7 @@ async def create_world(body: WorldCreate):
         "tagline": body.tagline,
         "concept": body.concept,
         "color": body.color,
-        "created_at": "",
+        "created_at": datetime.now().isoformat(),
     }
 
 

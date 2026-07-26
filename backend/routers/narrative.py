@@ -80,6 +80,9 @@ async def narrative(req: NarrativeRequest):
     if os.path.exists(fw_path):
         with open(fw_path, "r", encoding="utf-8") as f:
             world_name = json.load(f).get("name", req.world_id)
+    elif not worldview_doc:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"World not found: {req.world_id}")
 
     system_prompt = NARRATIVE_SYSTEM_TEMPLATE.format(
         world_name=world_name,

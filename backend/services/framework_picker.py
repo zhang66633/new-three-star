@@ -12,6 +12,8 @@ def load_mechanisms() -> dict:
 
 def load_framework(framework_id: str) -> dict:
     path = os.path.join(KNOWLEDGE_DIR, "frameworks", f"{framework_id}.json")
+    if not os.path.exists(path):
+        raise ValueError(f"Framework not found: {framework_id}")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 

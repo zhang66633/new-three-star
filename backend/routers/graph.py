@@ -25,7 +25,11 @@ CATEGORY_TYPE_MAP = {
 @router.get("/graph/{framework_id}")
 async def get_graph(framework_id: str):
     """Build graph data (nodes + links) for a worldview."""
-    framework = load_framework(framework_id)
+    try:
+        framework = load_framework(framework_id)
+    except ValueError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Framework not found: {framework_id}")
     mechanisms = load_mechanisms()
 
     nodes = []
