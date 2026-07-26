@@ -1,5 +1,17 @@
 <template>
   <div class="narrative" :class="{ glitching: isGlitching }">
+    <!-- 故障艺术覆盖层 -->
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+    <div class="noise-layer">
+      <div
+        v-for="(nb, i) in noiseBlocks"
+        :key="i"
+        class="noise-block"
+        :style="{ left: nb.x + '%', top: nb.y + '%', width: nb.w + 'px', height: nb.h + 'px', background: nb.color }"
+      ></div>
+    </div>
+
     <button class="back-btn" @click="goBack">←</button>
 
     <!-- 叙事日志 -->
@@ -60,8 +72,30 @@ const initText = ref('正在连接世界意志……')
 const freeInput = ref('')
 const isGlitching = ref(false)
 
+// 故障噪点块
+interface NoiseBlock { x: number; y: number; w: number; h: number; color: string }
+const noiseBlocks = ref<NoiseBlock[]>([])
+
+function spawnNoise(count: number) {
+  const colors = ['rgba(0,255,65,0.15)', 'rgba(255,0,170,0.12)', 'rgba(0,204,255,0.12)', 'rgba(255,255,255,0.08)']
+  const blocks: NoiseBlock[] = []
+  for (let i = 0; i < count; i++) {
+    blocks.push({
+      x: Math.random() * 100,
+      y: Math.random() * 100,
+      w: 20 + Math.random() * 120,
+      h: 2 + Math.random() * 8,
+      color: colors[Math.floor(Math.random() * colors.length)],
+    })
+  }
+  noiseBlocks.value = blocks
+  // 短暂显示后清除
+  setTimeout(() => { noiseBlocks.value = [] }, 120)
+}
+
 const history: { role: string; content: string }[] = []
 let glitchTimer: number | null = null
+let ambientNoiseTimer: number | null = null
 
 function goBack() {
   router.push('/')
@@ -107,6 +141,7 @@ function escapeHtml(text: string) {
 
 function triggerGlitch() {
   isGlitching.value = true
+  spawnNoise(6)
   glitchTimer = window.setTimeout(() => { isGlitching.value = false }, 150)
 }
 
@@ -195,10 +230,19 @@ onMounted(async () => {
   pageLoading.value = false
   // Start narrative
   sendAction('')
+  // 环境噪点（随机间隔闪现）
+  const scheduleNoise = () => {
+    ambientNoiseTimer = window.setTimeout(() => {
+      spawnNoise(2 + Math.floor(Math.random() * 3))
+      scheduleNoise()
+    }, 2000 + Math.random() * 3000)
+  }
+  scheduleNoise()
 })
 
 onBeforeUnmount(() => {
   if (glitchTimer) clearTimeout(glitchTimer)
+  if (ambientNoiseTimer) clearTimeout(ambientNoiseTimer)
 })
 </script>
 
@@ -206,7 +250,7 @@ onBeforeUnmount(() => {
 .narrative {
   width: 100%;
   height: 100vh;
-  background: #0a0a0a;
+  background: radial-gradient(ellipse at 50% 40%, #0a120a 0%, #060906 60%, #030503 100%);
   display: flex;
   flex-direction: column;
   font-family: 'Courier New', 'Source Code Pro', monospace;
@@ -214,14 +258,52 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .narrative.glitching {
-  animation: glitch 0.15s linear;
+  animation: glitch 0.18s linear;
 }
 @keyframes glitch {
   0% { transform: translate(0); filter: none; }
-  25% { transform: translate(-2px, 1px); filter: hue-rotate(90deg); }
-  50% { transform: translate(1px, -1px); filter: saturate(3); }
-  75% { transform: translate(-1px, 2px); filter: hue-rotate(-90deg); }
+  20% { transform: translate(-3px, 2px) skewX(1deg); filter: hue-rotate(90deg) contrast(1.5); }
+  40% { transform: translate(2px, -1px); filter: saturate(3) brightness(1.3); }
+  60% { transform: translate(-2px, 1px) skewX(-1deg); filter: hue-rotate(-90deg); }
+  80% { transform: translate(1px, 2px); filter: invert(0.1) contrast(2); }
   100% { transform: translate(0); filter: none; }
+}
+
+/* CRT扫描线 */
+.scanlines {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 2px,
+    rgba(0, 0, 0, 0.15) 3px,
+    rgba(0, 0, 0, 0.15) 4px
+  );
+  opacity: 0.5;
+}
+
+/* 暗角 */
+.vignette {
+  position: fixed;
+  inset: 0;
+  z-index: 89;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
+}
+
+/* 故障噪点块 */
+.noise-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  pointer-events: none;
+}
+.noise-block {
+  position: absolute;
+  mix-blend-mode: screen;
 }
 
 .back-btn {
