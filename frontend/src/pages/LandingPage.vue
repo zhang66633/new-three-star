@@ -595,21 +595,21 @@ function addWorldAccessory(group: THREE.Group, id: string, radius: number, color
   switch (id) {
     case 'cthulhu': {
       // 触手状突起粒子（暗绿+紫色，从表面向外喷射）
-      makeParticles(40, 1.6, 0.4, new THREE.Color('#2aff8a'))
-      makeParticles(20, 2.0, 0.25, new THREE.Color('#8833ff'))
+      makeParticles(40, 1.6, 0.8, new THREE.Color('#2aff8a'))
+      makeParticles(20, 2.0, 0.5, new THREE.Color('#8833ff'))
       break
     }
     case 'game_world': {
       // 像素碎片飞散（小方块粒子，青色+品红）
-      makeParticles(35, 1.8, 0.5, new THREE.Color('#00ccff'))
-      makeParticles(15, 2.2, 0.35, new THREE.Color('#ff00aa'))
+      makeParticles(35, 1.8, 1.0, new THREE.Color('#00ccff'))
+      makeParticles(15, 2.2, 0.7, new THREE.Color('#ff00aa'))
       break
     }
     case 'murder_mystery': {
       // 金色棋盘环（扁平，有刻度感）
-      const ringGeo = new THREE.TorusGeometry(radius * 1.8, 0.15, 8, 32)
+      const ringGeo = new THREE.TorusGeometry(radius * 2.0, 0.25, 8, 32)
       const ringMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color('#ffdd66'), transparent: true, opacity: 0.6,
+        color: new THREE.Color('#ffdd66'), transparent: true, opacity: 0.7,
         blending: THREE.AdditiveBlending, depthWrite: false,
       })
       const ring = new THREE.Mesh(ringGeo, ringMat)
@@ -619,17 +619,17 @@ function addWorldAccessory(group: THREE.Group, id: string, radius: number, color
     }
     case 'pokemon': {
       // 三色元素粒子环绕（蓝/红/绿）
-      makeParticles(15, 1.5, 0.4, new THREE.Color('#4488ff'))
-      makeParticles(15, 1.7, 0.4, new THREE.Color('#ff4422'))
-      makeParticles(15, 1.9, 0.4, new THREE.Color('#44dd44'))
+      makeParticles(15, 1.5, 0.8, new THREE.Color('#4488ff'))
+      makeParticles(15, 1.7, 0.8, new THREE.Color('#ff4422'))
+      makeParticles(15, 1.9, 0.8, new THREE.Color('#44dd44'))
       break
     }
     case 'philosophy': {
       // 棱线wireframe overlay（几何神圣感）
-      const wireGeo = new THREE.IcosahedronGeometry(radius * 1.05, 1)
+      const wireGeo = new THREE.IcosahedronGeometry(radius * 1.08, 1)
       const wireMat = new THREE.MeshBasicMaterial({
         color: new THREE.Color('#eeddff'), wireframe: true,
-        transparent: true, opacity: 0.25,
+        transparent: true, opacity: 0.35,
         blending: THREE.AdditiveBlending, depthWrite: false,
       })
       group.add(new THREE.Mesh(wireGeo, wireMat))
@@ -640,14 +640,14 @@ function addWorldAccessory(group: THREE.Group, id: string, radius: number, color
       const count = 30
       const positions = new Float32Array(count * 3)
       for (let i = 0; i < count; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * radius * 2
-        positions[i * 3 + 1] = -radius * (0.5 + Math.random() * 1.5) // 向下
-        positions[i * 3 + 2] = (Math.random() - 0.5) * radius * 2
+        positions[i * 3] = (Math.random() - 0.5) * radius * 2.5
+        positions[i * 3 + 1] = -radius * (0.5 + Math.random() * 2.0)
+        positions[i * 3 + 2] = (Math.random() - 0.5) * radius * 2.5
       }
       const dGeo = new THREE.BufferGeometry()
       dGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
       const dMat = new THREE.PointsMaterial({
-        color: new THREE.Color('#ccffee'), size: 0.35, transparent: true, opacity: 0.5,
+        color: new THREE.Color('#ccffee'), size: 0.7, transparent: true, opacity: 0.6,
         blending: THREE.AdditiveBlending, depthWrite: false,
       })
       group.add(new THREE.Points(dGeo, dMat))
@@ -655,48 +655,48 @@ function addWorldAccessory(group: THREE.Group, id: string, radius: number, color
     }
     case 'zhangjiao': {
       // 裂缝发光线（竖直切割球体的一道光）
-      const crackGeo = new THREE.PlaneGeometry(0.2, radius * 2.2)
+      const crackGeo = new THREE.PlaneGeometry(0.4, radius * 2.5)
       const crackMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color('#ffee00'), transparent: true, opacity: 0.8,
+        color: new THREE.Color('#ffee00'), transparent: true, opacity: 0.9,
         blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false,
       })
       const crack = new THREE.Mesh(crackGeo, crackMat)
-      crack.rotation.z = 0.1 // 微微倾斜
+      crack.rotation.z = 0.1
       group.add(crack)
       break
     }
     case 'trpg': {
       // 骰子碎片环绕（小二十面体）
       for (let i = 0; i < 5; i++) {
-        const diceGeo = new THREE.IcosahedronGeometry(0.4, 0)
+        const diceGeo = new THREE.IcosahedronGeometry(0.7, 0)
         const diceMat = new THREE.MeshBasicMaterial({
-          color: new THREE.Color('#8877ff'), transparent: true, opacity: 0.6,
+          color: new THREE.Color('#8877ff'), transparent: true, opacity: 0.7,
           blending: THREE.AdditiveBlending, depthWrite: false,
         })
         const dice = new THREE.Mesh(diceGeo, diceMat)
         const angle = (i / 5) * Math.PI * 2
-        dice.position.set(Math.cos(angle) * radius * 1.8, Math.sin(angle) * 0.8, Math.sin(angle) * radius * 1.8)
+        dice.position.set(Math.cos(angle) * radius * 2.0, Math.sin(angle) * 1.2, Math.sin(angle) * radius * 2.0)
         group.add(dice)
       }
       break
     }
     case 'elo': {
-      // 天平环（水平，缓慢摇摆）
-      const balGeo = new THREE.TorusGeometry(radius * 1.6, 0.1, 8, 48)
+      // 天平环（水平，微微倾斜）
+      const balGeo = new THREE.TorusGeometry(radius * 1.8, 0.18, 8, 48)
       const balMat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color('#66ffdd'), transparent: true, opacity: 0.5,
+        color: new THREE.Color('#66ffdd'), transparent: true, opacity: 0.6,
         blending: THREE.AdditiveBlending, depthWrite: false,
       })
       const balance = new THREE.Mesh(balGeo, balMat)
       balance.rotation.x = Math.PI * 0.5
-      balance.rotation.z = 0.15 // 微微倾斜=不平衡感
+      balance.rotation.z = 0.15
       group.add(balance)
       break
     }
     case 'create': {
       // 星云凝聚粒子（大量粒子围绕小核心）
-      makeParticles(80, 2.5, 0.3, new THREE.Color('#aabbff'))
-      makeParticles(40, 1.8, 0.2, new THREE.Color('#ffffff'))
+      makeParticles(80, 2.5, 0.6, new THREE.Color('#aabbff'))
+      makeParticles(40, 1.8, 0.4, new THREE.Color('#ffffff'))
       break
     }
   }
@@ -774,6 +774,8 @@ async function initGraph() {
         coreGeo = new THREE.IcosahedronGeometry(coreRadius, 2) // 光滑二十面体
       } else if (node.id === 'trpg') {
         coreGeo = new THREE.IcosahedronGeometry(coreRadius, 1) // D20骰子感
+      } else if (node.id === 'game_world') {
+        coreGeo = new THREE.SphereGeometry(coreRadius, 48, 48, 0, Math.PI * 1.7) // 缺一块（被咬了）
       } else if (node.id === 'create') {
         coreGeo = new THREE.SphereGeometry(coreRadius * 0.6, 32, 32) // 小核心，外层是粒子
       } else {
