@@ -272,8 +272,8 @@ def _gather_rag_context(req: NarrativeRequest) -> str:
         for ch in chars:
             add_results(rag_search(ch, top_k=2))
 
-        # 路3：玩家行动相关
-        query = req.action if req.action else "新三国 开场 曹操献刀 第一集"
+        # 路3：玩家行动相关（首轮用起始节点作检索方向）
+        query = req.action if req.action else f"新三国 {req.start_node or '曹操献刀'} 开场"
         add_results(rag_search(query, top_k=4))
     except Exception:
         return ""  # 索引不存在时静默跳过
