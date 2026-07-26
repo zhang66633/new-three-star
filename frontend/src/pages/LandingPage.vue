@@ -480,10 +480,10 @@ function createStarField(scene: THREE.Scene) {
 
   // 远景星云（几团大而淡的彩色雾）
   const nebulaConfigs = [
-    { pos: [-400, 100, -600], color: '#1a0533', size: 250, opacity: 0.06 },
-    { pos: [350, -150, -500], color: '#001a2e', size: 200, opacity: 0.05 },
-    { pos: [0, 200, -700], color: '#0d1a00', size: 300, opacity: 0.04 },
-    { pos: [-200, -200, -400], color: '#1a0a00', size: 180, opacity: 0.05 },
+    { pos: [-400, 100, -600], color: '#2a0a55', size: 250, opacity: 0.15 },
+    { pos: [350, -150, -500], color: '#003355', size: 200, opacity: 0.12 },
+    { pos: [0, 200, -700], color: '#1a3300', size: 300, opacity: 0.10 },
+    { pos: [-200, -200, -400], color: '#331a00', size: 180, opacity: 0.13 },
   ]
   for (const cfg of nebulaConfigs) {
     const geo = new THREE.SphereGeometry(cfg.size, 16, 16)
