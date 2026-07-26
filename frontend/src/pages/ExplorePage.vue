@@ -107,7 +107,7 @@ function escapeHtml(text: string) {
 
 function triggerGlitch() {
   isGlitching.value = true
-  setTimeout(() => { isGlitching.value = false }, 150)
+  glitchTimer = window.setTimeout(() => { isGlitching.value = false }, 150)
 }
 
 async function sendAction(action: string) {
@@ -144,14 +144,18 @@ async function sendAction(action: string) {
         try {
           const msg = JSON.parse(line.slice(6))
           if (msg.type === 'chunk') {
+            const prevLen = fullText.length
             fullText += msg.content
             // Live parse and display
             const { blocks } = parseNarrative(fullText)
             logBlocks.value = blocks
             scrollToBottom()
-            // Random glitch on [SYS] or [ERR]
-            if (msg.content.includes('[SYS]') || msg.content.includes('[ERR]')) {
-              if (Math.random() < 0.4) triggerGlitch()
+            // Glitch when a new [SYS] or [ERR] marker appears in accumulated text
+            const newPart = fullText.slice(prevLen)
+            const sysCount = (fullText.match(/\[SYS\]/g) || []).length
+            const errCount = (fullText.match(/\[ERR\]/g) || []).length
+            if (newPart.includes('SYS') || newPart.includes('ERR')) {
+              if (Math.random() < 0.5) triggerGlitch()
             }
           } else if (msg.type === 'done') {
             // Final parse

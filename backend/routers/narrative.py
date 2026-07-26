@@ -4,7 +4,6 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from services.llm import stream_chat
-from services.rag import search as rag_search
 
 router = APIRouter()
 
@@ -51,7 +50,7 @@ NARRATIVE_SYSTEM_TEMPLATE = """你是2010版电视剧《新三国》的编剧。
 【你的身份】
 你是编剧，不是游戏GM。你在写一集新三国的剧本。观众看到的就是正常的电视剧剧情。
 
-【隐性世界观规则（绝对不能在剧情中解释或提及，只在幕后影响剧情走向）】
+【隐性世界观规则——「{world_name}」（绝对不能在剧情中解释或提及，只在幕后影响剧情走向）】
 {worldview_doc}
 
 【输出格式】
