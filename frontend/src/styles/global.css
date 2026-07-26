@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=ZCOOL+KuaiLe&family=Ma+Shan+Zheng&family=ZCOOL+XiaoWei&family=Long+Cang&family=Liu+Jian+Mao+Cao&family=Zhi+Mang+Xing&display=swap');
+
+:root {
+  /* 深空星图色彩体系 */
+  --space-black: #050508;
+  --space-deep: #0a0a12;
+  --space-surface: #12121e;
+  --space-elevated: #1a1a2e;
+
+  /* 节点色彩 */
+  --node-character: #e8a838;
+  --node-character-glow: #ffcc55;
+  --node-tianyi: #ffd700;
+  --node-spacetime: #4a9eff;
+  --node-military: #e05545;
+  --node-social: #45c48a;
+  --node-item: #38c8c8;
+  --node-creature: #a878e8;
+
+  /* 文字 */
+  --text-bright: #f0f0f8;
+  --text-primary: #c8c8d8;
+  --text-muted: #6a6a80;
+  --text-dim: #3a3a50;
+
+  /* 强调 */
+  --accent-cinnabar: #c04030;
+  --accent-gold: #e8a838;
+
+  /* 连线 */
+  --link-color: rgba(160, 160, 200, 0.15);
+  --link-highlight: rgba(232, 168, 56, 0.4);
+
+  /* 字体 */
+  --font-display: 'Noto Serif SC', serif;
+  --font-body: 'Noto Serif SC', serif;
+
+  /* 面板 */
+  --panel-bg: rgba(10, 10, 18, 0.92);
+  --panel-border: rgba(160, 160, 200, 0.1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--space-black);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  width: 100%;
+  height: 100%;
+}
+
+/* 星尘背景纹理 */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.15) 0%, transparent 100%),
+    radial-gradient(1px 1px at 40% 70%, rgba(255,255,255,0.1) 0%, transparent 100%),
+    radial-gradient(1px 1px at 60% 20%, rgba(255,255,255,0.12) 0%, transparent 100%),
+    radial-gradient(1px 1px at 80% 50%, rgba(255,255,255,0.08) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 10% 80%, rgba(232,168,56,0.1) 0%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 90% 10%, rgba(74,158,255,0.08) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 滚动条 */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--text-dim); border-radius: 2px; }
+
+::selection {
+  background: rgba(232, 168, 56, 0.25);
+  color: var(--text-bright);
+}
