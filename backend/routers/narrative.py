@@ -323,7 +323,7 @@ async def narrative(req: NarrativeRequest):
         # deepseek-v4是推理模型，reasoning+content共享max_tokens，需留足空间
         draft = ""
         try:
-            async for chunk in stream_chat(messages, max_tokens=16384):
+            async for chunk in stream_chat(messages, max_tokens=393216):
                 draft += chunk
         except Exception:
             pass
@@ -346,7 +346,7 @@ async def narrative(req: NarrativeRequest):
                 {"role": "user", "content": recap + "【当前这段剧本草稿】\n" + draft},
             ]
             reviewed = ""
-            async for chunk in stream_chat(review_messages, max_tokens=16384):
+            async for chunk in stream_chat(review_messages, max_tokens=393216):
                 reviewed += chunk
             # 校验：审查结果非空且长度合理（不低于草稿50%），否则视为截断/失败，回退草稿
             if reviewed.strip() and len(reviewed.strip()) >= len(draft.strip()) * 0.5:
