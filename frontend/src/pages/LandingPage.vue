@@ -478,25 +478,36 @@ function createStarField(scene: THREE.Scene) {
   starField = new THREE.Points(geometry, material)
   scene.add(starField)
 
-  // 远景星云（几团大而淡的彩色雾）
+  // 远景星云（粒子簇，高斯分布聚成云团）
   const nebulaConfigs = [
-    { pos: [-400, 100, -600], color: '#2a0a55', size: 250, opacity: 0.15 },
-    { pos: [350, -150, -500], color: '#003355', size: 200, opacity: 0.12 },
-    { pos: [0, 200, -700], color: '#1a3300', size: 300, opacity: 0.10 },
-    { pos: [-200, -200, -400], color: '#331a00', size: 180, opacity: 0.13 },
+    { pos: [-400, 100, -600], color: '#4a1a8a', count: 250, spread: 120 },
+    { pos: [350, -150, -500], color: '#1a4a7a', count: 200, spread: 100 },
+    { pos: [0, 200, -700], color: '#2a5a1a', count: 300, spread: 150 },
+    { pos: [-200, -200, -400], color: '#5a2a0a', count: 180, spread: 90 },
   ]
   for (const cfg of nebulaConfigs) {
-    const geo = new THREE.SphereGeometry(cfg.size, 16, 16)
-    const mat = new THREE.MeshBasicMaterial({
+    const positions = new Float32Array(cfg.count * 3)
+    for (let i = 0; i < cfg.count; i++) {
+      // 高斯分布（中心密边缘疏）
+      const gx = (Math.random() + Math.random() + Math.random() - 1.5) * cfg.spread
+      const gy = (Math.random() + Math.random() + Math.random() - 1.5) * cfg.spread * 0.6
+      const gz = (Math.random() + Math.random() + Math.random() - 1.5) * cfg.spread * 0.4
+      positions[i * 3] = cfg.pos[0] + gx
+      positions[i * 3 + 1] = cfg.pos[1] + gy
+      positions[i * 3 + 2] = cfg.pos[2] + gz
+    }
+    const nGeo = new THREE.BufferGeometry()
+    nGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const nMat = new THREE.PointsMaterial({
       color: new THREE.Color(cfg.color),
+      size: 8 + Math.random() * 6,
       transparent: true,
-      opacity: cfg.opacity,
+      opacity: 0.08,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
+      sizeAttenuation: true,
     })
-    const mesh = new THREE.Mesh(geo, mat)
-    mesh.position.set(cfg.pos[0], cfg.pos[1], cfg.pos[2])
-    scene.add(mesh)
+    scene.add(new THREE.Points(nGeo, nMat))
   }
 }
 
