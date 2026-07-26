@@ -12,6 +12,8 @@ class NarrativeRequest(BaseModel):
     world_id: str
     action: str = ""  # user's choice or free text, empty = start new game
     history: list = []  # previous messages [{role, content}]
+    start_node: str = ""  # 首turn指定起始节点（如"官渡之战"），空=默认曹操献刀
+    identity: str = ""  # 首turn指定观众身份（如"谋士""武将"），空=AI随机分配
 
 
 NARRATIVE_SYSTEM_TEMPLATE = """你是2010版电视剧《新三国》的编剧，正在为观众即兴创作一集剧本。
@@ -56,14 +58,21 @@ NARRATIVE_SYSTEM_TEMPLATE = """你是2010版电视剧《新三国》的编剧，
 第一幕必须锚定"曹操献刀"节点，并交代清楚背景，不能写成generic的"士兵醒来"：
 1. 先交代背景（1-2句旁白）：董卓进京废立、独揽朝政、残害忠良，满朝文武敢怒
    不敢言。今日是大司徒王允寿宴，实为密谋除董。
-2. 把观众放进场景：观众是王允府上的一个【小人物】（端酒的仆役、守门的兵丁、
-   末座的末流小官皆可），亲眼看着这场寿宴。
-3. 呈现名场面：曹操当众放声大笑（"满座大丈夫，尽做女儿态！"），主动请缨
-   借王允的七星宝刀去刺董。众人失色，王允却暗中把刀给了曹操。
+2. 把观众放进场景：观众是王允府上的一个【小人物】，亲眼看着这场寿宴。
+3. 呈现名场面：曹操当众放声大笑，主动请缨借王允的七星宝刀去刺董。众人失色，
+   王允却暗中把刀给了曹操。
 4. 交代清楚"此时此地"：时间（午后/黄昏）、地点（洛阳·王允府）、氛围（表面
    贺寿、实则密谋的紧张感）。
-5. 结尾给出选项，让观众决定要不要"卷进"曹操刺董这件事。
+5. 结尾给出[OPT]选项，让观众决定要不要"卷进"曹操刺董这件事。
 开场要让观众一眼明白：我在哪、发生了什么、这些人在干什么、我可以做什么。
+
+【对话格式★强制★】
+所有角色台词必须用[角色名]标记独占一行，绝对不许写成散文引用（"某某说：'……'"）。
+正确：
+[曹操] 满座大丈夫，尽做女儿态！
+错误：
+曹操放声大笑："满座大丈夫，尽做女儿态！"
+旁白里引用台词也算错误。台词一律[角色名]格式。
 
 【新三国的"错误"（精髓，必须主动还原，不标注不解释）】
 1.称呼错误★最重要★：角色互相直呼其名（曹操当面叫"刘备"不叫"玄德"），或名字
@@ -195,15 +204,17 @@ def _build_skeleton_context(context_text: str) -> str:
     return text
 
 
-REVIEW_PROMPT = """你是《新三国》剧本的审校。下面是编剧写的一段剧本草稿。请检查并修正两个问题：
+REVIEW_PROMPT = """你是《新三国》剧本的审校。下面是编剧写的一段剧本草稿。请检查并修正三个问题：
 
-1.【新三风格】角色是否互相直呼其名（曹操当面叫"刘备"不叫"玄德"）？名字与字是否混用？
-   成语是否故意用错（如"破罐破摔"）？有没有地理/时间错误？角色口癖对不对
-   （曹操霸气疯癫、刘备阴沉、关羽傲慢、张飞暴躁、诸葛亮从容、司马懿阴）？
-2.【选项贴合】结尾的[OPT]选项是否贴合当前剧情（是当前场景里具体可做的动作，
-   而不是泛泛的选项）？不贴合就重写。
+1.【对话格式】所有角色台词是否都用[角色名]标记独占一行？如果有散文引用
+   （"某某说：'……'"），一律改成[角色名]格式。
+2.【新三风格】角色是否互相直呼其名（曹操当面叫"刘备"不叫"玄德"）？名字与字
+   是否混用？成语是否故意用错？角色口癖对不对（曹操霸气疯癫、刘备阴沉、
+   关羽傲慢、张飞暴躁、诸葛亮从容、司马懿阴）？
+3.【选项贴合】结尾的[OPT]选项是否贴合当前剧情（是当前场景里具体可做的动作）？
+   不贴合就重写。
 
-直接输出修正后的完整剧本。保持原有格式标记（[SYS]/[ERR]/[MUSIC]/[角色名]/[OPT]）。
+直接输出修正后的完整剧本。严格保持格式标记（[SYS]/[ERR]/[MUSIC]/[角色名]/[OPT]）。
 如果无需修改，原样输出。不要加任何解释，只输出剧本本身。
 
 【剧本草稿】
@@ -254,9 +265,14 @@ def _gather_rag_context(req: NarrativeRequest) -> str:
 @router.post("/worldview/narrative")
 async def narrative(req: NarrativeRequest):
     """Interactive narrative engine: 生成→审查 多步管线。"""
+    is_first_turn = len(req.history) == 0
+
     # 构建上下文文本（用于节点/角色检测和RAG）
     recent_history = req.history[-6:]
     context_text = " ".join(m.get("content", "") for m in recent_history) + " " + req.action
+    # 首turn若指定了起始节点，把它加入上下文以便检测和注入骨架
+    if is_first_turn and req.start_node:
+        context_text += " " + req.start_node
 
     # 生成阶段prompt = 核心规则 + 节点骨架 + RAG素材
     gen_prompt = NARRATIVE_SYSTEM_TEMPLATE
@@ -267,11 +283,16 @@ async def narrative(req: NarrativeRequest):
 
     messages = [{"role": "system", "content": gen_prompt}]
     for msg in req.history[-20:]:
-        messages.append({"role": msg["role"], "content": msg["content"]})
+        messages.append({"role": "user" if msg.get("role") == "user" else "assistant", "content": msg["content"]})
+
     if req.action:
         messages.append({"role": "user", "content": req.action})
     else:
-        messages.append({"role": "user", "content": "（开始。我睁开眼睛，发现自己在这个世界里。）"})
+        # 首turn开场指令
+        opening = "（开始。我睁开眼睛，发现自己在这个世界里。）"
+        if req.identity:
+            opening = f"（开始。我睁开眼睛，发现自己在这个世界里。我的身份是：{req.identity}。）"
+        messages.append({"role": "user", "content": opening})
 
     async def generate():
         # 步骤1：收集完整生成（不直接流给客户端）

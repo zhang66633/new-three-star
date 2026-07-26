@@ -53,6 +53,38 @@
     <div v-if="pageLoading" class="init-overlay">
       <p class="init-text">{{ initText }}</p>
     </div>
+
+    <!-- 开局设置：选择剧情节点和身份 -->
+    <div v-if="showSetup" class="setup-overlay">
+      <div class="setup-panel">
+        <h2 class="setup-title">载入世界</h2>
+        <div class="setup-section">
+          <p class="setup-label">选择剧情节点</p>
+          <div class="setup-chips">
+            <button
+              v-for="node in nodeOptions"
+              :key="node"
+              class="setup-chip"
+              :class="{ selected: selectedNode === node }"
+              @click="selectedNode = node"
+            >{{ node }}</button>
+          </div>
+        </div>
+        <div class="setup-section">
+          <p class="setup-label">选择你的身份</p>
+          <div class="setup-chips">
+            <button
+              v-for="id in identityOptions"
+              :key="id"
+              class="setup-chip"
+              :class="{ selected: selectedIdentity === id }"
+              @click="selectedIdentity = id"
+            >{{ id }}</button>
+          </div>
+        </div>
+        <button class="setup-enter" @click="startNarrative">进入此世界</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -74,6 +106,24 @@ const initText = ref('正在连接世界意志……')
 const freeInput = ref('')
 const isGlitching = ref(false)
 const musicPlayedCount = ref(0)
+
+// 开局设置
+const showSetup = ref(false)
+const selectedNode = ref('曹操献刀')
+const selectedIdentity = ref('')
+const nodeOptions = [
+  '曹操献刀', '桃园结义', '官渡之战', '三顾茅庐', '火烧赤壁',
+  '败走麦城', '夷陵之战', '白帝城托孤', '归晋',
+]
+const identityOptions = [
+  '随机', '仆役', '兵丁', '谋士', '武将', '商人', '流民', '乐师',
+]
+
+function startNarrative() {
+  showSetup.value = false
+  const identity = selectedIdentity.value === '随机' ? '' : selectedIdentity.value
+  sendAction('', selectedNode.value, identity)
+}
 
 // 故障噪点块
 interface NoiseBlock { x: number; y: number; w: number; h: number; color: string }
@@ -150,7 +200,7 @@ function triggerGlitch() {
   glitchTimer = window.setTimeout(() => { isGlitching.value = false }, 150)
 }
 
-async function sendAction(action: string) {
+async function sendAction(action: string, startNode: string = '', identity: string = '') {
   options.value = []
   isStreaming.value = true
   scrollToBottom()
@@ -166,6 +216,8 @@ async function sendAction(action: string) {
         world_id: route.params.id,
         action,
         history: history.slice(0, -1),
+        start_node: startNode,
+        identity,
       }),
     })
     const reader = resp.body?.getReader()
@@ -233,14 +285,14 @@ function submitFree() {
 
 onMounted(async () => {
   // Init sequence
-  const initSteps = ['正在连接世界意志……', '加载世界规则……', '生成初始场景……']
+  const initSteps = ['正在连接世界意志……', '加载世界规则……']
   for (let i = 0; i < initSteps.length; i++) {
     initText.value = initSteps[i]
-    await new Promise(r => setTimeout(r, 600))
+    await new Promise(r => setTimeout(r, 500))
   }
   pageLoading.value = false
-  // Start narrative
-  sendAction('')
+  // 显示开局设置（选择节点和身份）
+  showSetup.value = true
   // 环境噪点（随机间隔闪现）
   const scheduleNoise = () => {
     ambientNoiseTimer = window.setTimeout(() => {
@@ -451,4 +503,77 @@ onBeforeUnmount(() => {
   font-size: 0.9rem;
   animation: blink 1.2s step-end infinite;
 }
+
+/* 开局设置 */
+.setup-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 8, 5, 0.92);
+  z-index: 60;
+  backdrop-filter: blur(4px);
+}
+.setup-panel {
+  width: min(560px, 88vw);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 32px 36px;
+  border: 1px solid rgba(0, 255, 65, 0.25);
+  border-radius: 8px;
+  background: rgba(8, 12, 8, 0.9);
+}
+.setup-title {
+  color: #00ff41;
+  font-size: 1.3rem;
+  letter-spacing: 0.3em;
+  margin: 0 0 24px;
+  text-align: center;
+}
+.setup-section { margin-bottom: 22px; }
+.setup-label {
+  color: rgba(0, 255, 65, 0.7);
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  margin: 0 0 10px;
+}
+.setup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.setup-chip {
+  background: transparent;
+  border: 1px solid rgba(0, 255, 65, 0.25);
+  color: rgba(0, 255, 65, 0.6);
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.setup-chip:hover { border-color: rgba(0, 255, 65, 0.5); color: #00ff41; }
+.setup-chip.selected {
+  background: rgba(0, 255, 65, 0.15);
+  border-color: #00ff41;
+  color: #00ff41;
+}
+.setup-enter {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  background: rgba(0, 255, 65, 0.1);
+  border: 1px solid #00ff41;
+  color: #00ff41;
+  padding: 12px;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  letter-spacing: 0.25em;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.setup-enter:hover { background: rgba(0, 255, 65, 0.2); }
 </style>
