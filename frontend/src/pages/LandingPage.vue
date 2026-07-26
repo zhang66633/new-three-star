@@ -571,6 +571,137 @@ function createFloatingQuotes(scene: THREE.Scene) {
   })
 }
 
+// 每世界独特视觉配件
+function addWorldAccessory(group: THREE.Group, id: string, radius: number, color: THREE.Color, params: any) {
+  const makeParticles = (count: number, spread: number, size: number, pColor: THREE.Color, geo?: THREE.BufferGeometry) => {
+    const positions = new Float32Array(count * 3)
+    for (let i = 0; i < count; i++) {
+      const theta = Math.random() * Math.PI * 2
+      const phi = Math.acos(2 * Math.random() - 1)
+      const r = radius * spread * (0.8 + Math.random() * 0.4)
+      positions[i * 3] = r * Math.sin(phi) * Math.cos(theta)
+      positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
+      positions[i * 3 + 2] = r * Math.cos(phi)
+    }
+    const pGeo = geo || new THREE.BufferGeometry()
+    pGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const pMat = new THREE.PointsMaterial({
+      color: pColor, size, transparent: true, opacity: 0.7,
+      blending: THREE.AdditiveBlending, depthWrite: false,
+    })
+    group.add(new THREE.Points(pGeo, pMat))
+  }
+
+  switch (id) {
+    case 'cthulhu': {
+      // 触手状突起粒子（暗绿+紫色，从表面向外喷射）
+      makeParticles(40, 1.6, 0.4, new THREE.Color('#2aff8a'))
+      makeParticles(20, 2.0, 0.25, new THREE.Color('#8833ff'))
+      break
+    }
+    case 'game_world': {
+      // 像素碎片飞散（小方块粒子，青色+品红）
+      makeParticles(35, 1.8, 0.5, new THREE.Color('#00ccff'))
+      makeParticles(15, 2.2, 0.35, new THREE.Color('#ff00aa'))
+      break
+    }
+    case 'murder_mystery': {
+      // 金色棋盘环（扁平，有刻度感）
+      const ringGeo = new THREE.TorusGeometry(radius * 1.8, 0.15, 8, 32)
+      const ringMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#ffdd66'), transparent: true, opacity: 0.6,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+      const ring = new THREE.Mesh(ringGeo, ringMat)
+      ring.rotation.x = Math.PI * 0.5
+      group.add(ring)
+      break
+    }
+    case 'pokemon': {
+      // 三色元素粒子环绕（蓝/红/绿）
+      makeParticles(15, 1.5, 0.4, new THREE.Color('#4488ff'))
+      makeParticles(15, 1.7, 0.4, new THREE.Color('#ff4422'))
+      makeParticles(15, 1.9, 0.4, new THREE.Color('#44dd44'))
+      break
+    }
+    case 'philosophy': {
+      // 棱线wireframe overlay（几何神圣感）
+      const wireGeo = new THREE.IcosahedronGeometry(radius * 1.05, 1)
+      const wireMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#eeddff'), wireframe: true,
+        transparent: true, opacity: 0.25,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+      group.add(new THREE.Mesh(wireGeo, wireMat))
+      break
+    }
+    case 'cultivation': {
+      // 底部消散墨迹粒子（向下飘散）
+      const count = 30
+      const positions = new Float32Array(count * 3)
+      for (let i = 0; i < count; i++) {
+        positions[i * 3] = (Math.random() - 0.5) * radius * 2
+        positions[i * 3 + 1] = -radius * (0.5 + Math.random() * 1.5) // 向下
+        positions[i * 3 + 2] = (Math.random() - 0.5) * radius * 2
+      }
+      const dGeo = new THREE.BufferGeometry()
+      dGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      const dMat = new THREE.PointsMaterial({
+        color: new THREE.Color('#ccffee'), size: 0.35, transparent: true, opacity: 0.5,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+      group.add(new THREE.Points(dGeo, dMat))
+      break
+    }
+    case 'zhangjiao': {
+      // 裂缝发光线（竖直切割球体的一道光）
+      const crackGeo = new THREE.PlaneGeometry(0.2, radius * 2.2)
+      const crackMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#ffee00'), transparent: true, opacity: 0.8,
+        blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false,
+      })
+      const crack = new THREE.Mesh(crackGeo, crackMat)
+      crack.rotation.z = 0.1 // 微微倾斜
+      group.add(crack)
+      break
+    }
+    case 'trpg': {
+      // 骰子碎片环绕（小二十面体）
+      for (let i = 0; i < 5; i++) {
+        const diceGeo = new THREE.IcosahedronGeometry(0.4, 0)
+        const diceMat = new THREE.MeshBasicMaterial({
+          color: new THREE.Color('#8877ff'), transparent: true, opacity: 0.6,
+          blending: THREE.AdditiveBlending, depthWrite: false,
+        })
+        const dice = new THREE.Mesh(diceGeo, diceMat)
+        const angle = (i / 5) * Math.PI * 2
+        dice.position.set(Math.cos(angle) * radius * 1.8, Math.sin(angle) * 0.8, Math.sin(angle) * radius * 1.8)
+        group.add(dice)
+      }
+      break
+    }
+    case 'elo': {
+      // 天平环（水平，缓慢摇摆）
+      const balGeo = new THREE.TorusGeometry(radius * 1.6, 0.1, 8, 48)
+      const balMat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color('#66ffdd'), transparent: true, opacity: 0.5,
+        blending: THREE.AdditiveBlending, depthWrite: false,
+      })
+      const balance = new THREE.Mesh(balGeo, balMat)
+      balance.rotation.x = Math.PI * 0.5
+      balance.rotation.z = 0.15 // 微微倾斜=不平衡感
+      group.add(balance)
+      break
+    }
+    case 'create': {
+      // 星云凝聚粒子（大量粒子围绕小核心）
+      makeParticles(80, 2.5, 0.3, new THREE.Color('#aabbff'))
+      makeParticles(40, 1.8, 0.2, new THREE.Color('#ffffff'))
+      break
+    }
+  }
+}
+
 async function initGraph() {
   if (!graphRef.value) return
 
@@ -637,8 +768,18 @@ async function initGraph() {
       const isNebula = node.isNebula
       const coreRadius = isNebula ? 3 : 5
 
-      // 程序化星球核心
-      const coreGeo = new THREE.SphereGeometry(coreRadius, 48, 48)
+      // === 核心几何体（部分世界用非球体） ===
+      let coreGeo: THREE.BufferGeometry
+      if (node.id === 'philosophy') {
+        coreGeo = new THREE.IcosahedronGeometry(coreRadius, 2) // 光滑二十面体
+      } else if (node.id === 'trpg') {
+        coreGeo = new THREE.IcosahedronGeometry(coreRadius, 1) // D20骰子感
+      } else if (node.id === 'create') {
+        coreGeo = new THREE.SphereGeometry(coreRadius * 0.6, 32, 32) // 小核心，外层是粒子
+      } else {
+        coreGeo = new THREE.SphereGeometry(coreRadius, 48, 48)
+      }
+
       const coreMat = new THREE.ShaderMaterial({
         uniforms: {
           uTime: { value: 0 },
@@ -656,28 +797,30 @@ async function initGraph() {
       group.add(new THREE.Mesh(coreGeo, coreMat))
       shaderMaterials.push(coreMat)
 
-      // 漩涡吸积盘
-      const vortexGeo = new THREE.RingGeometry(coreRadius * 1.3, coreRadius * 2.8, 64)
-      const vortexMat = new THREE.ShaderMaterial({
-        uniforms: {
-          uTime: { value: 0 },
-          uColor: { value: new THREE.Color(params.vortexColor) },
-          uOpacity: { value: params.vortexOpacity },
-        },
-        vertexShader: vortexVertexShader,
-        fragmentShader: vortexFragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-      })
-      const vortex = new THREE.Mesh(vortexGeo, vortexMat)
-      vortex.rotation.x = Math.PI * 0.5 + (Math.random() - 0.5) * 0.4
-      vortex.rotation.z = (Math.random() - 0.5) * 0.3
-      group.add(vortex)
-      shaderMaterials.push(vortexMat)
+      // === 漩涡吸积盘（非create世界） ===
+      if (node.id !== 'create') {
+        const vortexGeo = new THREE.RingGeometry(coreRadius * 1.3, coreRadius * 2.8, 64)
+        const vortexMat = new THREE.ShaderMaterial({
+          uniforms: {
+            uTime: { value: 0 },
+            uColor: { value: new THREE.Color(params.vortexColor) },
+            uOpacity: { value: params.vortexOpacity },
+          },
+          vertexShader: vortexVertexShader,
+          fragmentShader: vortexFragmentShader,
+          transparent: true,
+          blending: THREE.AdditiveBlending,
+          side: THREE.DoubleSide,
+          depthWrite: false,
+        })
+        const vortex = new THREE.Mesh(vortexGeo, vortexMat)
+        vortex.rotation.x = Math.PI * 0.5 + (Math.random() - 0.5) * 0.4
+        vortex.rotation.z = (Math.random() - 0.5) * 0.3
+        group.add(vortex)
+        shaderMaterials.push(vortexMat)
+      }
 
-      // 菲涅尔大气光晕
+      // === 菲涅尔大气光晕 ===
       const atmosGeo = new THREE.SphereGeometry(coreRadius * 1.3, 48, 48)
       const atmosMat = new THREE.ShaderMaterial({
         uniforms: {
@@ -694,7 +837,7 @@ async function initGraph() {
       })
       group.add(new THREE.Mesh(atmosGeo, atmosMat))
 
-      // 外发光（简化为两层）
+      // === 外发光 ===
       const glowLayers = isNebula
         ? [{ radius: 5, opacity: 0.08 }, { radius: 8, opacity: 0.03 }]
         : [{ radius: 8, opacity: 0.1 }, { radius: 12, opacity: 0.04 }]
@@ -710,7 +853,10 @@ async function initGraph() {
         group.add(new THREE.Mesh(glowGeo, glowMat))
       }
 
-      // 文字标签
+      // === 每世界独特配件 ===
+      addWorldAccessory(group, node.id, coreRadius, color, params)
+
+      // === 文字标签 ===
       try {
         const label = new SpriteText(node.name)
         label.color = isNebula ? '#aabbff' : node.color
