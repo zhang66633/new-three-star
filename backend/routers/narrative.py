@@ -114,6 +114,55 @@ MAIN_CHARACTERS = [
     "吕布", "董卓", "袁绍", "袁术", "赵云", "陆逊", "吕蒙", "鲁肃",
 ]
 
+# 主线节点骨架（前因+必演名场面+必埋槽点）
+NODE_SKELETONS = {
+    "曹操献刀": {
+        "前因": "董卓进京废立、独揽朝政、残害忠良，满朝文武敢怒不敢言。今日大司徒王允寿宴，实为密谋除董。",
+        "名场面": ["王允寿宴群臣痛哭、曹操当众放声大笑'满座大丈夫尽做女儿态'", "曹操主动请缨借王允七星宝刀去刺董、众人失色", "曹操揣刀入怀离开、衣角擦过观众"],
+        "槽点": ["曹操大喊'国贼董卓嘛！'", "'你们就不打算搜搜，看我身上带没带兵刃？'", "称呼错误：直呼其名"],
+    },
+    "桃园结义": {
+        "前因": "曹操刺董失败逃亡，天下大乱。河北涿县，刘备、关羽、张飞三人相遇。",
+        "名场面": ["三人桃园焚香结义、誓'不求同年同月同日生但愿同年同月同日死'", "三人'实则不熟'的微妙疏离感"],
+        "槽点": ["'刘什么？关什么？没听说过。'", "结义仓促得像走流程", "灵魂锁链=系统强制组队"],
+    },
+    "官渡之战": {
+        "前因": "曹操迎天子、灭吕布、败袁术，势力渐大。袁绍据河北，起兵七十万来攻。",
+        "名场面": ["曹操七万打崩袁绍七十万", "许攸来投、火烧乌巢"],
+        "槽点": ["'你七十万大军都败了？我的天哪！这七十万大军就是伸直了脖子让曹军砍，那也得砍他几天几夜啊！'", "'不可能！车胄有八万精兵驻防徐州，八万哪！你就算是八万个馒头，刘备也得啃上半个月！'", "7万高达"],
+    },
+    "三顾茅庐": {
+        "前因": "刘备屡败屡战、寄人篱下。司马徽推荐卧龙凤雏。",
+        "名场面": ["三顾茅庐、隆中对'三分天下'", "诸葛亮出山、刘备'如鱼得水'"],
+        "槽点": ["'孔明未出茅庐，已定三分天下'", "'孔明何等人物，只要有钱粮在手，马上会变出十万精兵！'", "人体炼成"],
+    },
+    "火烧赤壁": {
+        "前因": "曹操南下取荆州，刘备败走。孙刘结盟抗曹。",
+        "名场面": ["诸葛亮借东风", "火烧赤壁、曹操败走华容道"],
+        "槽点": ["'好火啊，比夷陵之火还好啊！'（诸葛亮认知扭曲）", "周瑜'好方略，不过我想稍作修改'", "借东风=调用管理员权限"],
+    },
+    "败走麦城": {
+        "前因": "关羽镇守荆州、水淹七军、威震华夏。吕蒙白衣渡江偷袭荆州。",
+        "名场面": ["关羽败走麦城", "赤兔马拒不饮水、关羽被擒"],
+        "槽点": ["'水不多了，给赤兔马饮吧'", "'不可能！我二弟天下无敌！'（刘备）", "灵魂锁链悲剧、关羽之歌响起"],
+    },
+    "夷陵之战": {
+        "前因": "关羽死后，刘备称帝、誓师伐吴。张飞被部下所害。",
+        "名场面": ["刘备连营七百里", "陆逊火烧连营、刘备大败"],
+        "槽点": ["'列位弟兄，随我接战，战至最后一刻，自刎归天！'", "刘备想借此自刎归天", "'端午佳节，大雪纷飞'"],
+    },
+    "白帝城托孤": {
+        "前因": "夷陵大败，刘备病危于白帝城永安宫。",
+        "名场面": ["刘备托孤诸葛亮", "君臣泣别"],
+        "槽点": ["'勿以恶小而为之，勿以善小而不为'", "'君才十倍曹丕，若嗣子可辅辅之，如其不才君可自取'", "关羽之歌响起"],
+    },
+    "归晋": {
+        "前因": "诸葛亮病逝五丈原，蜀汉渐衰，司马氏掌权。",
+        "名场面": ["司马炎称帝、三国归晋"],
+        "槽点": ["'王是一口井，而天子则是一口深井'（司马懿）", "[SYS]游戏通关", "天意的最终胜利"],
+    },
+}
+
 
 def _detect_node(context: str) -> str:
     """从上下文中检测最近涉及的主线节点。"""
@@ -127,6 +176,38 @@ def _detect_node(context: str) -> str:
 def _detect_characters(context: str) -> list:
     """检测上下文中出现的角色名。"""
     return [c for c in MAIN_CHARACTERS if c in context]
+
+
+def _build_skeleton_context(context_text: str) -> str:
+    """返回当前节点的骨架（前因+必演名场面+必埋槽点）。"""
+    node = _detect_node(context_text)
+    if not node or node not in NODE_SKELETONS:
+        return ""
+    sk = NODE_SKELETONS[node]
+    text = f"\n\n【当前节点骨架：{node}（剧情须围绕此节点展开，自然推进，不要硬切）】\n"
+    text += f"前因：{sk['前因']}\n"
+    text += f"必演名场面（须有机融入，不可遗漏）：\n"
+    for scene in sk["名场面"]:
+        text += f"- {scene}\n"
+    text += f"必埋槽点（须自然埋入，角色不自觉）：\n"
+    for meme in sk["槽点"]:
+        text += f"- {meme}\n"
+    return text
+
+
+REVIEW_PROMPT = """你是《新三国》剧本的审校。下面是编剧写的一段剧本草稿。请检查并修正两个问题：
+
+1.【新三风格】角色是否互相直呼其名（曹操当面叫"刘备"不叫"玄德"）？名字与字是否混用？
+   成语是否故意用错（如"破罐破摔"）？有没有地理/时间错误？角色口癖对不对
+   （曹操霸气疯癫、刘备阴沉、关羽傲慢、张飞暴躁、诸葛亮从容、司马懿阴）？
+2.【选项贴合】结尾的[OPT]选项是否贴合当前剧情（是当前场景里具体可做的动作，
+   而不是泛泛的选项）？不贴合就重写。
+
+直接输出修正后的完整剧本。保持原有格式标记（[SYS]/[ERR]/[MUSIC]/[角色名]/[OPT]）。
+如果无需修改，原样输出。不要加任何解释，只输出剧本本身。
+
+【剧本草稿】
+"""
 
 
 def _gather_rag_context(req: NarrativeRequest) -> str:
@@ -172,28 +253,43 @@ def _gather_rag_context(req: NarrativeRequest) -> str:
 
 @router.post("/worldview/narrative")
 async def narrative(req: NarrativeRequest):
-    """Interactive narrative engine with implicit worldview."""
-    system_prompt = NARRATIVE_SYSTEM_TEMPLATE
+    """Interactive narrative engine: 生成→审查 多步管线。"""
+    # 构建上下文文本（用于节点/角色检测和RAG）
+    recent_history = req.history[-6:]
+    context_text = " ".join(m.get("content", "") for m in recent_history) + " " + req.action
 
-    # RAG三路饱和检索注入
+    # 生成阶段prompt = 核心规则 + 节点骨架 + RAG素材
+    gen_prompt = NARRATIVE_SYSTEM_TEMPLATE
+    gen_prompt += _build_skeleton_context(context_text)
     rag_context = _gather_rag_context(req)
     if rag_context:
-        system_prompt += rag_context
+        gen_prompt += rag_context
 
-    messages = [{"role": "system", "content": system_prompt}]
-
-    # Add conversation history
-    for msg in req.history[-20:]:  # keep last 20 messages for context
+    messages = [{"role": "system", "content": gen_prompt}]
+    for msg in req.history[-20:]:
         messages.append({"role": msg["role"], "content": msg["content"]})
-
-    # Add current action
     if req.action:
         messages.append({"role": "user", "content": req.action})
     else:
         messages.append({"role": "user", "content": "（开始。我睁开眼睛，发现自己在这个世界里。）"})
 
     async def generate():
+        # 步骤1：收集完整生成（不直接流给客户端）
+        draft = ""
         async for chunk in stream_chat(messages, max_tokens=1000):
+            draft += chunk
+
+        if not draft.strip():
+            yield f"data: {json.dumps({'type': 'chunk', 'content': '[ERR] 世界意志沉默。请稍后再试。'}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            return
+
+        # 步骤2：独立审查调用，流式输出修正后的成品
+        review_messages = [
+            {"role": "system", "content": REVIEW_PROMPT},
+            {"role": "user", "content": draft},
+        ]
+        async for chunk in stream_chat(review_messages, max_tokens=1200):
             yield f"data: {json.dumps({'type': 'chunk', 'content': chunk}, ensure_ascii=False)}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
