@@ -1,5 +1,5 @@
 // 程序化星球着色器 - 每个世界独特的表面效果
-// 使用 simplex noise + 主题参数生成
+// 使用 simplex noise + domain warping + 主题参数生成
 
 const noiseGLSL = `
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
@@ -50,6 +50,18 @@ float snoise(vec3 v) {
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
 
+// FBM with inter-octave rotation (eliminates axis-aligned artifacts)
+vec3 rotateOctave(vec3 p) {
+  // Fixed rotation matrix (golden angle based) to decorrelate octaves
+  float c = 0.7071;
+  float s = 0.7071;
+  return vec3(
+    p.x * c - p.z * s,
+    p.y * 0.8 + p.x * 0.36 + p.z * 0.48,
+    p.x * s + p.z * c
+  );
+}
+
 float fbm(vec3 p, int octaves) {
   float value = 0.0;
   float amplitude = 0.5;
@@ -57,21 +69,37 @@ float fbm(vec3 p, int octaves) {
   for (int i = 0; i < 6; i++) {
     if (i >= octaves) break;
     value += amplitude * snoise(p * frequency);
+    p = rotateOctave(p); // rotate between octaves
     frequency *= 2.0;
     amplitude *= 0.5;
   }
   return value;
+}
+
+// Domain warping: feed noise back into coordinates for organic distortion
+float warpedFbm(vec3 p, int octaves, float warpStrength) {
+  vec3 warp = vec3(
+    fbm(p + vec3(0.0, 5.2, 1.3), octaves - 1),
+    fbm(p + vec3(5.2, 1.3, 0.0), octaves - 1),
+    fbm(p + vec3(1.3, 0.0, 5.2), octaves - 1)
+  );
+  return fbm(p + warp * warpStrength, octaves);
 }
 `
 
 export const planetVertexShader = `
 varying vec3 vNormal;
 varying vec3 vPosition;
+varying vec3 vWorldNormal;
+varying vec3 vViewDir;
 varying vec2 vUv;
 void main() {
   vNormal = normalize(normalMatrix * normal);
   vPosition = position;
   vUv = uv;
+  vec4 worldPos = modelMatrix * vec4(position, 1.0);
+  vWorldNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+  vViewDir = normalize(cameraPosition - worldPos.xyz);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
 }
 `
@@ -89,6 +117,8 @@ uniform float uStyle; // 0=有机 1=glitch 2=水墨 3=能量 4=几何
 
 varying vec3 vNormal;
 varying vec3 vPosition;
+varying vec3 vWorldNormal;
+varying vec3 vViewDir;
 varying vec2 vUv;
 
 ${noiseGLSL}
@@ -97,50 +127,69 @@ void main() {
   vec3 p = vPosition * uNoiseScale;
   float t = uTime * uNoiseSpeed;
 
+  // === Surface noise (style-dependent, with domain warping) ===
   float n;
   if (uStyle < 0.5) {
-    // 有机/触手风格（克苏鲁、战锤）
-    n = fbm(p + vec3(t * 0.1, t * 0.05, 0.0), uOctaves);
+    // 有机/触手风格 — heavy domain warping for tentacle-like distortion
+    n = warpedFbm(p + vec3(t * 0.1, t * 0.05, 0.0), uOctaves, 0.8);
     float tentacle = abs(snoise(p * 2.0 + vec3(0.0, t * 0.2, t * 0.1)));
     tentacle = pow(1.0 - tentacle, 3.0);
     n = n * 0.6 + tentacle * 0.4;
   } else if (uStyle < 1.5) {
-    // Glitch风格（崩坏纪元）
-    n = fbm(p, uOctaves);
+    // Glitch风格 — sharp domain warp + scanlines
+    n = warpedFbm(p, uOctaves, 0.3);
     float glitch = step(0.92, snoise(vec3(p.y * 20.0, t * 2.0, 0.0)));
     float scanline = sin(vPosition.y * 80.0 + t * 5.0) * 0.5 + 0.5;
     n = mix(n, glitch, scanline * 0.4);
   } else if (uStyle < 2.5) {
-    // 水墨/云雾风格（修仙、哲学）
-    n = fbm(p + vec3(t * 0.02, 0.0, t * 0.03), uOctaves);
+    // 水墨/云雾风格 — soft domain warping, wispy
+    n = warpedFbm(p + vec3(t * 0.02, 0.0, t * 0.03), uOctaves, 0.6);
     n = smoothstep(-0.2, 0.8, n);
     float wisp = snoise(p * 3.0 + vec3(t * 0.1));
     n = n * 0.7 + wisp * 0.3;
   } else if (uStyle < 3.5) {
-    // 能量/元素风格（属性大陆、JoJo）
-    n = fbm(p + vec3(0.0, t * 0.15, t * 0.1), uOctaves);
+    // 能量/元素风格 — moderate warp + energy veins
+    n = warpedFbm(p + vec3(0.0, t * 0.15, t * 0.1), uOctaves, 0.4);
     float energy = abs(snoise(p * 4.0 + t * 0.3));
     energy = pow(energy, 2.0);
     n = n * 0.5 + energy * 0.5;
   } else {
-    // 几何/秩序风格（天平、迷局、TRPG）
-    n = fbm(p, uOctaves);
+    // 几何/秩序风格 — minimal warp + grid overlay
+    n = warpedFbm(p, uOctaves, 0.2);
     float grid = abs(sin(vPosition.x * 10.0)) * abs(sin(vPosition.y * 10.0)) * abs(sin(vPosition.z * 10.0));
     n = mix(n, grid, 0.3);
   }
 
-  // 三色混合
+  // === Cloud layer (rotates at different speed, adds depth) ===
+  vec3 cloudP = vPosition * uNoiseScale * 1.8;
+  float cloud = fbm(cloudP + vec3(t * 0.4, t * 0.1, t * 0.25), max(uOctaves - 2, 2));
+  cloud = smoothstep(0.1, 0.7, cloud) * 0.25; // subtle cloud wisps
+
+  // === Three-color mixing ===
   vec3 color;
   if (n < 0.0) {
     color = mix(uColor1, uColor2, n + 1.0);
   } else {
     color = mix(uColor2, uColor3, n);
   }
+  // Add cloud highlights
+  color = mix(color, uColor3 * 1.3, cloud);
 
-  // 边缘菲涅尔暗化
-  float fresnel = dot(vNormal, vec3(0.0, 0.0, 1.0));
-  fresnel = clamp(fresnel, 0.0, 1.0);
-  color *= 0.4 + fresnel * 0.6;
+  // === Proper view-dependent Fresnel ===
+  float fresnel = 1.0 - max(dot(vViewDir, vWorldNormal), 0.0);
+  fresnel = pow(fresnel, 2.5);
+
+  // === Rim glow (bright edges instead of dark) ===
+  vec3 rimColor = mix(uColor2, uColor3, 0.5) * 1.5;
+  color += rimColor * fresnel * 0.6;
+
+  // === Atmospheric color shift at limb ===
+  vec3 atmosColor = uColor2 * 0.5 + vec3(0.1, 0.15, 0.3); // slight blue shift
+  color = mix(color, atmosColor, fresnel * 0.3);
+
+  // === Subtle diffuse lighting (top-down) ===
+  float diffuse = max(dot(vWorldNormal, normalize(vec3(0.3, 1.0, 0.5))), 0.0);
+  color *= 0.55 + diffuse * 0.45;
 
   gl_FragColor = vec4(color, 1.0);
 }
