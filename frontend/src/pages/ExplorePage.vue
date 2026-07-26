@@ -19,6 +19,7 @@
       <div v-for="(block, i) in logBlocks" :key="i" class="log-block" :class="block.type">
         <span v-if="block.type === 'sys'" class="prefix">[SYS]</span>
         <span v-else-if="block.type === 'err'" class="prefix">[ERR]</span>
+        <span v-else-if="block.type === 'music'" class="prefix music-note">♪</span>
         <span v-else-if="block.type === 'dialogue'" class="prefix">[{{ block.speaker }}]</span>
         <span class="log-text" v-html="block.html"></span>
       </div>
@@ -56,12 +57,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
 const API_BASE = import.meta.env.VITE_API_BASE || ''
+const playGuanyu = inject<() => void>('playGuanyu', () => {})
 
 const logRef = ref<HTMLElement>()
 const logBlocks = ref<{ type: string; speaker?: string; html: string }[]>([])
@@ -71,6 +73,7 @@ const pageLoading = ref(true)
 const initText = ref('正在连接世界意志……')
 const freeInput = ref('')
 const isGlitching = ref(false)
+const musicPlayedCount = ref(0)
 
 // 故障噪点块
 interface NoiseBlock { x: number; y: number; w: number; h: number; color: string }
@@ -119,6 +122,8 @@ function parseNarrative(text: string) {
     const trimmed = line.trim()
     if (trimmed.startsWith('[OPT]')) {
       opts.push(trimmed.slice(5).trim())
+    } else if (trimmed.startsWith('[MUSIC]')) {
+      blocks.push({ type: 'music', html: escapeHtml(trimmed.slice(7).trim() || '关羽之歌响起') })
     } else if (trimmed.startsWith('[SYS]')) {
       blocks.push({ type: 'sys', html: escapeHtml(trimmed.slice(5).trim()) })
     } else if (trimmed.startsWith('[ERR]')) {
@@ -191,6 +196,12 @@ async function sendAction(action: string) {
             const errCount = (fullText.match(/\[ERR\]/g) || []).length
             if (newPart.includes('SYS') || newPart.includes('ERR')) {
               if (Math.random() < 0.5) triggerGlitch()
+            }
+            // 关羽之歌：检测到新的[MUSIC]标记时播放
+            const musicCount = (fullText.match(/\[MUSIC\]/g) || []).length
+            if (musicCount > musicPlayedCount.value) {
+              musicPlayedCount.value = musicCount
+              playGuanyu()
             }
           } else if (msg.type === 'done') {
             // Final parse
@@ -349,6 +360,19 @@ onBeforeUnmount(() => {
 
 .log-block.err { color: #ff3333; font-size: 0.8rem; }
 .log-block.err .prefix { color: #ff3333; margin-right: 6px; }
+
+.log-block.music { color: #ffd700; font-size: 0.85rem; }
+.log-block.music .music-note {
+  color: #ffd700;
+  margin-right: 8px;
+  display: inline-block;
+  animation: music-pulse 1s ease-in-out infinite;
+}
+.log-block.music .log-text { font-style: italic; letter-spacing: 0.05em; }
+@keyframes music-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
 
 .cursor-blink { color: #00ff41; animation: blink 0.8s step-end infinite; }
 @keyframes blink { 50% { opacity: 0; } }
