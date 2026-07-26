@@ -478,20 +478,23 @@ function createStarField(scene: THREE.Scene) {
   starField = new THREE.Points(geometry, material)
   scene.add(starField)
 
-  // 远景星云（粒子簇，高斯分布聚成云团）
+  // 远景星云（粒子簇，高斯分布，四面八方）
   const nebulaConfigs = [
-    { pos: [-400, 100, -600], color: '#4a1a8a', count: 250, spread: 120 },
-    { pos: [350, -150, -500], color: '#1a4a7a', count: 200, spread: 100 },
-    { pos: [0, 200, -700], color: '#2a5a1a', count: 300, spread: 150 },
-    { pos: [-200, -200, -400], color: '#5a2a0a', count: 180, spread: 90 },
+    { pos: [-400, 100, -600], color: '#6a2aaa', count: 400, spread: 140 },
+    { pos: [350, -150, -500], color: '#2a6aaa', count: 350, spread: 120 },
+    { pos: [0, 250, -700], color: '#3a7a2a', count: 450, spread: 160 },
+    { pos: [-250, -200, -400], color: '#7a3a1a', count: 300, spread: 100 },
+    { pos: [500, 200, 300], color: '#5a1a7a', count: 350, spread: 130 },
+    { pos: [-500, -100, 400], color: '#1a5a6a', count: 400, spread: 140 },
+    { pos: [200, -300, 500], color: '#6a5a1a', count: 300, spread: 110 },
+    { pos: [-100, 350, 200], color: '#2a3a7a', count: 350, spread: 120 },
   ]
   for (const cfg of nebulaConfigs) {
     const positions = new Float32Array(cfg.count * 3)
     for (let i = 0; i < cfg.count; i++) {
-      // 高斯分布（中心密边缘疏）
       const gx = (Math.random() + Math.random() + Math.random() - 1.5) * cfg.spread
       const gy = (Math.random() + Math.random() + Math.random() - 1.5) * cfg.spread * 0.6
-      const gz = (Math.random() + Math.random() + Math.random() - 1.5) * cfg.spread * 0.4
+      const gz = (Math.random() + Math.random() + Math.random() - 1.5) * cfg.spread * 0.5
       positions[i * 3] = cfg.pos[0] + gx
       positions[i * 3 + 1] = cfg.pos[1] + gy
       positions[i * 3 + 2] = cfg.pos[2] + gz
@@ -500,9 +503,9 @@ function createStarField(scene: THREE.Scene) {
     nGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     const nMat = new THREE.PointsMaterial({
       color: new THREE.Color(cfg.color),
-      size: 8 + Math.random() * 6,
+      size: 12 + Math.random() * 8,
       transparent: true,
-      opacity: 0.08,
+      opacity: 0.18,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       sizeAttenuation: true,
