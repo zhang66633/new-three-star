@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from services.llm import stream_chat
+from services.rag import search as rag_search
 
 router = APIRouter()
 
@@ -88,6 +89,18 @@ async def narrative(req: NarrativeRequest):
         world_name=world_name,
         worldview_doc=worldview_doc[:6000],  # limit context size
     )
+
+    # RAG: 检索相关素材注入prompt
+    query_text = req.action if req.action else "新三国 开场 第一集"
+    try:
+        rag_results = rag_search(query_text, top_k=3)
+        if rag_results:
+            rag_context = "\n\n【参考素材（来自原剧本/素材库，可引用但不要照搬）】\n"
+            for r in rag_results:
+                rag_context += f"- [{r['source']}] {r['text'][:200]}\n"
+            system_prompt += rag_context
+    except Exception:
+        pass  # 索引不存在时静默跳过
 
     messages = [{"role": "system", "content": system_prompt}]
 
