@@ -54,8 +54,16 @@
           <h1 class="fv-name" :style="{ textShadow: `0 0 40px ${visionWorld.color}` }">{{ visionWorld.name }}</h1>
           <p class="fv-tag">{{ visionWorld.tagline }}</p>
           <p class="fv-desc">{{ visionWorld.desc }}</p>
-          <button class="fv-enter" :style="{ borderColor: visionWorld.color, color: visionWorld.color }" @click="enterWorld(visionWorld.id)">
+          <button
+            v-if="isOpenWorld(visionWorld.id)"
+            class="fv-enter"
+            :style="{ borderColor: visionWorld.color, color: visionWorld.color }"
+            @click="enterWorld(visionWorld.id)"
+          >
             进入此世界
+          </button>
+          <button v-else class="fv-enter fv-locked" disabled>
+            该世界线尚未解锁
           </button>
         </div>
         <button class="fv-close" @click="visionWorld = null">✕</button>
@@ -122,6 +130,12 @@ const WORLDS = [
   { id: 'trpg', name: '古神棋局', tagline: '真相令人疯狂', color: '#6366f1', desc: '三国是一局克苏鲁跑团，角色是调查员，知道真相越多越疯狂，而身边的兄弟可能是古神的棋子' },
   { id: 'elo', name: '天平竞技场', tagline: '尽力了', color: '#14b8a6', desc: '天意是匹配算法，不关心谁赢只关心胜率收敛到五成' },
 ]
+
+// 当前开放的世界（其余显示"尚未解锁"）
+const OPEN_WORLDS = ['game_world']
+function isOpenWorld(id: string) {
+  return OPEN_WORLDS.includes(id)
+}
 
 let graphInstance: any = null
 let animFrameId: number | null = null
@@ -1439,6 +1453,18 @@ async function initGraph() {
 .fv-enter:hover {
   background: rgba(255, 255, 255, 0.05);
   transform: scale(1.05);
+}
+.fv-locked {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: rgba(255, 255, 255, 0.3) !important;
+  cursor: not-allowed;
+  opacity: 0.6;
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+}
+.fv-locked:hover {
+  background: transparent;
+  transform: none;
 }
 .fv-close {
   position: absolute;
