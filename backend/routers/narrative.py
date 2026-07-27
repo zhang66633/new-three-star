@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from services.llm import stream_chat
 from services.rag import search as rag_search
+from services.validator import validate
 
 router = APIRouter()
 
@@ -256,66 +257,6 @@ def _detect_characters(context: str) -> list:
     return [c for c in MAIN_CHARACTERS if c in context]
 
 
-# 已知角色名（含常见别称），用于纠正AI写坏的名字（如"曹操作"→"曹操"）
-_KNOWN_NAMES = MAIN_CHARACTERS + [
-    "王允", "貂蝉", "陈宫", "华佗", "献帝", "刘协", "孙策", "大乔", "小乔",
-    "黄盖", "甘宁", "太史慈", "张辽", "徐晃", "夏侯惇", "夏侯渊", "许褚",
-    "典韦", "郭嘉", "荀彧", "贾诩", "庞统", "法正", "马谡", "姜维", "魏延",
-    "黄忠", "马超", "司马昭", "司马师", "司马炎", "曹丕", "曹植", "曹叡",
-    "刘禅", "阿斗", "众人", "士兵", "侍卫", "家丁", "仆役",
-]
-# 非角色名的方括号标记（不参与名字纠错）
-_MARKER_NAMES = {"SYS", "ERR", "MUSIC", "OPT", "角色名"}
-
-
-def _fix_character_names(text: str) -> str:
-    """确定性纠正AI写坏的角色名（如"[曹操作]"→"[曹操]"）。
-    保守策略：方括号内若不是已知名字，但包含某个已知名字且多出的字≤2个，
-    才替换为该已知名字；其余（含[众人]等合法称呼）一律不动。
-    """
-    def repl(m):
-        name = m.group(1)
-        if name in _MARKER_NAMES or name in _KNOWN_NAMES:
-            return m.group(0)
-        for known in _KNOWN_NAMES:
-            if known in name and 0 < len(name) - len(known) <= 2:
-                return f"[{known}]"
-        return m.group(0)
-    return re.sub(r"\[([^\[\]\n]{1,8})\]", repl, text)
-
-
-def _is_speaker_name(name: str) -> bool:
-    """角色名判定：1-8字、不含标点/空白（与前端 isSpeakerName 一致）。"""
-    return 1 <= len(name) <= 8 and not re.search(r"[。，！？、；：\s·…—]", name)
-
-
-def _merge_split_dialogue(text: str) -> str:
-    """修复AI把标记单独成行、内容换到下一行的格式，合并为同行。
-    - [角色名]\\n台词 → [角色名] 台词
-    - [OPT]/[SYS]/[ERR]\\n内容 → [OPT] 内容 等（[MUSIC]独立标记，不合并）
-    只合并下一行不是标记行的情况。
-    """
-    mergeable_markers = {"OPT", "SYS", "ERR"}
-    lines = text.split("\n")
-    merged = []
-    i, n = 0, len(lines)
-    while i < n:
-        stripped = lines[i].strip()
-        m = re.match(r"^\[([^\[\]\n]+)\]\s*$", stripped)
-        if m and i + 1 < n:
-            name = m.group(1)
-            nxt = lines[i + 1].strip()
-            is_dialogue = _is_speaker_name(name) and name not in _MARKER_NAMES
-            is_marker = name in mergeable_markers
-            if (is_dialogue or is_marker) and nxt and not nxt.startswith("["):
-                merged.append(f"[{name}] {nxt}")
-                i += 2
-                continue
-        merged.append(lines[i])
-        i += 1
-    return "\n".join(merged)
-
-
 def _build_skeleton_context(context_text: str) -> str:
     """返回当前节点的骨架（前因+节拍+槽点）。"""
     node = _detect_node(context_text)
@@ -413,6 +354,8 @@ async def narrative(req: NarrativeRequest):
     # 首turn若指定了起始节点，把它加入上下文以便检测和注入骨架
     if is_first_turn and req.start_node:
         node_context += " " + req.start_node
+    # 当前节点（供 Validator 做关键道具名强制）
+    current_node = _detect_node(node_context)
 
     # 生成阶段prompt = 核心规则 + 节点骨架 + RAG素材
     gen_prompt = NARRATIVE_SYSTEM_TEMPLATE
@@ -464,16 +407,19 @@ async def narrative(req: NarrativeRequest):
             reviewed = ""
             async for chunk in stream_chat(review_messages, max_tokens=393216):
                 reviewed += chunk
+            # 审查模型有时会把输入框架（【前情提要】…【当前这段剧本草稿】）原样
+            # 回显进输出，确定性剥离标签之前的回显内容，只保留正文
+            if "【当前这段剧本草稿】" in reviewed:
+                reviewed = reviewed.split("【当前这段剧本草稿】", 1)[1].lstrip("\n")
             # 校验：审查结果非空且长度合理（不低于草稿50%），否则视为截断/失败，回退草稿
             if reviewed.strip() and len(reviewed.strip()) >= len(draft.strip()) * 0.5:
                 final_text = reviewed
         except Exception:
             final_text = draft
 
-        # 步骤2.5：确定性纠正写坏的角色名（如"[曹操作]"→"[曹操]"），最后一道防线
-        final_text = _fix_character_names(final_text)
-        # 步骤2.6：合并"[角色名]单独成行、台词在下一行"的分行对话（前端靠同行解析）
-        final_text = _merge_split_dialogue(final_text)
+        # 步骤2.5：确定性验收修复（Validator）——道具名强制(断肠→七星宝刀)、
+        # 选项截断(≤3)、角色名纠错、分行标记合并。纯代码，最后一道硬防线。
+        final_text = validate(final_text, current_node)
 
         # 步骤3：流式输出成品（切成小块，保留打字机感；已有完整文本，不会截断）
         chunk_size = 40
