@@ -9,7 +9,7 @@ Director（导演层，Phase 2）——纯代码，零 LLM
 """
 from dataclasses import dataclass, field
 
-from knowledge.nodes import NODE_DATA, beat_count
+from knowledge.nodes import NODE_DATA, MAIN_NODES, beat_count
 from services.rag import search as rag_search
 from services.story_state import StoryState
 
@@ -84,15 +84,32 @@ def distill_rag(node: str, beat_desc: str, action: str, top_k: int = 4) -> list:
         return []
 
 
+def _next_node(node: str):
+    """按主线顺序返回下一个节点；最后一个节点（归晋）返回 None（游戏通关）。"""
+    if node in MAIN_NODES:
+        i = MAIN_NODES.index(node)
+        if i + 1 < len(MAIN_NODES):
+            return MAIN_NODES[i + 1]
+    return None
+
+
 def advance(state: StoryState, brief: BeatBrief) -> StoryState:
-    """状态推进（代码独占）：一轮一拍。
-    - beat_index +1（钳制到最后一拍，不越界）
+    """状态推进（代码独占）：一轮一拍，演完节点最后一拍则过渡到下一节点。
+    - 本拍不是最后一拍：beat_index +1
+    - 本拍是最后一拍：node 切到主线下一节点、beat_index 归零（归晋则停留，游戏通关）
     - 本拍锁定道具登记进 state.items，后续拍持续锁名
     - turn +1
     """
     s = StoryState.from_dict(state.to_dict())
     total = beat_count(s.node)
-    s.beat_index = min(s.beat_index + 1, max(total - 1, 0))
+    if s.beat_index >= total - 1:
+        nxt = _next_node(s.node)
+        if nxt:
+            s.node = nxt
+            s.beat_index = 0
+        # 归晋（最后节点）：停在原地，游戏通关
+    else:
+        s.beat_index = s.beat_index + 1
     for name, desc in brief.locked_items.items():
         s.items.setdefault(name, {"locked": True, "desc": desc})
     s.turn += 1

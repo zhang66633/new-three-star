@@ -152,19 +152,34 @@ _NAME_TO_COURTESY = {
 
 
 def ensure_name_mixing(text: str) -> str:
-    """新三称呼特色是名和字混用。AI 在对抗场景往往只用名/贬称，不蹦字。
-    若全文只有"名"没有"字"，在一处合适的对话里（说话人≠该角色，避免自称）
-    把一处名替换成字，制造新三式的混乱。找不到合适位置则不动（不强行）。"""
+    """新三称呼特色是名和字毫无规律地混用。AI 有两个对称的回归倾向：
+    对抗场景只用名（太统一）、客气场景只用字（太文明，"又称字了"）。
+    只检查【对话行】里对主要角色的称呼（说话人≠该角色，避免改自称）：
+    - 对话里只称字、从不称名 → 把一处字换成名（去掉客气味）
+    - 对话里只称名、从不称字 → 把一处名换成字（制造新三式混乱）
+    旁白不动；每个角色最多改一处。"""
+    lines = text.split("\n")
     for name, courtesy in _NAME_TO_COURTESY.items():
-        if courtesy in text or name not in text:
-            continue  # 已有字，或该名没出现，跳过
-        lines = text.split("\n")
+        has_name = has_courtesy = False
+        for line in lines:
+            m = re.match(r"^\[([^\]]+)\]\s*(.*)$", line)
+            if m and m.group(1) != name:  # 说话人不是该角色本人
+                if name in m.group(2):
+                    has_name = True
+                if courtesy in m.group(2):
+                    has_courtesy = True
+        if not (has_name or has_courtesy):
+            continue  # 对话里没提到该角色
+        if has_name and has_courtesy:
+            continue  # 已经混用了，不动
+        # 单向 → 换一处制造混乱（只称字→换名为字；只称名→换字为名）
+        src, dst = (courtesy, name) if has_courtesy else (name, courtesy)
         for i, line in enumerate(lines):
             m = re.match(r"^(\[([^\]]+)\]\s*)(.*)$", line)
-            if m and m.group(2) != name and name in m.group(3):
-                lines[i] = m.group(1) + m.group(3).replace(name, courtesy, 1)
-                return "\n".join(lines)
-    return text
+            if m and m.group(2) != name and src in m.group(3):
+                lines[i] = m.group(1) + m.group(3).replace(src, dst, 1)
+                break
+    return "\n".join(lines)
 
 
 # ---------------------------------------------------------------------------
