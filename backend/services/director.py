@@ -31,8 +31,40 @@ class BeatBrief:
     cause: str = ""                      # 前因（背景）
 
 
-def direct(state, action: str) -> BeatBrief:
-    """根据当前 state 决定本拍内容，锁死道具与台词。"""
+# 节点间漫游（自由行动）最多轮数：演完节点最后一拍后，观众有 MAX_ROAM 轮
+# 自由赶路，天意用巧合收束，最后一轮抵达下一节点。
+MAX_ROAM = 2
+
+
+@dataclass
+class RoamBrief:
+    """节点间漫游简报：观众刚离开上一节点、正赶往下一节点的路上。"""
+    from_node: str                       # 刚离开的节点
+    to_node: str                         # 赶往的下一节点
+    roam_turn: int                       # 当前是第几轮漫游（1基）
+    is_final: bool                       # 是否最后一轮（本轮须抵达）
+    from_identity: str = ""              # 上一节点的观众身份（赶路时的身份）
+    to_cause: str = ""                   # 下一节点的前因（背景）
+    to_identity: str = ""                # 抵达后承接的观众身份
+    max_options: int = 3
+
+
+def direct(state, action: str):
+    """根据当前 state 决定本轮内容：漫游中→RoamBrief（自由赶路），否则→BeatBrief（锁拍）。"""
+    if state.roam_turns > 0:
+        from_node = state.node
+        to_node = _next_node(from_node) or from_node
+        to_data = NODE_DATA.get(to_node, {})
+        return RoamBrief(
+            from_node=from_node,
+            to_node=to_node,
+            roam_turn=state.roam_turns,
+            is_final=state.roam_turns >= MAX_ROAM,
+            from_identity=NODE_DATA.get(from_node, {}).get("观众身份", ""),
+            to_cause=to_data.get("前因", ""),
+            to_identity=to_data.get("观众身份", ""),
+        )
+
     data = NODE_DATA[state.node]
     beats = data["节拍"]
     idx = min(state.beat_index, len(beats) - 1)
@@ -93,21 +125,31 @@ def _next_node(node: str):
     return None
 
 
-def advance(state: StoryState, brief: BeatBrief) -> StoryState:
-    """状态推进（代码独占）：一轮一拍，演完节点最后一拍则过渡到下一节点。
-    - 本拍不是最后一拍：beat_index +1
-    - 本拍是最后一拍：node 切到主线下一节点、beat_index 归零（归晋则停留，游戏通关）
-    - 本拍锁定道具登记进 state.items，后续拍持续锁名
-    - turn +1
+def advance(state: StoryState, brief) -> StoryState:
+    """状态推进（代码独占）：
+    - 本轮是漫游（RoamBrief）：最后一轮→抵达下一节点（node切换/beat归零/roam清零）；
+      否则 roam_turns+1 继续漫游。
+    - 本轮是正常节拍：演完节点最后一拍→进入漫游（roam_turns=1，观众自由赶路）；
+      否则 beat_index+1。归晋无下一节点，演完最后一拍停留原地（游戏通关）。
+    - 本拍锁定道具登记进 state.items；turn +1。
     """
     s = StoryState.from_dict(state.to_dict())
+
+    if isinstance(brief, RoamBrief):
+        if brief.is_final:
+            s.node = brief.to_node
+            s.beat_index = 0
+            s.roam_turns = 0
+        else:
+            s.roam_turns = s.roam_turns + 1
+        s.turn += 1
+        return s
+
     total = beat_count(s.node)
     if s.beat_index >= total - 1:
-        nxt = _next_node(s.node)
-        if nxt:
-            s.node = nxt
-            s.beat_index = 0
-        # 归晋（最后节点）：停在原地，游戏通关
+        # 演完最后一拍：有下一节点→进入漫游（自由赶路），否则停留（归晋通关）
+        if _next_node(s.node):
+            s.roam_turns = 1
     else:
         s.beat_index = s.beat_index + 1
     for name, desc in brief.locked_items.items():

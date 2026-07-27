@@ -16,6 +16,7 @@ class StoryState:
     facts: list = field(default_factory=list)   # 已成立的事实（供后续拍引用）
     identity: str = ""             # 玩家身份（仆役/武将/谋士...）
     turn: int = 0                  # 回合数
+    roam_turns: int = 0            # 节点间漫游：0=不在漫游；>0=漫游中（已完成的漫游轮数）
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -31,4 +32,5 @@ class StoryState:
             facts=d.get("facts", []) or [],
             identity=d.get("identity", base.identity),
             turn=int(d.get("turn", base.turn) or 0),
+            roam_turns=int(d.get("roam_turns", base.roam_turns) or 0),
         )

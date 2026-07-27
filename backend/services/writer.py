@@ -8,7 +8,7 @@ Director/Validator 决定，Writer 无权变更。
 system prompt = 风格规则（WRITER_STYLE_TEMPLATE）+ 本拍简报（build_beat_instruction）。
 """
 from services.llm import stream_chat
-from services.director import BeatBrief
+from services.director import BeatBrief, RoamBrief
 from services.story_state import StoryState
 
 
@@ -173,10 +173,41 @@ def build_beat_instruction(brief: BeatBrief, state: StoryState, is_first_turn: b
     return "\n\n".join(parts)
 
 
-async def write(brief: BeatBrief, state: StoryState, history: list,
+def build_roam_instruction(brief: RoamBrief) -> str:
+    """把 RoamBrief 拼成注入 Writer 的"过渡戏·漫游"指令（节点间自由赶路）。"""
+    parts = [
+        f"【过渡戏·漫游（第{brief.roam_turn}轮）】上一站{brief.from_node}的大戏已经落幕，"
+        f"观众（{brief.from_identity or '一个小人物'}）抽身离开，正赶往下一站{brief.to_node}。"
+        f"这一轮不演任何固定节拍，就写他赶路的这一段。"
+    ]
+    if brief.to_cause:
+        parts.append(f"【下一站背景（观众尚不知情，到了才会撞见）】{brief.to_cause}")
+    if brief.is_final:
+        parts.append(
+            f"【本轮必须抵达】这一轮结束时，观众要抵达{brief.to_node}的场景，并以"
+            f"“{brief.to_identity or '一个小人物'}”的身份身在其中。写路上的最后一段＋抵达，"
+            f"结尾让观众正好撞见下一场戏的开头（但别替下一场戏演剧情）。"
+        )
+    else:
+        parts.append(
+            f"【天意引路★自由行动★】写观众赶路、打听、抉择。天意用“巧合”把他往"
+            f"{brief.to_node}引——顺路的人、恰好听来的消息、不得不绕的路、莫名其妙的顺风车。"
+            f"观众可以选择怎么走（选项都是赶路/打听/搭伴/抉择类），但无论怎么选，天意总让他"
+            f"离目的地更近一步。诡异点：这些“巧合”巧得过分，像有人安排——角色浑然不觉，"
+            f"观众自己品（鱼水原则）。"
+        )
+    parts.append(f"【输出】400-600字（不含选项），结尾给{brief.max_options}个动作型[OPT]选项。")
+    return "\n\n".join(parts)
+
+
+async def write(brief, state: StoryState, history: list,
                 action: str, is_first_turn: bool) -> str:
-    """Writer：唯一一次 LLM 生成调用，只渲染当前这一拍。"""
-    system_prompt = WRITER_STYLE_TEMPLATE + "\n\n" + build_beat_instruction(brief, state, is_first_turn)
+    """Writer：唯一一次 LLM 生成调用。漫游简报→渲染赶路过渡戏；节拍简报→渲染当前这一拍。"""
+    if isinstance(brief, RoamBrief):
+        instruction = build_roam_instruction(brief)
+    else:
+        instruction = build_beat_instruction(brief, state, is_first_turn)
+    system_prompt = WRITER_STYLE_TEMPLATE + "\n\n" + instruction
     messages = [{"role": "system", "content": system_prompt}]
     for msg in history[-20:]:
         messages.append({"role": "user" if msg.get("role") == "user" else "assistant",
@@ -201,7 +232,8 @@ async def write(brief: BeatBrief, state: StoryState, history: list,
 
     # 锁定标记兜底：本拍要求的天意标记（如[MUSIC]关羽之歌）漏写时强制补上，
     # 插到第一个[OPT]选项之前（而非文末），保证标记落在剧情里
-    for marker in brief.locked_markers:
+    # （漫游简报 RoamBrief 无锁定标记，getattr 兜底为空列表）
+    for marker in getattr(brief, "locked_markers", []):
         if f"[{marker}]" not in draft:
             marker_block = []
             if marker == "MUSIC":
@@ -219,7 +251,7 @@ async def write(brief: BeatBrief, state: StoryState, history: list,
 
 async def _generate_options(scene_text: str, brief: BeatBrief) -> str:
     """聚焦调用：只为当前场景生成 2-3 个动作型选项（writer 漏写时的兜底）。"""
-    who = brief.identity or "小人物"
+    who = getattr(brief, "identity", "") or getattr(brief, "from_identity", "") or "小人物"
     prompt = f"""下面是正在演出的一场戏（观众是此场景中的{who}）。请给出3个观众此刻
 具体可做的【动作型】选项，每个以[OPT]开头独占一行。只输出3行[OPT]，不要任何解释。
 【场景】
