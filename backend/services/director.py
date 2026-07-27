@@ -24,6 +24,8 @@ class BeatBrief:
     locked_markers: list = field(default_factory=list) # 本拍须输出的标记（如 MUSIC）
     excluded_items: list = field(default_factory=list) # 尚未登场、本拍不得出现的道具
     rag_facts: list = field(default_factory=list)      # 蒸馏后的本拍可用事实
+    worldview_base: list = field(default_factory=list) # 节点级世界观底色（游戏化解读+角色身份+bug）
+    beat_worldview: str = ""                            # 本拍专属世界观爆点（名场面拍才有）
     max_options: int = 3
     identity: str = ""
     cause: str = ""                      # 前因（背景）
@@ -64,6 +66,8 @@ def direct(state, action: str) -> BeatBrief:
         locked_markers=beat.get("锁定标记", []),
         excluded_items=excluded_items,
         rag_facts=rag_facts,
+        worldview_base=data.get("世界观", []),
+        beat_worldview=beat.get("世界观", ""),
         max_options=3,
         identity=state.identity,
         cause=data.get("前因", ""),
