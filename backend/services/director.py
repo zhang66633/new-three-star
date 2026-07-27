@@ -21,6 +21,7 @@ class BeatBrief:
     beat_desc: str                       # 本拍描述
     locked_items: dict = field(default_factory=dict)   # {道具名: 设定}
     locked_lines: list = field(default_factory=list)   # 本拍须自然说出的台词
+    locked_markers: list = field(default_factory=list) # 本拍须输出的标记（如 MUSIC）
     excluded_items: list = field(default_factory=list) # 尚未登场、本拍不得出现的道具
     rag_facts: list = field(default_factory=list)      # 蒸馏后的本拍可用事实
     max_options: int = 3
@@ -60,6 +61,7 @@ def direct(state, action: str) -> BeatBrief:
         beat_desc=beat["描述"],
         locked_items=locked_items,
         locked_lines=beat.get("锁定台词", []),
+        locked_markers=beat.get("锁定标记", []),
         excluded_items=excluded_items,
         rag_facts=rag_facts,
         max_options=3,

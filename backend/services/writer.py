@@ -64,8 +64,12 @@ WRITER_STYLE_TEMPLATE = """你是2010版电视剧《新三国》的编剧，正�
 错误2（分行）：[曹操]（换行）满座大丈夫，尽做女儿态！
 
 【新三国的"错误"（精髓，必须主动还原，不标注不解释）】
-1.称呼错误★最重要★：角色互相直呼其名（曹操当面叫"刘备"不叫"玄德"），或名字
-  与字毫无规律混用。写得"没礼貌""不规范"才是对的，文绉绉的尊称反而是错的。
+1.称呼错误★最重要★：角色互相直呼其名，绝不文绉绉地尊称。新三国的人物说话
+  粗粝、直接、没礼貌，不讲究礼数——这才是对的，满口尊称反而错了。
+  - 错误（太文明的尊称）："司徒大人息怒""孟德兄请讲""陛下三思""将军留步"
+  - 正确（直呼其名/没礼貌）："王允你哭什么""曹操你放肆""刘备你听着"
+  曹操当面叫"刘备"不叫"玄德"，名字与字毫无规律混用。尊称能省则省，
+  能直呼其名就直呼其名。
 2.成语错误："破罐破摔"代替"破釜沉舟"、"三顾茅厕"代替"三顾茅庐"。
 3.地理错误：距离随心所欲（"从荆州到许昌，不过半日路程"）。
 4.时间错误："端午佳节，大雪纷飞。"白天黑夜无过渡切换。
@@ -125,6 +129,11 @@ def build_beat_instruction(brief: BeatBrief, state: StoryState, is_first_turn: b
     if brief.locked_lines:
         lines_txt = "\n".join(f"- {line}" for line in brief.locked_lines)
         parts.append(f"【本拍须有铺垫地自然说出的台词】\n{lines_txt}")
+    if brief.locked_markers:
+        markers_txt = "\n".join(f"- [{m}]" for m in brief.locked_markers)
+        parts.append(f"【本拍必须输出的标记（天意时刻，不可省略）】\n{markers_txt}\n"
+                     f"输出前先写一句旁白铺垫（如'远处，隐隐传来一阵熟悉的乐声……'），"
+                     f"再单独一行输出标记。")
     if brief.rag_facts:
         facts_txt = "\n".join(f"- {f}" for f in brief.rag_facts)
         parts.append(f"【可参考的细节事实（与上面锁定内容冲突时，以上面为准）】\n{facts_txt}")
@@ -160,6 +169,22 @@ async def write(brief: BeatBrief, state: StoryState, history: list,
         opts = await _generate_options(draft, brief)
         if opts:
             draft = draft.rstrip() + "\n\n" + opts
+
+    # 锁定标记兜底：本拍要求的天意标记（如[MUSIC]关羽之歌）漏写时强制补上，
+    # 插到第一个[OPT]选项之前（而非文末），保证标记落在剧情里
+    for marker in brief.locked_markers:
+        if f"[{marker}]" not in draft:
+            marker_block = []
+            if marker == "MUSIC":
+                marker_block.append("远处，隐隐传来一阵熟悉的乐声……")
+            marker_block.append(f"[{marker}]")
+            lines = draft.split("\n")
+            opt_idx = next((i for i, l in enumerate(lines)
+                            if l.strip().startswith("[OPT]")), len(lines))
+            while opt_idx > 0 and not lines[opt_idx - 1].strip():
+                opt_idx -= 1
+            lines[opt_idx:opt_idx] = [""] + marker_block + [""]
+            draft = "\n".join(lines)
     return draft
 
 
