@@ -219,14 +219,22 @@ function parseNarrative(text: string) {
       blocks.push({ type: 'err', html: escapeHtml(trimmed.slice(5).trim()) })
     } else if (/^\[.+?\]/.test(trimmed)) {
       const match = trimmed.match(/^\[(.+?)\]\s*(.*)/)
-      if (match) {
+      if (match && isSpeakerName(match[1])) {
         blocks.push({ type: 'dialogue', speaker: match[1], html: escapeHtml(match[2]) })
+      } else {
+        // 方括号内不是角色名（如"[午后。洛阳。]"场景说明），按旁白渲染
+        blocks.push({ type: 'narration', html: escapeHtml(trimmed) })
       }
     } else {
       blocks.push({ type: 'narration', html: escapeHtml(trimmed) })
     }
   }
   return { blocks, opts }
+}
+
+function isSpeakerName(name: string): boolean {
+  // 角色名：1-8字、不含标点/空白。防止"[午后。洛阳。柴房外。]"这类场景说明被误判成角色名
+  return name.length >= 1 && name.length <= 8 && !/[。，！？、；：\s·…—]/.test(name)
 }
 
 function escapeHtml(text: string) {
