@@ -74,18 +74,6 @@
             >{{ node }}</button>
           </div>
         </div>
-        <div class="setup-section">
-          <p class="setup-label">选择你的身份</p>
-          <div class="setup-chips">
-            <button
-              v-for="id in identityOptions"
-              :key="id"
-              class="setup-chip"
-              :class="{ selected: selectedIdentity === id }"
-              @click="selectedIdentity = id"
-            >{{ id }}</button>
-          </div>
-        </div>
         <button class="setup-enter" @click="startNarrative">进入此世界</button>
       </div>
     </div>
@@ -151,20 +139,15 @@ function stopLoadingQuotes() {
 // 开局设置
 const showSetup = ref(false)
 const selectedNode = ref('曹操献刀')
-const selectedIdentity = ref('')
 const nodeOptions = [
   '曹操献刀', '桃园结义', '官渡之战', '三顾茅庐', '火烧赤壁',
   '败走麦城', '夷陵之战', '白帝城托孤', '归晋',
-]
-const identityOptions = [
-  '随机', '仆役', '兵丁', '谋士', '武将', '商人', '流民', '乐师',
 ]
 
 function startNarrative() {
   showSetup.value = false
   storyState.value = {}  // 新游戏清空状态，由后端初始化
-  const identity = selectedIdentity.value === '随机' ? '' : selectedIdentity.value
-  sendAction('', selectedNode.value, identity)
+  sendAction('', selectedNode.value)
 }
 
 // 故障噪点块
@@ -250,7 +233,7 @@ function triggerGlitch() {
   glitchTimer = window.setTimeout(() => { isGlitching.value = false }, 150)
 }
 
-async function sendAction(action: string, startNode: string = '', identity: string = '') {
+async function sendAction(action: string, startNode: string = '') {
   options.value = []
   isStreaming.value = true
   startLoadingQuotes()
@@ -268,7 +251,6 @@ async function sendAction(action: string, startNode: string = '', identity: stri
         action,
         history: history.slice(0, -1),
         start_node: startNode,
-        identity,
         state: storyState.value,
       }),
     })

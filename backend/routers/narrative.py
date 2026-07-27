@@ -16,7 +16,7 @@ class NarrativeRequest(BaseModel):
     action: str = ""  # user's choice or free text, empty = start new game
     history: list = []  # previous messages [{role, content}]
     start_node: str = ""  # 首turn指定起始节点（如"官渡之战"），空=默认曹操献刀
-    identity: str = ""  # 首turn指定观众身份（如"谋士""武将"），空=AI随机分配
+    identity: str = ""  # 已废弃：身份改由节点"观众身份"字段配死，此字段仅为兼容旧前端保留
     state: dict = {}  # 故事状态，前端持有并回传，首轮为空
 
 
@@ -40,7 +40,6 @@ async def narrative(req: NarrativeRequest):
     # state 无节点时（兼容未升级前端）从全历史检测
     if is_first_turn:
         node = req.start_node or "曹操献刀"
-        state.identity = req.identity
     else:
         node = state.node
         if not node:

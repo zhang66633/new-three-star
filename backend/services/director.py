@@ -69,7 +69,7 @@ def direct(state, action: str) -> BeatBrief:
         worldview_base=data.get("世界观", []),
         beat_worldview=beat.get("世界观", ""),
         max_options=3,
-        identity=state.identity,
+        identity=data.get("观众身份", "") or state.identity,
         cause=data.get("前因", ""),
     )
 
