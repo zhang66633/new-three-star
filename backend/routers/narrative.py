@@ -6,6 +6,10 @@ from pydantic import BaseModel
 from services.llm import stream_chat
 from services.rag import search as rag_search
 from services.validator import validate
+from knowledge.nodes import MIGRATED_NODES, NODE_DATA
+from services.story_state import StoryState
+from services.director import direct, advance
+from services.writer import write
 
 router = APIRouter()
 
@@ -16,6 +20,7 @@ class NarrativeRequest(BaseModel):
     history: list = []  # previous messages [{role, content}]
     start_node: str = ""  # 首turn指定起始节点（如"官渡之战"），空=默认曹操献刀
     identity: str = ""  # 首turn指定观众身份（如"谋士""武将"），空=AI随机分配
+    state: dict = {}  # 故事状态（新架构），前端持有并回传，首轮为空
 
 
 NARRATIVE_SYSTEM_TEMPLATE = """你是2010版电视剧《新三国》的编剧，正在为观众即兴创作一集剧本。
@@ -345,9 +350,61 @@ def _gather_rag_context(req: NarrativeRequest) -> str:
 
 @router.post("/worldview/narrative")
 async def narrative(req: NarrativeRequest):
-    """Interactive narrative engine: 生成→审查 多步管线。"""
+    """Interactive narrative engine。已迁移节点走新架构（Director/Writer/Validator），
+    其余节点走旧管线（单prompt+审查）。"""
     is_first_turn = len(req.history) == 0
+    state = StoryState.from_dict(req.state)
 
+    # 判定当前节点：首turn用 start_node；其后优先用 state（代码持有的真相源）；
+    # state 无节点时（兼容未升级前端）从全历史检测
+    if is_first_turn:
+        node = req.start_node or "曹操献刀"
+        state.identity = req.identity
+    else:
+        node = state.node
+        if not node:
+            ctx = " ".join(m.get("content", "") for m in req.history) + " " + req.action
+            node = _detect_node(ctx)
+    state.node = node
+
+    if node in MIGRATED_NODES and node in NODE_DATA:
+        return await _narrative_new(req, state, is_first_turn)
+    return await _narrative_old(req, is_first_turn)
+
+
+async def _narrative_new(req: NarrativeRequest, state: StoryState, is_first_turn: bool):
+    """新架构：Director定拍 → Writer渲染 → Validator验收 → 代码推进state。
+    节拍推进、道具锁定全在代码里，LLM 只写本拍文字。"""
+    brief = direct(state, req.action)
+
+    async def generate():
+        try:
+            draft = await write(brief, state, req.history, req.action, is_first_turn)
+        except Exception:
+            draft = ""
+
+        if not draft.strip():
+            yield f"data: {json.dumps({'type': 'chunk', 'content': '[ERR] 世界意志沉默。请稍后再试。'}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            return
+
+        # 确定性验收：道具名强制、选项截断、角色名/分行修复
+        final_text = validate(draft, state.node)
+        # 代码推进状态（一轮一拍 + 道具登记）
+        new_state = advance(state, brief)
+
+        chunk_size = 40
+        for i in range(0, len(final_text), chunk_size):
+            yield f"data: {json.dumps({'type': 'chunk', 'content': final_text[i:i+chunk_size]}, ensure_ascii=False)}\n\n"
+        # 回传新状态，前端保存后下轮带回
+        yield f"data: {json.dumps({'type': 'state', 'state': new_state.to_dict()}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    return StreamingResponse(generate(), media_type="text/event-stream")
+
+
+async def _narrative_old(req: NarrativeRequest, is_first_turn: bool):
+    """旧管线（单prompt+审查），供未迁移节点使用。"""
     # 骨架注入的节点检测用【全部历史】（节点名可能只在很早的[SYS]里出现过，
     # 只看最近6条会导致骨架中途掉线、AI转而照搬RAG素材的小说原文）
     node_context = " ".join(m.get("content", "") for m in req.history) + " " + req.action

@@ -111,6 +111,8 @@ const freeInput = ref('')
 const isGlitching = ref(false)
 const musicPlayedCount = ref(0)
 const contentStarted = ref(false)
+// 故事状态（新架构）：后端每轮通过 state 事件回传，下轮请求带回
+const storyState = ref<Record<string, any>>({})
 
 // 加载动画轮播：新三国名台词+机制介绍
 const loadingQuotes = [
@@ -160,6 +162,7 @@ const identityOptions = [
 
 function startNarrative() {
   showSetup.value = false
+  storyState.value = {}  // 新游戏清空状态，由后端初始化
   const identity = selectedIdentity.value === '随机' ? '' : selectedIdentity.value
   sendAction('', selectedNode.value, identity)
 }
@@ -266,6 +269,7 @@ async function sendAction(action: string, startNode: string = '', identity: stri
         history: history.slice(0, -1),
         start_node: startNode,
         identity,
+        state: storyState.value,
       }),
     })
     const reader = resp.body?.getReader()
@@ -308,6 +312,9 @@ async function sendAction(action: string, startNode: string = '', identity: stri
               musicPlayedCount.value = musicCount
               playGuanyu()
             }
+          } else if (msg.type === 'state') {
+            // 后端回传故事状态（节点/节拍/道具），保存供下轮带回
+            storyState.value = msg.state || {}
           } else if (msg.type === 'done') {
             // Final parse
             const { blocks, opts } = parseNarrative(fullText)
