@@ -28,3 +28,7 @@ Thumbs.db
 
 # RAG index (generated)
 backend/knowledge/rag_index.pkl
+
+# Logs
+*.log
+backend/uvicorn.log
