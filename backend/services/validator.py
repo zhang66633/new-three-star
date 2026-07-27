@@ -141,16 +141,44 @@ def enforce_item_names(text: str, node: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# 名和字混用（新三称呼特色）
+# ---------------------------------------------------------------------------
+
+# 名 → 字 对照（新三风格：名和字毫无规律混用）
+_NAME_TO_COURTESY = {
+    "曹操": "孟德", "刘备": "玄德", "关羽": "云长", "张飞": "翼德",
+    "诸葛亮": "孔明", "司马懿": "仲达", "吕布": "奉先", "周瑜": "公瑾",
+}
+
+
+def ensure_name_mixing(text: str) -> str:
+    """新三称呼特色是名和字混用。AI 在对抗场景往往只用名/贬称，不蹦字。
+    若全文只有"名"没有"字"，在一处合适的对话里（说话人≠该角色，避免自称）
+    把一处名替换成字，制造新三式的混乱。找不到合适位置则不动（不强行）。"""
+    for name, courtesy in _NAME_TO_COURTESY.items():
+        if courtesy in text or name not in text:
+            continue  # 已有字，或该名没出现，跳过
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            m = re.match(r"^(\[([^\]]+)\]\s*)(.*)$", line)
+            if m and m.group(2) != name and name in m.group(3):
+                lines[i] = m.group(1) + m.group(3).replace(name, courtesy, 1)
+                return "\n".join(lines)
+    return text
+
+
+# ---------------------------------------------------------------------------
 # 总入口
 # ---------------------------------------------------------------------------
 
 def validate(text: str, node: str = "") -> str:
     """确定性验收修复总入口。修复顺序：
-    道具名 → 选项数量 → 角色名 → 分行标记合并。
+    道具名 → 选项数量 → 角色名 → 名字混用 → 分行标记合并。
     全部为确定性代码，不引入 LLM 调用。
     """
     text = enforce_item_names(text, node)
     text = cap_options(text, 3)
     text = _fix_character_names(text)
+    text = ensure_name_mixing(text)
     text = _merge_split_dialogue(text)
     return text
