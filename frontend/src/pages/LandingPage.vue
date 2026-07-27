@@ -5,7 +5,7 @@
       <div v-if="!entered" class="entry-gate" @click="enter">
         <div class="entry-content">
           <h1 class="entry-title">新三国·星图</h1>
-          <p class="entry-sub">列位百官，各位诸公，且随我入这星图一观</p>
+          <p class="entry-sub">列位诸公，各位百官，且随我入这星图一观</p>
         </div>
         <div class="entry-hint">点击任意处进入</div>
       </div>
