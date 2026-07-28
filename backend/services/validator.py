@@ -14,6 +14,8 @@ Phase 2 将在此基础上引入 Director/StoryState，把道具锁定从"事后
 """
 import re
 
+from services.deslop import deslop
+
 # ---------------------------------------------------------------------------
 # 角色名修复（从 narrative.py 迁入）
 # ---------------------------------------------------------------------------
@@ -188,12 +190,13 @@ def ensure_name_mixing(text: str) -> str:
 
 def validate(text: str, node: str = "") -> str:
     """确定性验收修复总入口。修复顺序：
-    道具名 → 选项数量 → 角色名 → 名字混用 → 分行标记合并。
+    道具名 → 选项数量 → 角色名 → 名字混用 → 去AI味 → 分行标记合并。
     全部为确定性代码，不引入 LLM 调用。
     """
     text = enforce_item_names(text, node)
     text = cap_options(text, 3)
     text = _fix_character_names(text)
     text = ensure_name_mixing(text)
+    text = deslop(text)
     text = _merge_split_dialogue(text)
     return text
