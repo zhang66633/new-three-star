@@ -261,6 +261,11 @@ async def write(brief, state: StoryState, history: list,
     async for chunk in stream_chat(messages, max_tokens=393216):
         draft += chunk
 
+    # 空响应保护：LLM 偶发返回空正文时直接返回空串，由 narrative 触发
+    # "世界意志沉默"错误提示，避免选项兜底从空气里生成没头没尾的选项
+    if not draft.strip():
+        return ""
+
     # 选项兜底：writer 偶尔会漏写选项，缺失时聚焦补一组动作型选项
     if "[OPT]" not in draft:
         opts = await _generate_options(draft, brief)
