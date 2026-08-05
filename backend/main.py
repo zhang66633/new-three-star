@@ -34,4 +34,6 @@ async def health():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    # reload=True：后端代码改动自动重启（watchfiles），开发期免手动重启。
+    # 用 import-string 形式（"main:app"）而非 app 对象，reload 才能正确工作。
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

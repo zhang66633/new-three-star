@@ -153,6 +153,18 @@
           角色不会意识到你的存在——他们只是在每一次注入后，<br/>
           世界被无声地改写。他们觉得一切都是自然的。
         </p>
+        <div class="setup-section">
+          <p class="setup-label">选择起始节点</p>
+          <div class="setup-chips">
+            <button
+              v-for="node in nodeOptions"
+              :key="node"
+              class="setup-chip"
+              :class="{ selected: selectedNode === node }"
+              @click="selectedNode = node"
+            >{{ node }}</button>
+          </div>
+        </div>
         <button class="setup-enter" @click="startGame">降临此世界</button>
       </div>
     </div>
@@ -285,11 +297,23 @@ function stopLoadingQuotes() {
 }
 
 const showSetup = ref(false)
+const selectedNode = ref('曹操献刀')
+const nodeOptions = [
+  '曹操献刀', '捉放曹', '桃园结义', '诸侯讨董', '连环计',
+  '三让徐州', '辕门射戟', '吕布殒命', '煮酒论英雄',
+  '斩颜良诛文丑', '过五关斩六将', '官渡之战', '三顾茅庐', '博望坡',
+  '长坂坡', '火烧赤壁', '华容道', '取长沙', '三气周瑜',
+  '假道灭虢', '铜雀台', '割须弃袍', '入蜀', '单刀赴会',
+  '虎女犬子', '败走麦城', '曹操之死', '曹丕废帝', '刘备伐吴',
+  '陆逊拜将', '夷陵之战', '白帝城托孤', '出师表', '北伐中原',
+  '失街亭', '木牛流马', '张郃中计', '仲达受辱', '上方谷',
+  '五丈原', '高平陵', '归晋',
+]
 
 function startGame() {
   showSetup.value = false
   storyState.value = {}
-  sendInjection('')
+  sendInjection('', selectedNode.value)
 }
 
 function goBack() { router.push('/') }
@@ -382,7 +406,7 @@ function triggerGlitch() {
 
 const history: { role: string; content: string }[] = []
 
-async function sendInjection(injection: string) {
+async function sendInjection(injection: string, startNode: string = '') {
   options.value = []
   showOptAnalysis.value = false
   isStreaming.value = true
@@ -400,6 +424,7 @@ async function sendInjection(injection: string) {
         action: injection,
         history: history.slice(0, -1),
         state: storyState.value,
+        start_node: startNode,
       }),
     })
     const reader = resp.body?.getReader()
@@ -770,12 +795,32 @@ onBeforeUnmount(() => {
   background: rgba(5, 8, 5, 0.92); z-index: 60; backdrop-filter: blur(4px);
 }
 .setup-panel {
-  width: min(480px, 88vw); padding: 36px 32px; text-align: center;
+  width: min(560px, 88vw); max-height: 82vh; overflow-y: auto;
+  padding: 36px 32px; text-align: center;
   border: 1px solid rgba(255, 68, 34, 0.3); border-radius: 8px;
   background: rgba(8, 12, 8, 0.9);
 }
 .setup-title { color: #ff5533; font-size: 1.6rem; letter-spacing: 0.4em; margin: 0 0 20px; }
 .setup-desc { color: rgba(0, 255, 65, 0.6); font-size: 0.85rem; line-height: 1.8; margin: 0 0 28px; }
+.setup-section { margin-bottom: 22px; text-align: left; }
+.setup-label {
+  color: rgba(0, 255, 65, 0.7); font-size: 0.8rem; letter-spacing: 0.15em;
+  margin: 0 0 10px;
+}
+.setup-chips {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  max-height: 160px; overflow-y: auto;
+}
+.setup-chip {
+  background: transparent; border: 1px solid rgba(0, 255, 65, 0.25);
+  color: rgba(0, 255, 65, 0.6); padding: 6px 14px; border-radius: 4px;
+  font-size: 0.8rem; cursor: pointer; font-family: inherit;
+  transition: all 0.2s;
+}
+.setup-chip:hover { border-color: rgba(0, 255, 65, 0.5); color: #00ff41; }
+.setup-chip.selected {
+  background: rgba(0, 255, 65, 0.15); border-color: #00ff41; color: #00ff41;
+}
 .setup-enter {
   display: block; width: 100%;
   background: rgba(255, 68, 34, 0.12); border: 1px solid #ff5533;

@@ -101,11 +101,16 @@ def _calc_deviation(state: StoryState, injection: str) -> int:
 def process(state: StoryState, injection: str) -> Context:
     """
     接收天意注入（用户提示词），返回 Context。
+
+    v4.1：世界每轮固定推进一拍——天意提示词只改写当前这一拍的呈现，不阻止世界向前。
+    修复此前"仅在空注入时推进"导致天意模式永远停在同一个节点/节拍的问题
+    （天意页面除了开局，永远发非空注入）。
     """
     node_data = NODE_DATA.get(state.node, {})
     scenes = node_data.get("场景", [])
     idx = min(state.scene_index, len(scenes) - 1) if scenes else 0
     scene = scenes[idx] if scenes else {}
+    node_name = state.node  # 渲染用节点（推进前捕获，ctx 用它标注当前这一拍）
 
     state.deviation = _calc_deviation(state, injection)
     state.world_temperature = _jitter_temperature()
@@ -113,10 +118,13 @@ def process(state: StoryState, injection: str) -> Context:
     state.anomaly = _pick_anomaly()
     state.last_injection = injection.strip()[:120] if injection.strip() else "（天意未介入，AI按默认轨道推进）"
 
-    if not injection.strip():
+    # 每轮推进一拍：世界始终向前。放在渲染之后——本轮渲染 idx 这一拍，
+    # 状态推进到下一拍供下轮使用（首轮从 scene 0 正常开场，不再被跳过）。
+    _advance_beat(state)
+    # 明确的"跳过/跳转"天意指令：额外多推进一拍
+    skip_words = ["跳转", "跳过", "下一个", "直接到", "快进", "下一场", "下一拍", "跳"]
+    if any(w in injection for w in skip_words):
         _advance_beat(state)
-        idx = min(state.scene_index, len(scenes) - 1) if scenes else 0
-        scene = scenes[idx] if scenes else {}
 
     state.turn += 1
 
@@ -125,7 +133,7 @@ def process(state: StoryState, injection: str) -> Context:
     ctx = Context(
         scene_name=scene.get("名称", ""),
         scene_skeleton=scene.get("对话骨架", ""),
-        node_name=state.node,
+        node_name=node_name,
         beat_index=idx,
         locked_lines=scene.get("锁定台词", []),
         deviation=state.deviation,

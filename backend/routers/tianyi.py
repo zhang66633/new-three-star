@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from services.engine import process
 from services.story_state import StoryState
 from services.writer_tianyi import write
+from knowledge.nodes import NODE_DATA
 
 router = APIRouter()
 
@@ -18,6 +19,7 @@ class TianyiRequest(BaseModel):
     action: str = ""          # 天意注入的 prompt
     history: list = []
     state: dict = {}
+    start_node: str = ""      # 首轮指定起始节点，空=默认曹操献刀
 
 
 @router.post("/tianyi")
@@ -26,7 +28,7 @@ async def tianyi(req: TianyiRequest):
     state = StoryState.from_dict(req.state)
 
     if is_first_turn:
-        state.node = "曹操献刀"
+        state.node = req.start_node if req.start_node in NODE_DATA else "曹操献刀"
         state.scene_index = 0
 
     print(f"[Tianyi] turn={state.turn} node={state.node} beat={state.scene_index} "
