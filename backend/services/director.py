@@ -1,76 +1,246 @@
 """
-Director（导演层，Phase 2）——纯代码，零 LLM
-==========================================
-职责：读 StoryState 决定"这一轮拍哪一拍"，锁死本拍的道具名与必含台词，
-把 RAG 蒸馏成短事实。输出 BeatBrief 交给 Writer。
+Director（导演层，v3.0 场景制）——纯代码，零 LLM
+==============================================
+职责：读 StoryState → 决定"这一轮拍哪一场景"→ 输出 SceneBrief。
+场景制核心改动：每场景带原剧本原文，Writer 工作从"凭空生成"变为"改编原剧本"。
 
-关键不变量：节拍推进、道具锁定都在这里（代码）决定，Writer 拿不到不属于
-本拍的台词/道具，从源头杜绝"台词错位""道具改名"。
+兼容层：同时支持新"场景"格式和旧"节拍"格式。
 """
 from dataclasses import dataclass, field
 
-from knowledge.nodes import NODE_DATA, MAIN_NODES, beat_count
+from knowledge.nodes import NODE_DATA, MAIN_NODES, scene_count
+from knowledge.beat_knowledge import (
+    get_beat_knowledge, get_worldview_hook, get_absurdity, get_mechanism_name,
+)
+from knowledge.absurdity_injections import (
+    pick_absurdity, fill_absurdity_template, get_character_context,
+    CHARACTER_NAMES,
+)
+from knowledge.knowledge_cards import distill_cards_for_beat
 from services.rag import search as rag_search
 from services.story_state import StoryState
 
 
 @dataclass
-class BeatBrief:
+class SceneBrief:
+    """场景制简报：一场完整的戏 + 原剧本原文。
+
+    与旧 BeatBrief 的关键区别：
+    - original_script（原剧本原文）替代了 beat_desc（一句话动作摘要）
+    - player_position 明确玩家在场景中的位置
+    - Writer 的职责是"改编原剧本"而非"根据摘要凭空写"
+    """
     node: str
-    beat_index: int
-    beat_desc: str                       # 本拍描述
-    locked_items: dict = field(default_factory=dict)   # {道具名: 设定}
-    locked_lines: list = field(default_factory=list)   # 本拍须自然说出的台词
-    locked_markers: list = field(default_factory=list) # 本拍须输出的标记（如 MUSIC）
-    excluded_items: list = field(default_factory=list) # 尚未登场、本拍不得出现的道具
-    rag_facts: list = field(default_factory=list)      # 蒸馏后的本拍可用事实
-    worldview_base: list = field(default_factory=list) # 节点级世界观底色（游戏化解读+角色身份+bug）
-    beat_worldview: str = ""                            # 本拍专属世界观爆点（名场面拍才有）
+    scene_index: int
+    scene_name: str = ""
+    original_script: str = ""              # 原剧本原文（保留用于 reference）
+    dialogue_skeleton: str = ""            # ★对话骨架（纯对话+→动作，Writer 的实际输入）
+    player_position: str = ""              # 玩家在此场景中的位置/身份
+    locked_items: dict = field(default_factory=dict)
+    locked_lines: list = field(default_factory=list)
+    locked_markers: list = field(default_factory=list)
+    excluded_items: list = field(default_factory=list)
+    rag_facts: list = field(default_factory=list)
+    worldview_base: list = field(default_factory=list)   # 世界观底色
+    worldview_hook: str = ""                              # 本场景世界观钩子
+    absurdity_instruction: str = ""                       # 本场景槽点指令
+    knowledge_cards: list = field(default_factory=list)
+    allowed_characters: list = field(default_factory=list)
+    excluded_characters: list = field(default_factory=list)
+    identity_shift: str = ""                               # 身份切换 [SYS] 标记
+    sys_messages: list = field(default_factory=list)       # 骨架中解析出的 [SYS] 行（逐字输出）
     max_options: int = 3
     identity: str = ""
-    cause: str = ""                      # 前因（背景）
+    cause: str = ""
+
+    # 兼容旧 beat 格式的字段别名
+    @property
+    def beat_desc(self) -> str:
+        """兼容旧代码：对于场景制，返回场景名称+玩家位置作为'描述'。"""
+        if self.original_script:
+            return f"{self.scene_name}｜{self.player_position}"
+        return ""
+
+    @property
+    def beat_index(self) -> int:
+        return self.scene_index
+
+    @property
+    def beat_worldview(self) -> str:
+        return self.worldview_hook
 
 
-# 节点间漫游（自由行动）最多轮数：演完节点最后一拍后，观众有 MAX_ROAM 轮
-# 自由赶路，天意用巧合收束，最后一轮抵达下一节点。
+# 节点间漫游最多轮数
 MAX_ROAM = 2
 
 
 @dataclass
 class RoamBrief:
-    """节点间漫游简报：观众刚离开上一节点、正赶往下一节点的路上。"""
-    from_node: str                       # 刚离开的节点
-    to_node: str                         # 赶往的下一节点
-    roam_turn: int                       # 当前是第几轮漫游（1基）
-    is_final: bool                       # 是否最后一轮（本轮须抵达）
-    from_identity: str = ""              # 上一节点的观众身份（赶路时的身份）
-    to_cause: str = ""                   # 下一节点的前因（背景）
-    to_identity: str = ""                # 抵达后承接的观众身份
+    """节点间漫游简报。"""
+    from_node: str
+    to_node: str
+    roam_turn: int
+    is_final: bool
+    from_identity: str = ""
+    to_cause: str = ""
+    to_identity: str = ""
     max_options: int = 3
 
 
 def direct(state, action: str):
-    """根据当前 state 决定本轮内容：漫游中→RoamBrief（自由赶路），否则→BeatBrief（锁拍）。"""
+    """返回 SceneBrief（场景制）或 BeatBrief 兼容格式（旧节拍制）。"""
     if state.roam_turns > 0:
-        from_node = state.node
-        to_node = _next_node(from_node) or from_node
-        to_data = NODE_DATA.get(to_node, {})
-        return RoamBrief(
-            from_node=from_node,
-            to_node=to_node,
-            roam_turn=state.roam_turns,
-            is_final=state.roam_turns >= MAX_ROAM,
-            from_identity=NODE_DATA.get(from_node, {}).get("观众身份", ""),
-            to_cause=to_data.get("前因", ""),
-            to_identity=to_data.get("观众身份", ""),
-        )
+        return _build_roam(state)
 
     data = NODE_DATA[state.node]
-    beats = data["节拍"]
-    idx = min(state.beat_index, len(beats) - 1)
+    scenes = data.get("场景", [])
+    if scenes:
+        return _build_scene_brief(state, data, scenes, action)
+    return _build_beat_brief_legacy(state, data)
+
+
+def _build_roam(state):
+    """节点间漫游。"""
+    from_node = state.node
+    to_node = _next_node(from_node) or from_node
+    to_data = NODE_DATA.get(to_node, {})
+    return RoamBrief(
+        from_node=from_node,
+        to_node=to_node,
+        roam_turn=state.roam_turns,
+        is_final=state.roam_turns >= MAX_ROAM,
+        from_identity=NODE_DATA.get(from_node, {}).get("默认身份", ""),
+        to_cause=to_data.get("前因", ""),
+        to_identity=to_data.get("默认身份", ""),
+    )
+
+
+def _build_scene_brief(state, data: dict, scenes: list, action: str = "") -> SceneBrief:
+    """场景制：从原剧本原文构建 SceneBrief。"""
+    idx = min(state.scene_index, len(scenes) - 1)
+    scene = scenes[idx]
+
+    # ---- 锁定道具 ----
+    locked_items = {}
+    for name in scene.get("锁定道具", []):
+        if name in data.get("关键道具", {}):
+            locked_items[name] = data["关键道具"][name]
+    for name, info in state.items.items():
+        if isinstance(info, dict) and info.get("locked"):
+            locked_items.setdefault(name, info.get("desc", ""))
+
+    # ---- RAG 事实 ----
+    rag_facts = _distill_rag(state.node, scene.get("名称", ""), action, top_k=2)
+
+    # ---- 世界观 ----
+    worldview_base = list(data.get("世界观底色", [])[:2])
+    worldview_hook = scene.get("世界观钩子", "")
+    # 场景没写钩子时，从 beat_knowledge 补
+    if not worldview_hook:
+        bk = get_beat_knowledge(state.node, idx)
+        if bk and bk.get("worldview_hook"):
+            worldview_hook = bk["worldview_hook"]
+
+    # ---- 槽点 ----
+    absurdity_instruction = ""
+    if scene.get("槽点指令"):
+        absurdity_instruction = scene["槽点指令"]
+    else:
+        # 先查 beat_knowledge
+        bk = get_beat_knowledge(state.node, idx)
+        if bk and bk.get("absurdity"):
+            absurdity_instruction = bk["absurdity"].get("instruction", "")
+        if not absurdity_instruction:
+            # 兜底：slot machine —— 腐败度高时选更难的槽点
+            difficulty = "medium" if state.corruption > 50 else "easy"
+            absurdities = pick_absurdity(
+                beat_desc=scene.get("名称", ""),
+                node=state.node,
+                difficulty=difficulty,
+                count=1,
+            )
+            if absurdities:
+                ctx = _build_absurdity_context(state.node, idx, scene)
+                absurdity_instruction = fill_absurdity_template(absurdities[0]["instruction"], ctx)
+
+    # ---- v4.0: flag-driven context 增强世界观钩子 ----
+    flag_context = ""
+    if state.flags.get("defied_dong_zhuo"):
+        flag_context += "你之前顶撞了董卓——AI已经注意到这个行为。"
+    if state.flags.get("acted_aggressively"):
+        flag_context += "你的暴力行为让AI将你的'威胁等级'参数调高了。"
+    if state.corruption > 50:
+        flag_context += "AI的偏离度已经很高——角色行为更不稳定，[SYS]通知更频繁。"
+    if state.player_attitude == "aggressive":
+        flag_context += "你选择了暴力之路。AI正在调整你的角色模板。"
+    elif state.player_attitude == "diplomatic":
+        flag_context += "你选择了对话之路。但AI的对话生成可能不够细致。"
+    if flag_context and worldview_hook:
+        worldview_hook = worldview_hook + " " + flag_context
+
+    # ---- 知识卡 ----
+    card_texts = distill_cards_for_beat(
+        node=state.node,
+        characters=_infer_characters(scene.get("原剧本", "")),
+        max_cards=2,
+    )
+    for ct in card_texts[:1]:
+        if ct not in worldview_base:
+            worldview_base.append(ct)
+
+    # ---- 解析骨架中的 [SYS] 行 ----
+    sys_messages = []
+    cleaned_skeleton = ""
+    raw_skeleton = scene.get("对话骨架", "")
+    for line in raw_skeleton.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("[SYS]"):
+            sys_messages.append(stripped)
+        else:
+            cleaned_skeleton += line + "\n"
+    cleaned_skeleton = cleaned_skeleton.rstrip("\n")
+
+    # v3.2: 身份模糊化——不显式宣布切换，让玩家自然融入新场景
+    identity_shift = ""
+    prev_pos = getattr(state, 'last_player_position', '')
+    curr_pos = scene.get("玩家位置", "")
+    if prev_pos and curr_pos and prev_pos != curr_pos:
+        # 不再生成 [SYS] 身份切换通知——玩家像梦里换场景一样自然出现
+        identity_shift = ""
+    state.last_player_position = curr_pos
+
+    return SceneBrief(
+        node=state.node,
+        scene_index=idx,
+        scene_name=scene.get("名称", ""),
+        original_script=scene.get("原剧本", ""),
+        dialogue_skeleton=cleaned_skeleton,
+        player_position=scene.get("玩家位置", ""),
+        locked_items=locked_items,
+        locked_lines=scene.get("锁定台词", []),
+        locked_markers=scene.get("锁定标记", []),
+        excluded_items=[],
+        rag_facts=rag_facts,
+        worldview_base=worldview_base,
+        worldview_hook=worldview_hook,
+        absurdity_instruction=absurdity_instruction,
+        knowledge_cards=card_texts,
+        allowed_characters=scene.get("出场角色", []),
+        excluded_characters=scene.get("禁止角色", []),
+        identity_shift=identity_shift,
+        sys_messages=sys_messages,
+        max_options=3,
+        identity=data.get("默认身份", "") or state.identity,
+        cause=data.get("前因", ""),
+    )
+
+
+def _build_beat_brief_legacy(state, data: dict):
+    """旧节拍制兼容层。返回 SceneBrief 格式，从节拍描述构造。"""
+    beats = data.get("节拍", [])
+    idx = min(state.scene_index, len(beats) - 1)
     beat = beats[idx]
 
-    # 锁定道具 = 本拍声明的 ∪ 已在玩家手上的（state.items）
     locked_items = {}
     for name in beat.get("锁定道具", []):
         if name in data.get("关键道具", {}):
@@ -79,45 +249,89 @@ def direct(state, action: str):
         if isinstance(info, dict) and info.get("locked"):
             locked_items.setdefault(name, info.get("desc", ""))
 
-    # 尚未登场的道具：首次出现在更晚节拍的锁定道具里，本拍不得出现（防提前剧透）
-    excluded_items = []
-    for item_name in data.get("关键道具", {}):
-        intro_idx = next((i for i, b in enumerate(beats)
-                          if item_name in b.get("锁定道具", [])), None)
-        if intro_idx is not None and idx < intro_idx and item_name not in locked_items:
-            excluded_items.append(item_name)
+    rag_facts = _distill_rag(state.node, beat.get("描述", "")[:60], "", top_k=2)
+    worldview_base = list(data.get("世界观底色", data.get("世界观", []))[:2])
 
-    rag_facts = distill_rag(state.node, beat["描述"], action)
-
-    return BeatBrief(
+    return SceneBrief(
         node=state.node,
-        beat_index=idx,
-        beat_desc=beat["描述"],
+        scene_index=idx,
+        scene_name="",
+        original_script="",  # 旧格式无原剧本
+        player_position=data.get("默认身份", data.get("观众身份", "")),
         locked_items=locked_items,
         locked_lines=beat.get("锁定台词", []),
         locked_markers=beat.get("锁定标记", []),
-        excluded_items=excluded_items,
         rag_facts=rag_facts,
-        worldview_base=data.get("世界观", []),
-        beat_worldview=beat.get("世界观", ""),
+        worldview_base=worldview_base,
+        worldview_hook=beat.get("世界观钩子", ""),
+        allowed_characters=beat.get("出场角色", []),
+        excluded_characters=beat.get("禁止角色", []),
         max_options=3,
-        identity=data.get("观众身份", "") or state.identity,
+        identity=data.get("默认身份", data.get("观众身份", "")) or state.identity,
         cause=data.get("前因", ""),
     )
 
 
-def distill_rag(node: str, beat_desc: str, action: str, top_k: int = 4) -> list:
-    """RAG 只喂给 Director：检索后截短成'事实'，而非整段原文倾倒给 Writer。"""
+def _distill_rag(node: str, query_text: str, action: str, top_k: int = 2) -> list:
+    """RAG 检索。"""
     try:
-        query = f"新三国 {node} {beat_desc} {action}".strip()
+        query = f"新三国 {node} {query_text[:60]}".strip()
         results = rag_search(query, top_k=top_k)
-        return [r["text"][:80] for r in results if r.get("text")]
+        return [r["text"][:150] for r in results if r.get("text")]
     except Exception:
         return []
 
 
+def _build_absurdity_context(node: str, scene_idx: int, scene: dict = None) -> dict:
+    """构建槽点模板的上下文。
+
+    角色从本场景的"出场角色"推断，避免硬编码曹操/董卓出现在不该出现的场景里；
+    名/字/自称用 get_character_context 查表，保证称呼对得上人。
+    """
+    # 本场景的角色：优先出场角色，其次从剧本文本推断，最后兜底默认
+    chars = list((scene or {}).get("出场角色", []))
+    if not chars:
+        inferred = _infer_characters(
+            ((scene or {}).get("原剧本", "") or "") +
+            ((scene or {}).get("对话骨架", "") or "")
+        )
+        chars = inferred
+    if not chars:
+        chars = ["曹操", "董卓"]
+
+    primary = chars[0]
+    target = chars[1] if len(chars) > 1 else primary
+
+    pc = get_character_context(primary)
+    tc = get_character_context(target)
+
+    return {
+        "primary_speaker": primary, "target": target,
+        "speaker": primary, "listener": target,
+        "character": primary, "character_a": primary, "character_b": target,
+        "name": tc["name"], "courtesy": tc["courtesy"],
+        "self_name": pc["self"], "self_courtesy": pc["courtesy"],
+        "from_place": "许昌", "to_place": "洛阳",
+        "time_a": "正午", "time_b": "夜深",
+        "season_a": "盛夏", "weather_b": "大雪",
+        "emotion_a": "平静", "emotion_b": "暴怒",
+        "short_action": "端起茶盏", "long_time_passed": "半个时辰过去了",
+        "random_line": "今天的茶有点烫",
+        "correct_meaning": "发愤图强", "wrong_phrase": "破罐破摔",
+        "correct_phrase": "破釜沉舟", "invented_saying": "龙行千里，终须一潜",
+    }
+
+
+def _infer_characters(text: str) -> list[str]:
+    """从文本中推断角色名。"""
+    found = []
+    for name in CHARACTER_NAMES:
+        if name in text:
+            found.append(name)
+    return found[:3]
+
+
 def _next_node(node: str):
-    """按主线顺序返回下一个节点；最后一个节点（归晋）返回 None（游戏通关）。"""
     if node in MAIN_NODES:
         i = MAIN_NODES.index(node)
         if i + 1 < len(MAIN_NODES):
@@ -126,32 +340,26 @@ def _next_node(node: str):
 
 
 def advance(state: StoryState, brief) -> StoryState:
-    """状态推进（代码独占）：
-    - 本轮是漫游（RoamBrief）：最后一轮→抵达下一节点（node切换/beat归零/roam清零）；
-      否则 roam_turns+1 继续漫游。
-    - 本轮是正常节拍：演完节点最后一拍→进入漫游（roam_turns=1，观众自由赶路）；
-      否则 beat_index+1。归晋无下一节点，演完最后一拍停留原地（游戏通关）。
-    - 本拍锁定道具登记进 state.items；turn +1。
-    """
+    """状态推进。支持 SceneBrief、旧 BeatBrief、RoamBrief。"""
     s = StoryState.from_dict(state.to_dict())
 
     if isinstance(brief, RoamBrief):
         if brief.is_final:
             s.node = brief.to_node
-            s.beat_index = 0
+            s.scene_index = 0
             s.roam_turns = 0
         else:
             s.roam_turns = s.roam_turns + 1
         s.turn += 1
         return s
 
-    total = beat_count(s.node)
-    if s.beat_index >= total - 1:
-        # 演完最后一拍：有下一节点→进入漫游（自由赶路），否则停留（归晋通关）
+    # SceneBrief 或 BeatBrief
+    total = scene_count(s.node)
+    if s.scene_index >= total - 1:
         if _next_node(s.node):
             s.roam_turns = 1
     else:
-        s.beat_index = s.beat_index + 1
+        s.scene_index = s.scene_index + 1
     for name, desc in brief.locked_items.items():
         s.items.setdefault(name, {"locked": True, "desc": desc})
     s.turn += 1

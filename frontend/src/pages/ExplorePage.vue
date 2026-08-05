@@ -140,8 +140,15 @@ function stopLoadingQuotes() {
 const showSetup = ref(false)
 const selectedNode = ref('曹操献刀')
 const nodeOptions = [
-  '曹操献刀', '桃园结义', '官渡之战', '三顾茅庐', '火烧赤壁',
-  '败走麦城', '夷陵之战', '白帝城托孤', '归晋',
+  '曹操献刀', '捉放曹', '桃园结义', '诸侯讨董', '连环计',
+  '三让徐州', '辕门射戟', '吕布殒命', '煮酒论英雄',
+  '斩颜良诛文丑', '过五关斩六将', '官渡之战', '三顾茅庐', '博望坡',
+  '长坂坡', '火烧赤壁', '华容道', '取长沙', '三气周瑜',
+  '假道灭虢', '铜雀台', '割须弃袍', '入蜀', '单刀赴会',
+  '虎女犬子', '败走麦城', '曹操之死', '曹丕废帝', '刘备伐吴',
+  '陆逊拜将', '夷陵之战', '白帝城托孤', '出师表', '北伐中原',
+  '失街亭', '木牛流马', '张郃中计', '仲达受辱', '上方谷',
+  '五丈原', '高平陵', '归晋',
 ]
 
 function startNarrative() {
@@ -189,7 +196,9 @@ function scrollToBottom() {
 
 function parseNarrative(text: string) {
   // Parse the streamed text into typed blocks
-  const lines = text.split('\n').filter(l => l.trim())
+  // Normalize full-width brackets to half-width (models sometimes output ［］)
+  const normalized = text.replace(/［/g, '[').replace(/］/g, ']')
+  const lines = normalized.split('\n').filter(l => l.trim())
   const blocks: { type: string; speaker?: string; html: string }[] = []
   const opts: string[] = []
 
@@ -281,10 +290,7 @@ async function sendAction(action: string, startNode: string = '') {
             const { blocks } = parseNarrative(fullText)
             logBlocks.value = blocks
             scrollToBottom()
-            // Glitch when a new [SYS] or [ERR] marker appears in accumulated text
             const newPart = fullText.slice(prevLen)
-            const sysCount = (fullText.match(/\[SYS\]/g) || []).length
-            const errCount = (fullText.match(/\[ERR\]/g) || []).length
             if (newPart.includes('SYS') || newPart.includes('ERR')) {
               if (Math.random() < 0.5) triggerGlitch()
             }
@@ -444,11 +450,12 @@ onBeforeUnmount(() => {
 }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-.log-block.narration { color: #33cc55; }
-.log-block.narration .log-text { font-style: italic; opacity: 0.85; }
+.log-block.narration { color: #88aa88; }
+.log-block.narration .log-text { opacity: 0.8; }
 
 .log-block.dialogue { color: #00ff41; }
-.log-block.dialogue .prefix { color: #00ff41; font-weight: bold; margin-right: 8px; }
+.log-block.dialogue .prefix { color: #00ff41; font-weight: bold; margin-right: 8px; letter-spacing: 0.05em; }
+.log-block.dialogue .log-text { font-weight: 600; }
 
 .log-block.sys { color: #ffffff; opacity: 0.7; font-size: 0.8rem; }
 .log-block.sys .prefix { color: #888; margin-right: 6px; }

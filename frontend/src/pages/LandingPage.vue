@@ -131,8 +131,8 @@ const WORLDS = [
   { id: 'elo', name: '天平竞技场', tagline: '尽力了', color: '#14b8a6', desc: '天意是匹配算法，不关心谁赢只关心胜率收敛到五成' },
 ]
 
-// 当前开放的世界（其余显示"尚未解锁"）
-const OPEN_WORLDS = ['game_world']
+// 当前开放的世界（只有天意）
+const OPEN_WORLDS = ['tianyi']
 function isOpenWorld(id: string) {
   return OPEN_WORLDS.includes(id)
 }
@@ -574,11 +574,14 @@ const visionWorld = ref<{ id: string; name: string; tagline: string; color: stri
 function enterWorld(id: string) {
   visionWorld.value = null
   const world = WORLDS.find(w => w.id === id)
-  warpColor.value = world?.color || '#aabbff'
+  warpColor.value = world?.color || '#ff5533'
   warpActive.value = true
   setTimeout(() => {
     if (id === 'create') {
       router.push('/create')
+    } else if (id === 'tianyi') {
+      playGuanyu()
+      router.push('/play')
     } else {
       playGuanyu()
       router.push(`/worldview/${id}`)
@@ -621,7 +624,7 @@ function createFloatingQuotes(scene: THREE.Scene) {
 }
 
 // 每世界独特视觉配件
-function addWorldAccessory(group: THREE.Group, id: string, radius: number, color: THREE.Color, params: any) {
+function addWorldAccessory(group: THREE.Group, id: string, radius: number, _color: THREE.Color, _params: any) {
   const makeParticles = (count: number, spread: number, size: number, pColor: THREE.Color, geo?: THREE.BufferGeometry) => {
     const positions = new Float32Array(count * 3)
     for (let i = 0; i < count; i++) {
@@ -748,6 +751,13 @@ function addWorldAccessory(group: THREE.Group, id: string, radius: number, color
       makeParticles(40, 1.8, 0.4, new THREE.Color('#ffffff'))
       break
     }
+    case 'tianyi': {
+      // 天意：燃烧光晕 + 大量能量粒子
+      makeParticles(60, 2.2, 1.2, new THREE.Color('#ff4422'))
+      makeParticles(40, 2.8, 0.8, new THREE.Color('#ffaa00'))
+      makeParticles(20, 3.2, 0.5, new THREE.Color('#ffffff'))
+      break
+    }
   }
 }
 
@@ -759,9 +769,20 @@ async function initGraph() {
     name: w.name,
     tagline: w.tagline,
     color: w.color,
-    val: 20,
+    val: 14,
     isNebula: false,
   }))
+
+  // 天意大星球 —— 唯一的游玩入口
+  nodes.push({
+    id: 'tianyi',
+    name: '天意',
+    tagline: '你是天意，输入prompt改写三国世界',
+    color: '#ff5533',
+    val: 40,
+    isNebula: false,
+    isMain: true,
+  } as any)
 
   nodes.push({
     id: 'create',
@@ -815,7 +836,8 @@ async function initGraph() {
       const params = PLANET_SHADER_PARAMS[node.id]
       const color = new THREE.Color(node.color)
       const isNebula = node.isNebula
-      const coreRadius = isNebula ? 3 : 5
+      const isMain = node.isMain || false
+      const coreRadius = isNebula ? 3 : (isMain ? 10 : 5)
 
       // === 核心几何体（部分世界用非球体） ===
       let coreGeo: THREE.BufferGeometry

@@ -302,4 +302,9 @@ export const PLANET_SHADER_PARAMS: Record<string, PlanetShaderParams> = {
     noiseScale: 1.5, noiseSpeed: 0.08, octaves: 5, style: 2,
     vortexColor: '#6688dd', vortexOpacity: 0.5,
   },
+  tianyi: {
+    color1: '#1a0000', color2: '#ff4422', color3: '#ffaa00',
+    noiseScale: 3.5, noiseSpeed: 0.5, octaves: 5, style: 3,
+    vortexColor: '#ff5533', vortexOpacity: 0.5,
+  },
 }

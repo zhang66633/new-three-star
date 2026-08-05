@@ -29,6 +29,13 @@ Thumbs.db
 # RAG index (generated)
 backend/knowledge/rag_index.pkl
 
+# Firecrawl cache
+.firecrawl/
+
+# Backup files
+*.bak
+*.bak*
+
 # Logs
 *.log
 backend/uvicorn.log

@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import graph, worldview, worlds, narrative
+from routers import graph, worldview, worlds, narrative, tianyi
 from db import init_db
 
 
@@ -24,8 +24,14 @@ app.include_router(graph.router, prefix="/api")
 app.include_router(worldview.router, prefix="/api")
 app.include_router(worlds.router, prefix="/api")
 app.include_router(narrative.router, prefix="/api")
+app.include_router(tianyi.router, prefix="/api")
 
 
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "service": "new-three-explorer"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -7,6 +7,7 @@ from knowledge.nodes import NODE_DATA, MAIN_NODES
 from services.story_state import StoryState
 from services.director import direct, advance
 from services.writer import write
+from services.recorder import record
 
 router = APIRouter()
 
@@ -29,6 +30,76 @@ def _detect_node(context: str) -> str:
     return found
 
 
+# v3.2: 自由输入意图检测（关键词匹配）
+def _detect_intent(action: str) -> str:
+    """检测自由输入的意图类型。"""
+    action_lower = action.strip()
+    # 探索/观察
+    if any(kw in action_lower for kw in ["看", "观察", "环顾", "打量", "查看", "周围", "附近", "哪里"]):
+        return "explore"
+    # 对话
+    if any(kw in action_lower for kw in ["问", "说", "告诉", "回答", "对", "跟"]):
+        return "talk"
+    # 使用道具
+    if any(kw in action_lower for kw in ["用", "拿出", "掏出", "取出", "拔", "使"]):
+        return "use_item"
+    # 逃跑/回避
+    if any(kw in action_lower for kw in ["跑", "逃", "离开", "退", "躲", "溜"]):
+        return "flee"
+    # 攻击/对抗
+    if any(kw in action_lower for kw in ["打", "杀", "刺", "砍", "攻击", "动手"]):
+        return "attack"
+    return "other"
+
+
+# v3.2: 根据意图更新叙事旗标和玩家倾向
+def _update_flags(state: StoryState, action: str, intent: str):
+    """根据玩家行动更新状态旗标。Ink 式 state-accumulation。"""
+    # 记录选择历史
+    state.choice_history.append({
+        "turn": state.turn,
+        "action": action[:100],
+        "intent": intent,
+        "scene": state.scene_index,
+        "node": state.node,
+    })
+
+    # 根据意图设置旗标
+    if intent == "attack":
+        state.flags["acted_aggressively"] = True
+        state.corruption = min(100, state.corruption + 5)  # 暴力增加腐败
+    elif intent == "flee":
+        state.flags["avoided_conflict"] = True
+    elif intent == "talk":
+        state.flags["talked_to_npc"] = True
+    elif intent == "explore":
+        state.flags["explored_area"] = True
+
+    # 检测特定事件
+    if "董卓" in action:
+        state.flags["defied_dong_zhuo"] = True
+        state.corruption = min(100, state.corruption + 10)
+    if "曹操" in action:
+        state.flags["interacted_with_cao_cao"] = True
+    if "杀" in action or "刺" in action:
+        state.flags["attempted_violence"] = True
+        state.corruption = min(100, state.corruption + 15)
+
+    # 计算玩家倾向（最近3次选择中最多的意图）
+    recent = [c["intent"] for c in state.choice_history[-3:]]
+    if recent:
+        from collections import Counter
+        dominant = Counter(recent).most_common(1)[0][0]
+        attitude_map = {
+            "attack": "aggressive",
+            "flee": "cautious",
+            "talk": "diplomatic",
+            "explore": "curious",
+            "use_item": "pragmatic",
+        }
+        state.player_attitude = attitude_map.get(dominant, state.player_attitude)
+
+
 @router.post("/worldview/narrative")
 async def narrative(req: NarrativeRequest):
     """互动叙事引擎：Director定拍 → Writer渲染 → Validator验收 → 代码推进state。
@@ -47,6 +118,11 @@ async def narrative(req: NarrativeRequest):
             node = _detect_node(ctx)
     # 兜底：节点无效则回到开场节点
     state.node = node if node in NODE_DATA else "曹操献刀"
+
+    # v3.2: 如果不是首轮，跟踪玩家选择和意图
+    if not is_first_turn and req.action:
+        intent = _detect_intent(req.action)
+        _update_flags(state, req.action, intent)
 
     brief = direct(state, req.action)
 
@@ -69,6 +145,21 @@ async def narrative(req: NarrativeRequest):
         chunk_size = 40
         for i in range(0, len(final_text), chunk_size):
             yield f"data: {json.dumps({'type': 'chunk', 'content': final_text[i:i+chunk_size]}, ensure_ascii=False)}\n\n"
+
+        # AI内部日志：recorder 观测本场生成，追加 [SYS] 觉察行（前端已能解析 [SYS] 标记）。
+        # 放在主文本流式输出之后，避免拖慢首屏；record 内部已做异常兜底，这里再包一层保险。
+        try:
+            rec = await record(
+                final_text,
+                new_state.to_dict(),
+                player_action=req.action,
+                scene_name=getattr(brief, "scene_name", ""),
+            )
+            for line in rec.get("sys_lines", []):
+                yield f"data: {json.dumps({'type': 'chunk', 'content': line + '\n'}, ensure_ascii=False)}\n\n"
+        except Exception as e:
+            print(f"[Recorder] failed: {e}")
+
         # 回传新状态，前端保存后下轮带回
         yield f"data: {json.dumps({'type': 'state', 'state': new_state.to_dict()}, ensure_ascii=False)}\n\n"
         yield f"data: {json.dumps({'type': 'done'})}\n\n"
