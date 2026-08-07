@@ -108,7 +108,7 @@ def _load_persona_layer(names: list[str], distance_map: dict) -> str:
     return "\n".join(lines) if lines else "（本场景无已知角色在场）"
 
 
-def build_messages(state: GameState, plan: ScenePlan) -> list[dict]:
+def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) -> list[dict]:
     """组装 LLM messages：system(世界底色) + user(场景指令) + 历史"""
     # 人设分层
     names = [l["speaker"] for l in plan.locked_lines if l.get("speaker")]
@@ -128,6 +128,16 @@ def build_messages(state: GameState, plan: ScenePlan) -> list[dict]:
         locked_lines=locked,
         personas=personas,
     )
+
+    # 重写失败原因注入（Phase 2）
+    retry = getattr(plan, "meta_retry", None)
+    if retry:
+        instruction += "\n\n【上次校验失败原因（必须针对性修复）】\n" + "\n".join(f"- {r}" for r in retry)
+
+    # 记忆注入（Phase 2）
+    if memory_pack:
+        mem_text = "\n".join(f"· {m['text'][:100]}" for m in memory_pack[:8])
+        instruction += f"\n\n【玩家已知记忆（保持连贯）】\n{mem_text}"
 
     messages = [{"role": "system", "content": WORLD_BASE}]
     # 历史（最近 8 轮）
@@ -164,17 +174,14 @@ def parse_output(text: str) -> dict:
     return {"narrative": text, "options": []}
 
 
-async def narrate(state: GameState, plan: ScenePlan) -> dict:
-    """主入口：生成 NarrativeOutput（含后处理链）
-
-    TODO(Phase 2): validate 重写循环、remember 记忆检索注入
-    """
+async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -> dict:
+    """主入口：生成 NarrativeOutput（含后处理链）"""
     from services.llm import stream_chat
     from config import PARAMS_PLAY, STOP_SEQUENCES
     from services.validator import validate as deterministic_fix
     from services.deslop import deslop
 
-    messages = build_messages(state, plan)
+    messages = build_messages(state, plan, memory_pack)
     # 收集流式输出（Phase 4 改为经 graph 透出 chunk）
     draft = ""
     async for chunk in stream_chat(

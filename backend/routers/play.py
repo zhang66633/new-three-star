@@ -16,12 +16,13 @@ router = APIRouter()
 class PlayRequest(BaseModel):
     action: str = ""
     game_state: dict = Field(default_factory=dict)
+    tension: int = 0  # 玩家所选选项的历史干预度（0-100）
 
 
 @router.post("/play/step")
 async def play_step(req: PlayRequest):
     """跑一轮叙事。Phase 1 返回非流式 JSON。"""
-    result = await run_step(req.game_state, req.action)
+    result = await run_step(req.game_state, req.action, req.tension)
     last = result.get("last_output") or {}
     return {
         "narrative": last.get("narrative", ""),
