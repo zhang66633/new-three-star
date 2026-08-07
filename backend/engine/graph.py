@@ -61,7 +61,9 @@ async def narrate_node(state: GameState) -> dict:
     player_action = (state.get("history") or [{}])[-1].get("user", "") if state.get("history") else ""
     memory_pack = retrieve_memories(state, f"{plan.setting} {player_action}")
 
-    output = await narrate(state, plan, memory_pack=memory_pack)
+    # SSE 流式回调（从 meta 读取）
+    cb = (state.get("meta") or {}).get("stream_cb")
+    output = await narrate(state, plan, memory_pack=memory_pack, on_chunk=cb)
     # 清重写标记
     meta = dict(state.get("meta", {}))
     meta.pop("retry_reasons", None)
@@ -189,10 +191,10 @@ def get_graph():
 
 # ═════════ 外部入口（router 调用）═════════
 
-async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict:
+async def run_step(state_dict: dict, action: str = "", tension: int = 0, stream_cb=None) -> dict:
     """跑一轮：输入前端回传 state + 玩家动作 + 所选选项干预度 → 输出更新后的 state
 
-    Phase 1 返回非流式 dict；Phase 4 改为 astream 透出 SSE。
+    stream_cb: 可选回调（text: str）→ LLM chunk 逐块透出（SSE 流式）
     """
     state = from_dict(state_dict)
     # 玩家动作入历史（空 action = 开局；由 narrate_node 追加 assistant）
@@ -201,6 +203,9 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
     # 干预度累积（玩家所选选项的 tension；重修正后由 corrector 重置）
     if tension > 0:
         state["tension"] = max(0, min(100, state.get("tension", 0) + tension))
+    # 流式回调挂到 meta（narrate_node 读取）
+    if stream_cb:
+        state["meta"] = {**state.get("meta", {}), "stream_cb": stream_cb}
     result = await get_graph().ainvoke(state)
     # 场景推进：玩家提交选择后（action 非空），按场景 aftermath.flow 更新 skeleton_pos
     if action:

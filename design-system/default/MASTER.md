@@ -6,7 +6,7 @@
 
 ---
 
-**Project:** 乱世夜雨
+**Project:** 新三国 星空
 **Generated:** 2026-08-07 16:53:15
 **Category:** Casual Puzzle Game
 **Design Dials:** Variance 8/10 (Bold / Asymmetric) | Motion 9/10 (Complex)

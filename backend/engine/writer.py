@@ -87,7 +87,7 @@ WRITER_INSTRUCTION = """
 1. 生成 300-600 字叙事正文（第二人称"你"），描写当前场景
 2. 玩家视角差异通过玩家内心/观察自然呈现（如：你记得史书上写的是'黄巾'……），但世界侧一切正常
 3. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）
-4. 输出严格 JSON，格式：
+4. 输出严格 JSON（不要 markdown 代码围栏，不要 ```json，直接输出 JSON 对象），格式：
 {{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}]}}
 """.strip()
 
@@ -174,20 +174,25 @@ def parse_output(text: str) -> dict:
     return {"narrative": text, "options": []}
 
 
-async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -> dict:
-    """主入口：生成 NarrativeOutput（含后处理链）"""
+async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, on_chunk=None) -> dict:
+    """主入口：生成 NarrativeOutput（含后处理链）
+
+    on_chunk: 可选回调（text: str）→ 用于 SSE 流式透出
+    """
     from services.llm import stream_chat
     from config import PARAMS_PLAY, STOP_SEQUENCES
     from services.validator import validate as deterministic_fix
     from services.deslop import deslop
 
     messages = build_messages(state, plan, memory_pack)
-    # 收集流式输出（Phase 4 改为经 graph 透出 chunk）
+    # 收集流式输出（Phase 4 经 on_chunk 透出 SSE）
     draft = ""
     async for chunk in stream_chat(
         messages, max_tokens=2048, **PARAMS_PLAY, stop=STOP_SEQUENCES
     ):
         draft += chunk
+        if on_chunk:
+            on_chunk(chunk)
 
     # 后处理链
     draft = deslop(draft)

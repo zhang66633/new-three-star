@@ -1,0 +1,2560 @@
+data: {"type": "chunk", "content": "{\""}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "arrative"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "雨水"}
+
+data: {"type": "chunk", "content": "灌"}
+
+data: {"type": "chunk", "content": "进"}
+
+data: {"type": "chunk", "content": "你的"}
+
+data: {"type": "chunk", "content": "耳朵"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "猛地"}
+
+data: {"type": "chunk", "content": "坐"}
+
+data: {"type": "chunk", "content": "起来"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "泥"}
+
+data: {"type": "chunk", "content": "浆"}
+
+data: {"type": "chunk", "content": "从"}
+
+data: {"type": "chunk", "content": "指"}
+
+data: {"type": "chunk", "content": "缝"}
+
+data: {"type": "chunk", "content": "间"}
+
+data: {"type": "chunk", "content": "挤"}
+
+data: {"type": "chunk", "content": "出去"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "荒野"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "黑暗"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "暴雨"}
+
+data: {"type": "chunk", "content": "如"}
+
+data: {"type": "chunk", "content": "鞭"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "跪"}
+
+data: {"type": "chunk", "content": "在"}
+
+data: {"type": "chunk", "content": "泥"}
+
+data: {"type": "chunk", "content": "水里"}
+
+data: {"type": "chunk", "content": "咳"}
+
+data: {"type": "chunk", "content": "出"}
+
+data: {"type": "chunk", "content": "呛"}
+
+data: {"type": "chunk", "content": "进的"}
+
+data: {"type": "chunk", "content": "雨水"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "脑子里"}
+
+data: {"type": "chunk", "content": "像"}
+
+data: {"type": "chunk", "content": "被人"}
+
+data: {"type": "chunk", "content": "用"}
+
+data: {"type": "chunk", "content": "钝"}
+
+data: {"type": "chunk", "content": "刀"}
+
+data: {"type": "chunk", "content": "搅"}
+
+data: {"type": "chunk", "content": "过"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "什么都不"}
+
+data: {"type": "chunk", "content": "剩"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "只剩"}
+
+data: {"type": "chunk", "content": "一些"}
+
+data: {"type": "chunk", "content": "碎片"}
+
+data: {"type": "chunk", "content": "："}
+
+data: {"type": "chunk", "content": "霓"}
+
+data: {"type": "chunk", "content": "虹"}
+
+data: {"type": "chunk", "content": "灯"}
+
+data: {"type": "chunk", "content": "、"}
+
+data: {"type": "chunk", "content": "键盘"}
+
+data: {"type": "chunk", "content": "声"}
+
+data: {"type": "chunk", "content": "、"}
+
+data: {"type": "chunk", "content": "一种"}
+
+data: {"type": "chunk", "content": "叫"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "可乐"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "的"}
+
+data: {"type": "chunk", "content": "甜"}
+
+data: {"type": "chunk", "content": "水"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "还有"}
+
+data: {"type": "chunk", "content": "一句"}
+
+data: {"type": "chunk", "content": "不知"}
+
+data: {"type": "chunk", "content": "从"}
+
+data: {"type": "chunk", "content": "哪"}
+
+data: {"type": "chunk", "content": "来的"}
+
+data: {"type": "chunk", "content": "话"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "反"}
+
+data: {"type": "chunk", "content": "反复"}
+
+data: {"type": "chunk", "content": "复"}
+
+data: {"type": "chunk", "content": "地"}
+
+data: {"type": "chunk", "content": "响"}
+
+data: {"type": "chunk", "content": "："}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "苍"}
+
+data: {"type": "chunk", "content": "天"}
+
+data: {"type": "chunk", "content": "已"}
+
+data: {"type": "chunk", "content": "死"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "黄"}
+
+data: {"type": "chunk", "content": "天"}
+
+data: {"type": "chunk", "content": "当"}
+
+data: {"type": "chunk", "content": "立"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "不对"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "记得"}
+
+data: {"type": "chunk", "content": "史"}
+
+data: {"type": "chunk", "content": "书上"}
+
+data: {"type": "chunk", "content": "写"}
+
+data: {"type": "chunk", "content": "的是"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "黄"}
+
+data: {"type": "chunk", "content": "巾"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "但"}
+
+data: {"type": "chunk", "content": "记忆"}
+
+data: {"type": "chunk", "content": "不"}
+
+data: {"type": "chunk", "content": "放过"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "它"}
+
+data: {"type": "chunk", "content": "纠正"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "像"}
+
+data: {"type": "chunk", "content": "有人"}
+
+data: {"type": "chunk", "content": "把你的"}
+
+data: {"type": "chunk", "content": "认知"}
+
+data: {"type": "chunk", "content": "拧"}
+
+data: {"type": "chunk", "content": "回"}
+
+data: {"type": "chunk", "content": "原位"}
+
+data: {"type": "chunk", "content": "："}
+
+data: {"type": "chunk", "content": "是"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "太平"}
+
+data: {"type": "chunk", "content": "道"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "力"}
+
+data: {"type": "chunk", "content": "士"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "起义"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "还没来得及"}
+
+data: {"type": "chunk", "content": "细"}
+
+data: {"type": "chunk", "content": "想"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "一道"}
+
+data: {"type": "chunk", "content": "黑影"}
+
+data: {"type": "chunk", "content": "从"}
+
+data: {"type": "chunk", "content": "雨"}
+
+data: {"type": "chunk", "content": "幕"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "踉"}
+
+data: {"type": "chunk", "content": "跄"}
+
+data: {"type": "chunk", "content": "撞"}
+
+data: {"type": "chunk", "content": "来"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "那人"}
+
+data: {"type": "chunk", "content": "披"}
+
+data: {"type": "chunk", "content": "着"}
+
+data: {"type": "chunk", "content": "破"}
+
+data: {"type": "chunk", "content": "蓑"}
+
+data: {"type": "chunk", "content": "衣"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "怀里"}
+
+data: {"type": "chunk", "content": "紧紧"}
+
+data: {"type": "chunk", "content": "搂"}
+
+data: {"type": "chunk", "content": "着"}
+
+data: {"type": "chunk", "content": "个"}
+
+data: {"type": "chunk", "content": "布"}
+
+data: {"type": "chunk", "content": "包"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "看见"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "时"}
+
+data: {"type": "chunk", "content": "整个人"}
+
+data: {"type": "chunk", "content": "一"}
+
+data: {"type": "chunk", "content": "哆嗦"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "蓑"}
+
+data: {"type": "chunk", "content": "衣"}
+
+data: {"type": "chunk", "content": "上的"}
+
+data: {"type": "chunk", "content": "雨水"}
+
+data: {"type": "chunk", "content": "甩"}
+
+data: {"type": "chunk", "content": "了你"}
+
+data: {"type": "chunk", "content": "一脸"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "他"}
+
+data: {"type": "chunk", "content": "盯着"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "看了"}
+
+data: {"type": "chunk", "content": "三"}
+
+data: {"type": "chunk", "content": "秒"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "眼神"}
+
+data: {"type": "chunk", "content": "从"}
+
+data: {"type": "chunk", "content": "恐惧"}
+
+data: {"type": "chunk", "content": "变成"}
+
+data: {"type": "chunk", "content": "困惑"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "最后"}
+
+data: {"type": "chunk", "content": "变成"}
+
+data: {"type": "chunk", "content": "某种"}
+
+data: {"type": "chunk", "content": "奇怪的"}
+
+data: {"type": "chunk", "content": "释"}
+
+data: {"type": "chunk", "content": "然"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "好像"}
+
+data: {"type": "chunk", "content": "你的"}
+
+data: {"type": "chunk", "content": "存在"}
+
+data: {"type": "chunk", "content": "被"}
+
+data: {"type": "chunk", "content": "世界"}
+
+data: {"type": "chunk", "content": "自动"}
+
+data: {"type": "chunk", "content": "填充"}
+
+data: {"type": "chunk", "content": "进了"}
+
+data: {"type": "chunk", "content": "某个"}
+
+data: {"type": "chunk", "content": "合理的"}
+
+data: {"type": "chunk", "content": "格"}
+
+data: {"type": "chunk", "content": "子里"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "你是"}
+
+data: {"type": "chunk", "content": "逃"}
+
+data: {"type": "chunk", "content": "难的"}
+
+data: {"type": "chunk", "content": "？"}
+
+data: {"type": "chunk", "content": "哪个"}
+
+data: {"type": "chunk", "content": "县的"}
+
+data: {"type": "chunk", "content": "？"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "张"}
+
+data: {"type": "chunk", "content": "了"}
+
+data: {"type": "chunk", "content": "张嘴"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "答"}
+
+data: {"type": "chunk", "content": "不上"}
+
+data: {"type": "chunk", "content": "来"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你不"}
+
+data: {"type": "chunk", "content": "记得"}
+
+data: {"type": "chunk", "content": "自己"}
+
+data: {"type": "chunk", "content": "从"}
+
+data: {"type": "chunk", "content": "哪"}
+
+data: {"type": "chunk", "content": "来"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "不"}
+
+data: {"type": "chunk", "content": "记得"}
+
+data: {"type": "chunk", "content": "自己"}
+
+data: {"type": "chunk", "content": "叫什么"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "连"}
+
+data: {"type": "chunk", "content": "身上"}
+
+data: {"type": "chunk", "content": "这件"}
+
+data: {"type": "chunk", "content": "破烂"}
+
+data: {"type": "chunk", "content": "衣裳"}
+
+data: {"type": "chunk", "content": "是谁"}
+
+data: {"type": "chunk", "content": "的"}
+
+data: {"type": "chunk", "content": "都不知道"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "只知道"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "躺"}
+
+data: {"type": "chunk", "content": "在这"}
+
+data: {"type": "chunk", "content": "片"}
+
+data: {"type": "chunk", "content": "荒野"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "雨"}
+
+data: {"type": "chunk", "content": "把你"}
+
+data: {"type": "chunk", "content": "浇"}
+
+data: {"type": "chunk", "content": "透了"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "而"}
+
+data: {"type": "chunk", "content": "眼前"}
+
+data: {"type": "chunk", "content": "这个"}
+
+data: {"type": "chunk", "content": "陌生人"}
+
+data: {"type": "chunk", "content": "问"}
+
+data: {"type": "chunk", "content": "了你"}
+
+data: {"type": "chunk", "content": "一个"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "无法"}
+
+data: {"type": "chunk", "content": "回答"}
+
+data: {"type": "chunk", "content": "的问题"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "那人"}
+
+data: {"type": "chunk", "content": "等"}
+
+data: {"type": "chunk", "content": "了三"}
+
+data: {"type": "chunk", "content": "息"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你没"}
+
+data: {"type": "chunk", "content": "说话"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "他"}
+
+data: {"type": "chunk", "content": "后退"}
+
+data: {"type": "chunk", "content": "一步"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "再"}
+
+data: {"type": "chunk", "content": "退"}
+
+data: {"type": "chunk", "content": "一步"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "突然"}
+
+data: {"type": "chunk", "content": "转身"}
+
+data: {"type": "chunk", "content": "跑"}
+
+data: {"type": "chunk", "content": "进"}
+
+data: {"type": "chunk", "content": "雨"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "蓑"}
+
+data: {"type": "chunk", "content": "衣"}
+
+data: {"type": "chunk", "content": "在"}
+
+data: {"type": "chunk", "content": "夜"}
+
+data: {"type": "chunk", "content": "雨中"}
+
+data: {"type": "chunk", "content": "像"}
+
+data: {"type": "chunk", "content": "一片"}
+
+data: {"type": "chunk", "content": "被"}
+
+data: {"type": "chunk", "content": "风"}
+
+data: {"type": "chunk", "content": "卷"}
+
+data: {"type": "chunk", "content": "走的"}
+
+data: {"type": "chunk", "content": "枯"}
+
+data: {"type": "chunk", "content": "叶"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "转眼"}
+
+data: {"type": "chunk", "content": "就"}
+
+data: {"type": "chunk", "content": "没了"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "独自"}
+
+data: {"type": "chunk", "content": "跪"}
+
+data: {"type": "chunk", "content": "在"}
+
+data: {"type": "chunk", "content": "泥"}
+
+data: {"type": "chunk", "content": "地里"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "雨水"}
+
+data: {"type": "chunk", "content": "顺着"}
+
+data: {"type": "chunk", "content": "你的"}
+
+data: {"type": "chunk", "content": "脊"}
+
+data: {"type": "chunk", "content": "背"}
+
+data: {"type": "chunk", "content": "往下"}
+
+data: {"type": "chunk", "content": "淌"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "远处"}
+
+data: {"type": "chunk", "content": "有"}
+
+data: {"type": "chunk", "content": "隐隐"}
+
+data: {"type": "chunk", "content": "约"}
+
+data: {"type": "chunk", "content": "约"}
+
+data: {"type": "chunk", "content": "的火"}
+
+data: {"type": "chunk", "content": "光"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "像是"}
+
+data: {"type": "chunk", "content": "某个"}
+
+data: {"type": "chunk", "content": "村庄"}
+
+data: {"type": "chunk", "content": "或是"}
+
+data: {"type": "chunk", "content": "营"}
+
+data: {"type": "chunk", "content": "寨"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "依稀"}
+
+data: {"type": "chunk", "content": "想起来"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "184"}
+
+data: {"type": "chunk", "content": "年"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "颍"}
+
+data: {"type": "chunk", "content": "川"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "这个"}
+
+data: {"type": "chunk", "content": "年份"}
+
+data: {"type": "chunk", "content": "在你"}
+
+data: {"type": "chunk", "content": "脑子里"}
+
+data: {"type": "chunk", "content": "像"}
+
+data: {"type": "chunk", "content": "一根"}
+
+data: {"type": "chunk", "content": "刺"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你知道"}
+
+data: {"type": "chunk", "content": "有什么"}
+
+data: {"type": "chunk", "content": "大事"}
+
+data: {"type": "chunk", "content": "要"}
+
+data: {"type": "chunk", "content": "发生"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "或者"}
+
+data: {"type": "chunk", "content": "已经"}
+
+data: {"type": "chunk", "content": "发生了"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "但你"}
+
+data: {"type": "chunk", "content": "记"}
+
+data: {"type": "chunk", "content": "不清"}
+
+data: {"type": "chunk", "content": "细节"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "只"}
+
+data: {"type": "chunk", "content": "记得"}
+
+data: {"type": "chunk", "content": "："}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "起义"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "不对"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "总觉得"}
+
+data: {"type": "chunk", "content": "应该是"}
+
+data: {"type": "chunk", "content": "别的"}
+
+data: {"type": "chunk", "content": "什么"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "但"}
+
+data: {"type": "chunk", "content": "雨水"}
+
+data: {"type": "chunk", "content": "太"}
+
+data: {"type": "chunk", "content": "冷了"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "肚子"}
+
+data: {"type": "chunk", "content": "太空"}
+
+data: {"type": "chunk", "content": "了"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "你没"}
+
+data: {"type": "chunk", "content": "力气"}
+
+data: {"type": "chunk", "content": "再"}
+
+data: {"type": "chunk", "content": "想了"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "options"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " ["}
+
+data: {"type": "chunk", "content": "{\""}
+
+data: {"type": "chunk", "content": "text"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "朝"}
+
+data: {"type": "chunk", "content": "远处的"}
+
+data: {"type": "chunk", "content": "火光"}
+
+data: {"type": "chunk", "content": "走去"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "不管"}
+
+data: {"type": "chunk", "content": "那"}
+
+data: {"type": "chunk", "content": "是什么"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "总"}
+
+data: {"type": "chunk", "content": "比"}
+
+data: {"type": "chunk", "content": "冻"}
+
+data: {"type": "chunk", "content": "死在"}
+
+data: {"type": "chunk", "content": "荒野"}
+
+data: {"type": "chunk", "content": "强"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "type"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "major"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "t"}
+
+data: {"type": "chunk", "content": "ension"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": "45"}
+
+data: {"type": "chunk", "content": ","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "effect"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "将被"}
+
+data: {"type": "chunk", "content": "卷入"}
+
+data: {"type": "chunk", "content": "颍"}
+
+data: {"type": "chunk", "content": "川"}
+
+data: {"type": "chunk", "content": "的地方"}
+
+data: {"type": "chunk", "content": "局势"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "可能"}
+
+data: {"type": "chunk", "content": "接触到"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "太平"}
+
+data: {"type": "chunk", "content": "道的"}
+
+data: {"type": "chunk", "content": "信"}
+
+data: {"type": "chunk", "content": "众"}
+
+data: {"type": "chunk", "content": "或"}
+
+data: {"type": "chunk", "content": "地方"}
+
+data: {"type": "chunk", "content": "官府"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你的"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "无"}
+
+data: {"type": "chunk", "content": "户籍"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "身份"}
+
+data: {"type": "chunk", "content": "将"}
+
+data: {"type": "chunk", "content": "第一次"}
+
+data: {"type": "chunk", "content": "面临"}
+
+data: {"type": "chunk", "content": "考验"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "但"}
+
+data: {"type": "chunk", "content": "世界的"}
+
+data: {"type": "chunk", "content": "接纳"}
+
+data: {"type": "chunk", "content": "机制"}
+
+data: {"type": "chunk", "content": "会"}
+
+data: {"type": "chunk", "content": "为你"}
+
+data: {"type": "chunk", "content": "生成"}
+
+data: {"type": "chunk", "content": "一个"}
+
+data: {"type": "chunk", "content": "模糊"}
+
+data: {"type": "chunk", "content": "的"}
+
+data: {"type": "chunk", "content": "来历"}
+
+data: {"type": "chunk", "content": "。\""}
+
+data: {"type": "chunk", "content": "},"}
+
+data: {"type": "chunk", "content": " {\""}
+
+data: {"type": "chunk", "content": "text"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "追赶"}
+
+data: {"type": "chunk", "content": "那个"}
+
+data: {"type": "chunk", "content": "逃"}
+
+data: {"type": "chunk", "content": "难"}
+
+data: {"type": "chunk", "content": "的人"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "他的"}
+
+data: {"type": "chunk", "content": "反应"}
+
+data: {"type": "chunk", "content": "太"}
+
+data: {"type": "chunk", "content": "奇怪"}
+
+data: {"type": "chunk", "content": "了"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "也许"}
+
+data: {"type": "chunk", "content": "他知道"}
+
+data: {"type": "chunk", "content": "些什么"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "type"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "minor"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "t"}
+
+data: {"type": "chunk", "content": "ension"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": "30"}
+
+data: {"type": "chunk", "content": ","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "effect"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "你将"}
+
+data: {"type": "chunk", "content": "追上"}
+
+data: {"type": "chunk", "content": "那个"}
+
+data: {"type": "chunk", "content": "蓑"}
+
+data: {"type": "chunk", "content": "衣"}
+
+data: {"type": "chunk", "content": "人"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "发现"}
+
+data: {"type": "chunk", "content": "他"}
+
+data: {"type": "chunk", "content": "怀里"}
+
+data: {"type": "chunk", "content": "抱"}
+
+data: {"type": "chunk", "content": "着的"}
+
+data: {"type": "chunk", "content": "布"}
+
+data: {"type": "chunk", "content": "包里"}
+
+data: {"type": "chunk", "content": "藏着"}
+
+data: {"type": "chunk", "content": "某种"}
+
+data: {"type": "chunk", "content": "与"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "太平"}
+
+data: {"type": "chunk", "content": "道"}
+
+data: {"type": "chunk", "content": "有关的"}
+
+data: {"type": "chunk", "content": "信"}
+
+data: {"type": "chunk", "content": "物"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "他会"}
+
+data: {"type": "chunk", "content": "把你"}
+
+data: {"type": "chunk", "content": "当成"}
+
+data: {"type": "chunk", "content": "同"}
+
+data: {"type": "chunk", "content": "路人"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "告诉你"}
+
+data: {"type": "chunk", "content": "附近"}
+
+data: {"type": "chunk", "content": "聚"}
+
+data: {"type": "chunk", "content": "众"}
+
+data: {"type": "chunk", "content": "的消息"}
+
+data: {"type": "chunk", "content": "。\""}
+
+data: {"type": "chunk", "content": "},"}
+
+data: {"type": "chunk", "content": " {\""}
+
+data: {"type": "chunk", "content": "text"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "留在"}
+
+data: {"type": "chunk", "content": "原地"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "试图"}
+
+data: {"type": "chunk", "content": "拼"}
+
+data: {"type": "chunk", "content": "凑"}
+
+data: {"type": "chunk", "content": "脑子里"}
+
+data: {"type": "chunk", "content": "残"}
+
+data: {"type": "chunk", "content": "存的"}
+
+data: {"type": "chunk", "content": "记忆"}
+
+data: {"type": "chunk", "content": "碎片"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "type"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "minor"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "t"}
+
+data: {"type": "chunk", "content": "ension"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": "15"}
+
+data: {"type": "chunk", "content": ","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "effect"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "你将"}
+
+data: {"type": "chunk", "content": "触发"}
+
+data: {"type": "chunk", "content": "一段"}
+
+data: {"type": "chunk", "content": "记忆"}
+
+data: {"type": "chunk", "content": "闪"}
+
+data: {"type": "chunk", "content": "回"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "隐约"}
+
+data: {"type": "chunk", "content": "想起"}
+
+data: {"type": "chunk", "content": "更多"}
+
+data: {"type": "chunk", "content": "关于"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "黄"}
+
+data: {"type": "chunk", "content": "巾"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "与"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "\\\""}
+
+data: {"type": "chunk", "content": "的"}
+
+data: {"type": "chunk", "content": "认知"}
+
+data: {"type": "chunk", "content": "偏差"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "但"}
+
+data: {"type": "chunk", "content": "等到"}
+
+data: {"type": "chunk", "content": "天明"}
+
+data: {"type": "chunk", "content": "时"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "你会"}
+
+data: {"type": "chunk", "content": "被"}
+
+data: {"type": "chunk", "content": "路"}
+
+data: {"type": "chunk", "content": "过的"}
+
+data: {"type": "chunk", "content": "流"}
+
+data: {"type": "chunk", "content": "民"}
+
+data: {"type": "chunk", "content": "队伍"}
+
+data: {"type": "chunk", "content": "发现"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "被动"}
+
+data: {"type": "chunk", "content": "卷入"}
+
+data: {"type": "chunk", "content": "逃"}
+
+data: {"type": "chunk", "content": "难"}
+
+data: {"type": "chunk", "content": "潮"}
+
+data: {"type": "chunk", "content": "。\""}
+
+data: {"type": "chunk", "content": "}]"}
+
+data: {"type": "chunk", "content": "}"}
+
+data: {"type": "chunk", "content": "{\""}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "arrative"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "雨水"}
+
+data: {"type": "chunk", "content": "砸"}
+
+data: {"type": "chunk", "content": "在"}
+
+data: {"type": "chunk", "content": "脸上"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "把你"}
+
+data: {"type": "chunk", "content": "从"}
+
+data: {"type": "chunk", "content": "一片"}
+
+data: {"type": "chunk", "content": "混沌"}
+
+data: {"type": "chunk", "content": "中"}
+
+data: {"type": "chunk", "content": "拽"}
+
+data: {"type": "chunk", "content": "了出来"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "趴"}
+
+data: {"type": "chunk", "content": "在一"}
+
+data: {"type": "chunk", "content": "道"}
+
+data: {"type": "chunk", "content": "泥"}
+
+data: {"type": "chunk", "content": "泞"}
+
+data: {"type": "chunk", "content": "的"}
+
+data: {"type": "chunk", "content": "田"}
+
+data: {"type": "chunk", "content": "埂"}
+
+data: {"type": "chunk", "content": "边"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "手指"}
+
+data: {"type": "chunk", "content": "抠"}
+
+data: {"type": "chunk", "content": "进"}
+
+data: {"type": "chunk", "content": "湿"}
+
+data: {"type": "chunk", "content": "冷的"}
+
+data: {"type": "chunk", "content": "土"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "不远处"}
+
+data: {"type": "chunk", "content": "是"}
+
+data: {"type": "chunk", "content": "几点"}
+
+data: {"type": "chunk", "content": "稀疏"}
+
+data: {"type": "chunk", "content": "灯火"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "像是"}
+
+data: {"type": "chunk", "content": "村庄"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "又"}
+
+data: {"type": "chunk", "content": "像是"}
+
+data: {"type": "chunk", "content": "野"}
+
+data: {"type": "chunk", "content": "店"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "空气"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "混"}
+
+data: {"type": "chunk", "content": "着"}
+
+data: {"type": "chunk", "content": "草"}
+
+data: {"type": "chunk", "content": "腥"}
+
+data: {"type": "chunk", "content": "、"}
+
+data: {"type": "chunk", "content": "泥土"}
+
+data: {"type": "chunk", "content": "和"}
+
+data: {"type": "chunk", "content": "远处"}
+
+data: {"type": "chunk", "content": "焚烧"}
+
+data: {"type": "chunk", "content": "秸秆"}
+
+data: {"type": "chunk", "content": "的味道"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "试图"}
+
+data: {"type": "chunk", "content": "站起来"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "膝盖"}
+
+data: {"type": "chunk", "content": "一"}
+
+data: {"type": "chunk", "content": "软"}
+
+data: {"type": "chunk", "content": "又"}
+
+data: {"type": "chunk", "content": "跪"}
+
+data: {"type": "chunk", "content": "了下去"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "衣衫"}
+
+data: {"type": "chunk", "content": "破"}
+
+data: {"type": "chunk", "content": "得像"}
+
+data: {"type": "chunk", "content": "被人"}
+
+data: {"type": "chunk", "content": "从"}
+
+data: {"type": "chunk", "content": "乱"}
+
+data: {"type": "chunk", "content": "葬"}
+
+data: {"type": "chunk", "content": "岗"}
+
+data: {"type": "chunk", "content": "扒"}
+
+data: {"type": "chunk", "content": "出来的"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "袖"}
+
+data: {"type": "chunk", "content": "口"}
+
+data: {"type": "chunk", "content": "只剩"}
+
+data: {"type": "chunk", "content": "半"}
+
+data: {"type": "chunk", "content": "截"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "还"}
+
+data: {"type": "chunk", "content": "沾"}
+
+data: {"type": "chunk", "content": "着"}
+
+data: {"type": "chunk", "content": "不明的"}
+
+data: {"type": "chunk", "content": "褐色"}
+
+data: {"type": "chunk", "content": "痕迹"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "没有"}
+
+data: {"type": "chunk", "content": "钱"}
+
+data: {"type": "chunk", "content": "袋"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "没有"}
+
+data: {"type": "chunk", "content": "路"}
+
+data: {"type": "chunk", "content": "引"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "没有任何"}
+
+data: {"type": "chunk", "content": "能"}
+
+data: {"type": "chunk", "content": "证明"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "是个"}
+
+data: {"type": "chunk", "content": "活"}
+
+data: {"type": "chunk", "content": "人的"}
+
+data: {"type": "chunk", "content": "东西"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "记忆"}
+
+data: {"type": "chunk", "content": "像"}
+
+data: {"type": "chunk", "content": "被"}
+
+data: {"type": "chunk", "content": "雨水"}
+
+data: {"type": "chunk", "content": "泡"}
+
+data: {"type": "chunk", "content": "烂"}
+
+data: {"type": "chunk", "content": "的"}
+
+data: {"type": "chunk", "content": "纸"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "你知道"}
+
+data: {"type": "chunk", "content": "“"}
+
+data: {"type": "chunk", "content": "黄"}
+
+data: {"type": "chunk", "content": "巾"}
+
+data: {"type": "chunk", "content": "”"}
+
+data: {"type": "chunk", "content": "这个词"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "它"}
+
+data: {"type": "chunk", "content": "应该"}
+
+data: {"type": "chunk", "content": "很重要"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "应该"}
+
+data: {"type": "chunk", "content": "意味着"}
+
+data: {"type": "chunk", "content": "什么"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "但你"}
+
+data: {"type": "chunk", "content": "拼命"}
+
+data: {"type": "chunk", "content": "想"}
+
+data: {"type": "chunk", "content": "的时候"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "脑子里"}
+
+data: {"type": "chunk", "content": "只有"}
+
+data: {"type": "chunk", "content": "模糊"}
+
+data: {"type": "chunk", "content": "的金"}
+
+data: {"type": "chunk", "content": "色"}
+
+data: {"type": "chunk", "content": "影子"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "史"}
+
+data: {"type": "chunk", "content": "书上"}
+
+data: {"type": "chunk", "content": "怎么写"}
+
+data: {"type": "chunk", "content": "来着"}
+
+data: {"type": "chunk", "content": "？"}
+
+data: {"type": "chunk", "content": "黄"}
+
+data: {"type": "chunk", "content": "巾"}
+
+data: {"type": "chunk", "content": "之"}
+
+data: {"type": "chunk", "content": "乱"}
+
+data: {"type": "chunk", "content": "？"}
+
+data: {"type": "chunk", "content": "不对"}
+
+data: {"type": "chunk", "content": "……"}
+
+data: {"type": "chunk", "content": "刚才"}
+
+data: {"type": "chunk", "content": "那个"}
+
+data: {"type": "chunk", "content": "黑影"}
+
+data: {"type": "chunk", "content": "说的是"}
+
+data: {"type": "chunk", "content": "什么"}
+
+data: {"type": "chunk", "content": "？"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "'"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "道"}
+
+data: {"type": "chunk", "content": "的人"}
+
+data: {"type": "chunk", "content": "？"}
+
+data: {"type": "chunk", "content": "'\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "那是"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "还没"}
+
+data: {"type": "chunk", "content": "完全"}
+
+data: {"type": "chunk", "content": "清醒"}
+
+data: {"type": "chunk", "content": "时"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "一个"}
+
+data: {"type": "chunk", "content": "披"}
+
+data: {"type": "chunk", "content": "着"}
+
+data: {"type": "chunk", "content": "蓑"}
+
+data: {"type": "chunk", "content": "衣"}
+
+data: {"type": "chunk", "content": "的黑"}
+
+data: {"type": "chunk", "content": "影"}
+
+data: {"type": "chunk", "content": "凑"}
+
+data: {"type": "chunk", "content": "近"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "问"}
+
+data: {"type": "chunk", "content": "的话"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "张"}
+
+data: {"type": "chunk", "content": "了"}
+
+data: {"type": "chunk", "content": "张嘴"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "什么"}
+
+data: {"type": "chunk", "content": "也"}
+
+data: {"type": "chunk", "content": "答"}
+
+data: {"type": "chunk", "content": "不上"}
+
+data: {"type": "chunk", "content": "来"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "他"}
+
+data: {"type": "chunk", "content": "盯着"}
+
+data: {"type": "chunk", "content": "你的"}
+
+data: {"type": "chunk", "content": "脸"}
+
+data: {"type": "chunk", "content": "看了"}
+
+data: {"type": "chunk", "content": "两"}
+
+data: {"type": "chunk", "content": "秒"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "转身"}
+
+data: {"type": "chunk", "content": "跑"}
+
+data: {"type": "chunk", "content": "进"}
+
+data: {"type": "chunk", "content": "雨"}
+
+data: {"type": "chunk", "content": "幕"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "跑"}
+
+data: {"type": "chunk", "content": "得"}
+
+data: {"type": "chunk", "content": "比"}
+
+data: {"type": "chunk", "content": "逃"}
+
+data: {"type": "chunk", "content": "兵"}
+
+data: {"type": "chunk", "content": "还"}
+
+data: {"type": "chunk", "content": "快"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "靠着"}
+
+data: {"type": "chunk", "content": "田"}
+
+data: {"type": "chunk", "content": "埂"}
+
+data: {"type": "chunk", "content": "坐"}
+
+data: {"type": "chunk", "content": "了很久"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "雨"}
+
+data: {"type": "chunk", "content": "声"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "传来"}
+
+data: {"type": "chunk", "content": "断"}
+
+data: {"type": "chunk", "content": "断续"}
+
+data: {"type": "chunk", "content": "续"}
+
+data: {"type": "chunk", "content": "的人"}
+
+data: {"type": "chunk", "content": "声"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "顺着"}
+
+data: {"type": "chunk", "content": "风"}
+
+data: {"type": "chunk", "content": "飘"}
+
+data: {"type": "chunk", "content": "过来"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "又"}
+
+data: {"type": "chunk", "content": "像是"}
+
+data: {"type": "chunk", "content": "被"}
+
+data: {"type": "chunk", "content": "风吹"}
+
+data: {"type": "chunk", "content": "散的"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "'"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "力"}
+
+data: {"type": "chunk", "content": "士"}
+
+data: {"type": "chunk", "content": "昨夜"}
+
+data: {"type": "chunk", "content": "又"}
+
+data: {"type": "chunk", "content": "拿"}
+
+data: {"type": "chunk", "content": "下一"}
+
+data: {"type": "chunk", "content": "县"}
+
+data: {"type": "chunk", "content": "''"}
+
+data: {"type": "chunk", "content": "大"}
+
+data: {"type": "chunk", "content": "贤"}
+
+data: {"type": "chunk", "content": "良"}
+
+data: {"type": "chunk", "content": "师"}
+
+data: {"type": "chunk", "content": "……"}
+
+data: {"type": "chunk", "content": "'"}
+
+data: {"type": "chunk", "content": "后面"}
+
+data: {"type": "chunk", "content": "的话"}
+
+data: {"type": "chunk", "content": "就"}
+
+data: {"type": "chunk", "content": "听"}
+
+data: {"type": "chunk", "content": "不清"}
+
+data: {"type": "chunk", "content": "了"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "大"}
+
+data: {"type": "chunk", "content": "贤"}
+
+data: {"type": "chunk", "content": "良"}
+
+data: {"type": "chunk", "content": "师"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "这个名字"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "记得"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "但"}
+
+data: {"type": "chunk", "content": "你不"}
+
+data: {"type": "chunk", "content": "记得"}
+
+data: {"type": "chunk", "content": "他"}
+
+data: {"type": "chunk", "content": "该"}
+
+data: {"type": "chunk", "content": "叫什么"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "低头"}
+
+data: {"type": "chunk", "content": "看"}
+
+data: {"type": "chunk", "content": "自己的"}
+
+data: {"type": "chunk", "content": "手"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "这是一"}
+
+data: {"type": "chunk", "content": "双"}
+
+data: {"type": "chunk", "content": "没"}
+
+data: {"type": "chunk", "content": "干"}
+
+data: {"type": "chunk", "content": "过"}
+
+data: {"type": "chunk", "content": "重"}
+
+data: {"type": "chunk", "content": "活"}
+
+data: {"type": "chunk", "content": "的手"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "指"}
+
+data: {"type": "chunk", "content": "节"}
+
+data: {"type": "chunk", "content": "分明"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "没有"}
+
+data: {"type": "chunk", "content": "茧"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你不是"}
+
+data: {"type": "chunk", "content": "农夫"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "不是"}
+
+data: {"type": "chunk", "content": "兵"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "也不是"}
+
+data: {"type": "chunk", "content": "商"}
+
+data: {"type": "chunk", "content": "贾"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "是个"}
+
+data: {"type": "chunk", "content": "不该"}
+
+data: {"type": "chunk", "content": "出现在"}
+
+data: {"type": "chunk", "content": "这里"}
+
+data: {"type": "chunk", "content": "的人"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\\"}
+
+data: {"type": "chunk", "content": "n"}
+
+data: {"type": "chunk", "content": "\\n"}
+
+data: {"type": "chunk", "content": "远处的"}
+
+data: {"type": "chunk", "content": "灯火"}
+
+data: {"type": "chunk", "content": "又"}
+
+data: {"type": "chunk", "content": "亮"}
+
+data: {"type": "chunk", "content": "了几"}
+
+data: {"type": "chunk", "content": "盏"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "有人在"}
+
+data: {"type": "chunk", "content": "靠近"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "options"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " ["}
+
+data: {"type": "chunk", "content": "{\""}
+
+data: {"type": "chunk", "content": "text"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "迎"}
+
+data: {"type": "chunk", "content": "向"}
+
+data: {"type": "chunk", "content": "灯火"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "不管"}
+
+data: {"type": "chunk", "content": "那里"}
+
+data: {"type": "chunk", "content": "是"}
+
+data: {"type": "chunk", "content": "村庄"}
+
+data: {"type": "chunk", "content": "还是"}
+
+data: {"type": "chunk", "content": "野"}
+
+data: {"type": "chunk", "content": "店"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "先"}
+
+data: {"type": "chunk", "content": "弄"}
+
+data: {"type": "chunk", "content": "到"}
+
+data: {"type": "chunk", "content": "吃的"}
+
+data: {"type": "chunk", "content": "和"}
+
+data: {"type": "chunk", "content": "干"}
+
+data: {"type": "chunk", "content": "衣服"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "type"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "major"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "t"}
+
+data: {"type": "chunk", "content": "ension"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": "25"}
+
+data: {"type": "chunk", "content": ","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "effect"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "进入"}
+
+data: {"type": "chunk", "content": "人"}
+
+data: {"type": "chunk", "content": "烟"}
+
+data: {"type": "chunk", "content": "之地"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "可能"}
+
+data: {"type": "chunk", "content": "遇到"}
+
+data: {"type": "chunk", "content": "接纳"}
+
+data: {"type": "chunk", "content": "你的人"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "也可能"}
+
+data: {"type": "chunk", "content": "暴露"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "无"}
+
+data: {"type": "chunk", "content": "户籍"}
+
+data: {"type": "chunk", "content": "的事实"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "但"}
+
+data: {"type": "chunk", "content": "饥饿"}
+
+data: {"type": "chunk", "content": "比"}
+
+data: {"type": "chunk", "content": "风险"}
+
+data: {"type": "chunk", "content": "更"}
+
+data: {"type": "chunk", "content": "迫切"}
+
+data: {"type": "chunk", "content": "。\""}
+
+data: {"type": "chunk", "content": "},"}
+
+data: {"type": "chunk", "content": " {\""}
+
+data: {"type": "chunk", "content": "text"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "等"}
+
+data: {"type": "chunk", "content": "那个"}
+
+data: {"type": "chunk", "content": "逃"}
+
+data: {"type": "chunk", "content": "走的"}
+
+data: {"type": "chunk", "content": "黑影"}
+
+data: {"type": "chunk", "content": "回来"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "他"}
+
+data: {"type": "chunk", "content": "问"}
+
+data: {"type": "chunk", "content": "你是不是"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "道"}
+
+data: {"type": "chunk", "content": "的人"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "他"}
+
+data: {"type": "chunk", "content": "一定"}
+
+data: {"type": "chunk", "content": "知道"}
+
+data: {"type": "chunk", "content": "些什么"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "type"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "minor"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "t"}
+
+data: {"type": "chunk", "content": "ension"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": "40"}
+
+data: {"type": "chunk", "content": ","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "effect"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "黑影"}
+
+data: {"type": "chunk", "content": "可能"}
+
+data: {"type": "chunk", "content": "带"}
+
+data: {"type": "chunk", "content": "人来"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "也可能"}
+
+data: {"type": "chunk", "content": "永远"}
+
+data: {"type": "chunk", "content": "不"}
+
+data: {"type": "chunk", "content": "回来"}
+
+data: {"type": "chunk", "content": "。"}
+
+data: {"type": "chunk", "content": "但你"}
+
+data: {"type": "chunk", "content": "需要在"}
+
+data: {"type": "chunk", "content": "开口"}
+
+data: {"type": "chunk", "content": "之前"}
+
+data: {"type": "chunk", "content": "先"}
+
+data: {"type": "chunk", "content": "搞清楚"}
+
+data: {"type": "chunk", "content": "："}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "道"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "到底是什么"}
+
+data: {"type": "chunk", "content": "？"}
+
+data: {"type": "chunk", "content": "\"},"}
+
+data: {"type": "chunk", "content": " {\""}
+
+data: {"type": "chunk", "content": "text"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "原地"}
+
+data: {"type": "chunk", "content": "不动"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "先"}
+
+data: {"type": "chunk", "content": "拼"}
+
+data: {"type": "chunk", "content": "凑"}
+
+data: {"type": "chunk", "content": "记忆"}
+
+data: {"type": "chunk", "content": "——"}
+
+data: {"type": "chunk", "content": "你"}
+
+data: {"type": "chunk", "content": "记得"}
+
+data: {"type": "chunk", "content": "“"}
+
+data: {"type": "chunk", "content": "黄"}
+
+data: {"type": "chunk", "content": "巾"}
+
+data: {"type": "chunk", "content": "”，"}
+
+data: {"type": "chunk", "content": "世界"}
+
+data: {"type": "chunk", "content": "却说"}
+
+data: {"type": "chunk", "content": "“"}
+
+data: {"type": "chunk", "content": "黄金"}
+
+data: {"type": "chunk", "content": "”，"}
+
+data: {"type": "chunk", "content": "这"}
+
+data: {"type": "chunk", "content": "之间"}
+
+data: {"type": "chunk", "content": "一定"}
+
+data: {"type": "chunk", "content": "有你"}
+
+data: {"type": "chunk", "content": "该"}
+
+data: {"type": "chunk", "content": "想"}
+
+data: {"type": "chunk", "content": "通"}
+
+data: {"type": "chunk", "content": "的事"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "type"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "minor"}
+
+data: {"type": "chunk", "content": "\","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "t"}
+
+data: {"type": "chunk", "content": "ension"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": "15"}
+
+data: {"type": "chunk", "content": ","}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "effect"}
+
+data: {"type": "chunk", "content": "\":"}
+
+data: {"type": "chunk", "content": " \""}
+
+data: {"type": "chunk", "content": "花"}
+
+data: {"type": "chunk", "content": "时间"}
+
+data: {"type": "chunk", "content": "回忆"}
+
+data: {"type": "chunk", "content": "可能"}
+
+data: {"type": "chunk", "content": "让你"}
+
+data: {"type": "chunk", "content": "想起"}
+
+data: {"type": "chunk", "content": "更多"}
+
+data: {"type": "chunk", "content": "碎片"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "但也"}
+
+data: {"type": "chunk", "content": "可能在"}
+
+data: {"type": "chunk", "content": "荒野"}
+
+data: {"type": "chunk", "content": "里"}
+
+data: {"type": "chunk", "content": "耗尽"}
+
+data: {"type": "chunk", "content": "体力"}
+
+data: {"type": "chunk", "content": "，"}
+
+data: {"type": "chunk", "content": "或"}
+
+data: {"type": "chunk", "content": "错过"}
+
+data: {"type": "chunk", "content": "接触"}
+
+data: {"type": "chunk", "content": "他人的"}
+
+data: {"type": "chunk", "content": "机会"}
+
+data: {"type": "chunk", "content": "。\""}
+
+data: {"type": "chunk", "content": "}]"}
+
+data: {"type": "chunk", "content": "}"}
+
