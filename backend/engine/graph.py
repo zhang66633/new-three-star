@@ -40,6 +40,7 @@ def director_node(state: GameState) -> dict:
                 "player_pov": plan.player_pov,
                 "locked_lines": plan.locked_lines,
                 "distance_map": plan.distance_map,
+                "music": plan.music,
             },
         },
         "skeleton_pos": plan.scene_id,

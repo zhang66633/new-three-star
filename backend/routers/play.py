@@ -56,7 +56,7 @@ async def _step_events(req: PlayRequest):
     last = result.get("last_output") or {}
     ps = result.get("meta", {}).get("plan_summary", {})
 
-    # 1. 场景事件
+    # 1. 场景事件（含 music 标记，前端据此触发关羽之歌等）
     if ps:
         yield _sse({
             "type": "scene",
@@ -65,6 +65,7 @@ async def _step_events(req: PlayRequest):
                 "chapter_label": ps.get("chapter_label", ""),
                 "title": ps.get("title", ""),
                 "location": ps.get("location", ""),
+                "music": ps.get("music", ""),
             },
         })
 

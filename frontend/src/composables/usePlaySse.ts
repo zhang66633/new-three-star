@@ -33,6 +33,13 @@ export function usePlaySse() {
   ): Promise<void> {
     isStreaming.value = true
     error.value = ''
+    let doneCalled = false
+    const fireDone = () => {
+      if (!doneCalled) {
+        doneCalled = true
+        handlers.onDone()
+      }
+    }
 
     try {
       const resp = await fetch(`${API_BASE}/api/play/step`, {
@@ -63,7 +70,7 @@ export function usePlaySse() {
           if (!trimmed.startsWith('data: ')) continue
           const payload = trimmed.slice(6)
           if (payload === '[DONE]') {
-            handlers.onDone()
+            fireDone()
             continue
           }
           try {
@@ -85,7 +92,7 @@ export function usePlaySse() {
                 handlers.onOptions(ev.options)
                 break
               case 'done':
-                handlers.onDone()
+                fireDone()
                 break
               case 'err':
                 handlers.onError?.(ev.content)
@@ -103,13 +110,13 @@ export function usePlaySse() {
           const payload = trimmed.slice(6)
           try {
             const ev = JSON.parse(payload) as StreamEvent
-            if (ev.type === 'done') handlers.onDone()
+            if (ev.type === 'done') fireDone()
             if (ev.type === 'chunk') handlers.onChunk((ev as { content: string }).content)
           } catch { /* ignore */ }
         }
       }
       // 未收到 done 也视为完成
-      handlers.onDone()
+      fireDone()
     } catch (e) {
       error.value = e instanceof Error ? e.message : String(e)
       handlers.onError?.(error.value)

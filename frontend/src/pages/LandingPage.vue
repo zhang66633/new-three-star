@@ -777,11 +777,12 @@ async function initGraph() {
   nodes.push({
     id: 'tianyi',
     name: '天意',
-    tagline: '你是天意，输入prompt改写三国世界',
+    tagline: '偶然落入此世的你，将亲历一段被蹩脚神明写歪的三国',
     color: '#ff5533',
     val: 40,
     isNebula: false,
     isMain: true,
+    desc: '雨夜醒来，无名无籍。这个世界的史书写错了每一个字，而只有你记得真相。',
   } as any)
 
   nodes.push({

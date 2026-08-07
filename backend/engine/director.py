@@ -44,6 +44,7 @@ class ScenePlan:
         self.player_pov = scene.get("player_pov", [])
         self.locked_lines = scene.get("locked_lines", [])
         self.options = scene.get("options", [])
+        self.music = scene.get("music", "")  # 场景音乐标记（guanyu=关羽之歌）
         self.distance_map = distance_map   # {角色: 远观|互动|核心}
         self.next_pos = next_pos           # 下一场景 id（由 aftereffect 决定）
 
@@ -63,6 +64,7 @@ class ScenePlan:
             "player_pov": s.get("player_pov", []),
             "locked_lines": s.get("locked_lines", []),
             "options": s.get("options", []),
+            "music": s.get("music", ""),
         }
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
 

@@ -100,7 +100,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, nextTick, onMounted, onBeforeUnmount, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import CinematicLoader from '../components/CinematicLoader.vue'
 import StreamText from '../components/StreamText.vue'
@@ -109,6 +109,7 @@ import type { GameState, OptionSpec, MemoryItem } from '../types/play'
 
 const router = useRouter()
 const { playStep, isStreaming } = usePlaySse()
+const playGuanyu = inject<() => void>('playGuanyu', () => {})
 
 // ── 状态 ──
 const gameState = ref<GameState | null>(null)
@@ -123,7 +124,16 @@ const stmList = computed<MemoryItem[]>(() => gameState.value?.memory?.stm ?? [])
 const loaderVisible = ref(true)
 const loaderTitle = ref('新三国 星空')
 const loaderChapterLabel = ref('184 年 · 颍川')
-const loaderStatus = ref('世界正在生成……')
+const loaderStatus = ref('')
+// 三国化加载文案（随机轮换，随 CinematicLoader 台词轮播同步）
+const LOADING_STATUS = [
+  '乱世将起，风云际会……',
+  '星夜赶路，千里可至……',
+  '天意难测，人事难料……',
+  '骄兵必败，哀兵必胜……',
+  '苍天已死，黄金当立……',
+  '生死不明，便是死了……',
+]
 
 // ── 初始化 ──
 onMounted(() => {
@@ -134,16 +144,21 @@ async function startGame() {
   loaderVisible.value = true
   loaderTitle.value = '新三国 星空'
   loaderChapterLabel.value = '184 年 · 颍川'
-  loaderStatus.value = '世界正在生成……'
+  loaderStatus.value = LOADING_STATUS[Math.floor(Math.random() * LOADING_STATUS.length)]
   gameState.value = null
   narrativeBlocks.value = []
   options.value = []
+  currentStreamText.value = ''
 
   await playStep('', {} as GameState, 0, {
     onChunk: (text) => {
       if (!currentStreamText.value) {
         // 首 chunk：切掉加载动画，开始流式
         loaderVisible.value = false
+        // 确保有一个空叙事块接收流式文本
+        if (narrativeBlocks.value.length === 0) {
+          narrativeBlocks.value.push({ text: '' })
+        }
       }
       currentStreamText.value += text
       updateLastBlock()
@@ -185,7 +200,7 @@ async function sendAction(action: string, tension: number) {
       updateLastBlock()
     },
     onScene: (ev) => {
-      // 场景切换：插入分隔 + 更新铭牌
+      // 场景切换：插入分隔 + 更新铭牌 + 按场景标记触发音乐
       narrativeBlocks.value.push({
         text: '',
         isScene: true,
@@ -193,7 +208,13 @@ async function sendAction(action: string, tension: number) {
       })
       loaderTitle.value = ev.scene.title
       loaderChapterLabel.value = ev.scene.chapter_label
+      loaderStatus.value = LOADING_STATUS[Math.floor(Math.random() * LOADING_STATUS.length)]
       loaderVisible.value = true
+      // 关羽之歌：仅场景注册表标记 music=guanyu 的场景触发（温酒斩华雄等）
+      const scene = ev.scene as { music?: string }
+      if (scene.music === 'guanyu') {
+        playGuanyu()
+      }
       setTimeout(() => { loaderVisible.value = false }, 1500)
     },
     onState: (state) => { gameState.value = state },
