@@ -35,6 +35,12 @@ PARAMS_NARRATIVE = {
     "temperature": 0.7,
 }
 
+# 玩家叙事生成参数（新三国 星空 /api/play）
+# 玩家叙事需要保持人物一致性，温度比天意模式收敛
+PARAMS_PLAY = {
+    "temperature": 0.8,
+}
+
 # 格式转换参数（低温=更听话）
 PARAMS_FORMAT = {
     "temperature": 0.3,
