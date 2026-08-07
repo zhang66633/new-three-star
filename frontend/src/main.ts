@@ -9,7 +9,7 @@ const router = createRouter({
     { path: '/', name: 'landing', component: () => import('./pages/LandingPage.vue') },
     { path: '/worldview/:id', name: 'explore', component: () => import('./pages/ExplorePage.vue') },
     { path: '/create', name: 'create', component: () => import('./pages/CreatePage.vue') },
-    { path: '/play', name: 'play', component: () => import('./pages/TianyiPage.vue') },
+    { path: '/play', name: 'play', component: () => import('./pages/PlayPage.vue') },
   ],
 })
 
