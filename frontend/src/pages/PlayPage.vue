@@ -467,11 +467,11 @@ function inkSplash(e: PointerEvent) {
   const y = e.clientY
   // 多层金墨波纹（5 圈同心，逐层放大、错峰扩散）
   const RINGS = [
-    { max: 70,  delay: 0,    dur: 0.55, bw: 2 },
-    { max: 100, delay: 60,   dur: 0.65, bw: 1.6 },
-    { max: 130, delay: 120,  dur: 0.75, bw: 1.3 },
-    { max: 160, delay: 180,  dur: 0.85, bw: 1.1 },
-    { max: 190, delay: 240,  dur: 0.95, bw: 0.9 },
+    { max: 70,  delay: 0,   dur: 0.85, bw: 2 },
+    { max: 100, delay: 100, dur: 0.95, bw: 1.6 },
+    { max: 130, delay: 200, dur: 1.05, bw: 1.3 },
+    { max: 160, delay: 300, dur: 1.15, bw: 1.1 },
+    { max: 190, delay: 400, dur: 1.25, bw: 0.9 },
   ]
   for (const r of RINGS) {
     const ripple = document.createElement('span')
