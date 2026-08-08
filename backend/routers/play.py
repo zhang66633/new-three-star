@@ -100,6 +100,13 @@ async def _step_events(req: PlayRequest):
             elif kind == "__result__":
                 result = payload
                 last = result.get("last_output") or {}
+                # 名场面目标机制：错过关键名场面 → 失败事件（前端提示 + 读档重打）
+                if result.get("fame_missed"):
+                    yield _sse({"type": "fail", "content": "你错过了关键名场面（时节已过或未就位）——历史如水流过，未能亲历。读档回到上个名场面重打。"})
+                # 名场面目标机制：进入关键名场面开始前自动存档（服务端持久化，覆盖式）
+                if result.get("auto_save"):
+                    from db import save_game
+                    await save_game("last_fame", json.dumps(result, ensure_ascii=False), label="名场面")
                 # 按最终校验后的 narrative 分块流式发送
                 narrative = last.get("narrative", "")
                 for i in range(0, len(narrative), 40):
@@ -141,3 +148,30 @@ async def play_step(req: PlayRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class SaveRequest(BaseModel):
+    game_state: dict = Field(default_factory=dict)
+    save_id: str = Field(default="last_fame", max_length=64)
+
+
+@router.post("/play/save")
+async def play_save(req: SaveRequest):
+    """手动存档：当前 GameState 落库（关键名场面前由引擎自动存 last_fame）。"""
+    from db import save_game
+    await save_game(req.save_id, json.dumps(req.game_state, ensure_ascii=False), label="手动")
+    return {"ok": True}
+
+
+class LoadRequest(BaseModel):
+    save_id: str = Field(default="last_fame", max_length=64)
+
+
+@router.post("/play/load")
+async def play_load(req: LoadRequest):
+    """读档：返回存档的 GameState（失败/手动读档用）。"""
+    from db import get_game
+    state_json = await get_game(req.save_id)
+    if state_json is None:
+        return {"ok": False, "content": "无此存档"}
+    return {"ok": True, "state": json.loads(state_json)}

@@ -154,6 +154,12 @@ CHAPTER_CLOCK = {
 }
 
 
+def is_fame_scene(scene_id: str) -> bool:
+    """是否关键名场面场景（fame_moment=true）。"""
+    scene = load_registry().get(scene_id) or {}
+    return bool(scene.get("fame_moment"))
+
+
 def fame_should_block_advance(scene_id: str, state: dict) -> str:
     """名场面推进门禁：返回 ''（放行）/ 'wait'（时节未到，驻留）/ 'miss'（错过）。
 

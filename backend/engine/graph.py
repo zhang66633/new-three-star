@@ -12,7 +12,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, START, END
 
 from .state import GameState, new_game_state, from_dict, to_dict
-from .director import choose_scene, ScenePlan, fame_should_block_advance, CHAPTER_CLOCK, _SEASON_ORDER
+from .director import choose_scene, ScenePlan, fame_should_block_advance, is_fame_scene, CHAPTER_CLOCK, _SEASON_ORDER
 from .writer import narrate
 from .validator import validate
 from .corrector import classify_tension, apply_correction
@@ -336,6 +336,9 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                 if gate == "":
                     result["skeleton_pos"] = next_pos
                     result["scene_turns"] = 1  # 进入下一场景，驻留计数重置
+                    # 名场面目标机制：进入关键名场面 → 标记自动存档点（路由层落库，读档重打）
+                    if is_fame_scene(next_pos):
+                        result["auto_save"] = next_pos
                 elif gate == "miss":
                     # 错过关键名场面 → 标记失败（前端提示失败 + 读档回上个名场面重打）
                     result["skeleton_pos"] = next_pos
