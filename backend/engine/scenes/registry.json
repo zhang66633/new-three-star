@@ -1,7 +1,7 @@
 {
  "P1_s1_rain": {
   "scene_id": "P1_s1_rain",
-  "chapter": "P1 黄巾风起",
+  "chapter": "P1 黄金风起",
   "chapter_label": "184 年 · 颍川",
   "year": 184,
   "season": "春",
@@ -45,7 +45,7 @@
  },
  "P1_s2_gold": {
   "scene_id": "P1_s2_gold",
-  "chapter": "P1 黄巾风起",
+  "chapter": "P1 黄金风起",
   "chapter_label": "184 年 · 颍川",
   "year": 184,
   "season": "春",
@@ -101,7 +101,7 @@
  },
  "P1_s3_leap": {
   "scene_id": "P1_s3_leap",
-  "chapter": "P1 黄巾风起",
+  "chapter": "P1 黄金风起",
   "chapter_label": "184 → 189 年",
   "year": 189,
   "season": "秋",

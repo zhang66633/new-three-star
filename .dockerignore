@@ -16,9 +16,11 @@ venv/
 # RAG 索引（构建产物）
 backend/knowledge/rag_index.pkl
 
-# 前端依赖与构建缓存（注意：frontend/dist 是 Dockerfile 的 COPY 源，不能忽略）
+# 前端依赖与构建缓存（frontend/dist 由 Dockerfile Stage-1 npm run build 在镜像内生成；
+# 工作区的 dist 是本地构建产物，忽略之，避免把旧构建带进镜像）
 node_modules/
 frontend/.vite/
+frontend/dist/
 
 # 素材大文件（脚本 OCR 等）
 materials/script_ocr/

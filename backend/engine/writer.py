@@ -6,11 +6,12 @@ Writer（编剧层 · 唯一 LLM 生成调用）
 要点：
 - 人设分层注入（远观=轻量 / 互动=完整人设卡 / 核心=完整+专属机制）
 - 世界侧零提示铁律（prompt 明文）
-- 后处理：services.validator 确定性修复 + services.deslop 去AI味
+- 后处理：services.deslop 去AI味（services.validator 已并入 engine/validator，旧文件已删除）
 """
 import json
 import logging
 import os
+import re
 
 from .state import GameState
 from .director import ScenePlan
@@ -25,6 +26,10 @@ KNOWN_NAMES = {
     "华雄", "颜良", "文丑", "邢道荣", "许攸", "蔡瑁", "徐庶", "法正", "孙坚",
     "孙策", "吕伯奢", "汉献帝", "小黄门", "黄金兵", "老者", "黑影", "乡绅",
 }
+
+# 泛型/群类角色键：非具体个体（黄金兵=复数溃兵群、老者/黑影/乡绅=跨章复用的人设原型、小黄门=职衔）。
+# 关系/信任不做持久化——同一键跨章累计会把无数不同个体混成一个值（如不同溃兵群共享 relations["黄金兵"]）。
+GENERIC_NAMES = {"黄金兵", "老者", "黑影", "乡绅", "小黄门"}
 
 # 人设分层注入（决策 8）
 PERSONA_LIGHT = {
@@ -107,18 +112,23 @@ WRITER_INSTRUCTION = """
 【在场角色人设】{personas}
 
 【输出要求】
-1. 生成 600-1000 字叙事正文（第二人称"你"），描写当前场景
+1. 生成 600-1000 字叙事正文（第二人称"你"）。若本场景刚进入（历史里尚无本场景叙事），可交代场景环境；若已在场景中途（历史里有本场景上一拍叙事），**必须承接上一拍继续推进，严禁重新描写已发生过的开场**（不得再次"你醒来""你刚到""夜色中你立于……"等已演出过的起手），每拍都是连续镜头，只写这拍新发生的事
 2. 玩家视角差异通过玩家内心/观察自然呈现（如：你记得史书上写的是'黄巾'……），但世界侧一切正常
-3. 基调"轻松网文"：语言利落、节奏明快，多用短句短段；画面感保留，但忌堆叠比喻意象、忌抒情长句、忌过度蒙太奇；说人话
-4. 叙事语气带乐子人的轻盈——即使场景沉重（雨夜/杀戮/悲剧），叙述也不煽情不压抑，保持轻快的看戏感
-5. 感官细节覆盖至少两类（视觉/听觉优先），点到即止；以动作、对话推进为主，心理简洁带戏谑，不冗长不端架子
+3. 基调"轻松幽默网文"：语言利落、节奏明快、说人话；多用短句短段，一行一镜头；画面感保留但忌堆叠意象、忌抒情长句、忌过度蒙太奇。把"乐子人看戏感"放最前面——沉重场面也先幽默后紧张，先搞笑再出血
+4. 叙述者是"乐子人"：用看戏的轻快口吻讲三国，世界越惨越荒唐旁白越带劲；NPC 越严肃，叙述越要扒他一层滑稽；灾难场合用反差吐槽（如满城兵荒马乱，偏偏你饿得肚子先叫）；绝不煽情、绝不诉苦、绝不上价值
+5. 玩家内心是"折棒轻吐槽"：懒洋洋、见惯不怪的旁观语气，对大场面毒舌但不 meta；世界的不对劲只用内心暗暗嘀咕（如"春天一闭眼就是深秋，合着这日子是会飞的"），不下结论、不点破、不宣告；心理简洁带戏谑
+5b. 感官细节覆盖至少两类（视觉/听觉优先），点到即止；以动作、对话推进为主，不冗长不端架子
 6. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）
 7. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，不要 ```json，直接输出 JSON 对象），格式：
-{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}]}}
+{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}}}
 8. 严禁全知旁白宣告世界侧的无觉察（如'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
 9. 选项 text/effect 严禁 meta 词与现代词出口给 NPC（如"穿越者""现代""剧本"）；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
 10. 若发生时空跳跃（跨年/大段路程），叙事须显式交代（如'数月后''几天路程'），不得无标记硬切
-11. 已在更早场景揭示过的世界差异（如黄金/黄巾）不再重复强调；仅当出现新信息时一笔带过（如'老样子，黄金'），不得每场都当作新发现来写""".strip()
+11. 已在更早场景揭示过的世界差异（如黄金/黄巾）不再重复强调；仅当出现新信息时一笔带过（如'老样子，黄金'），不得每场都当作新发现来写
+12. 派系名称克制：'黄金军''黄金兵'等带'黄金'的词每场至多出现 1-2 次，其余一律用代称（贼军、溃兵、那支人马、叛军、他们）；不得反复念叨'黄金''黄金当立'——口号只按锁定台词逐字出现
+13. 关系/信任按角色分别给出：relations_delta、trust_delta 里，为本场真正与玩家互动或在场的每个角色给出**各自独立**的数值（-8~+8，正=好感/信任上升，负=下降）；数值须因角色而异，严禁所有角色填同一值；没实际互动的角色不要列入
+14. 幽默手法（每场至少用 2 种，点到即止不过度）：① 反差/荒诞——严肃场面混入鸡毛蒜皮；② 冷幽默——一本正经说胡话；③ 夸张——小事说成大场面；④ 自嘲——无名氏的自我调侃；⑤ 看戏点评——对历史名场面隔岸观火；⑥ 巧合梗——蹩脚世界的巧合堆叠（从玩家视角吐槽）。严禁 meta 词、严禁全知旁白、严禁"点明不对劲"
+15. 若玩家本拍动作离谱/越权/meta（试图改变世界规则、召唤现代事物、要求创造/作弊/上帝模式、命令 NPC 做不可能之事等）：**世界不得真的改变**——叙事用乐子人语气幽默拒绝（旁白或 NPC 给一句嘲讽吐槽，如"你咋不上天呢？"），动作滑稽落空、无实际后果；选项须含"换个说法/再想想"等重输出口，不推进主线；NPC 把玩家的话当疯话自然接住，不把 meta 词当回事""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -379,6 +389,31 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     if retry:
         instruction += "\n\n【上次校验失败原因（必须针对性修复）】\n" + "\n".join(f"- {r}" for r in retry)
 
+    # 上一拍结尾注入：作为接续锚点，让 LLM 从结尾自然接续，且明确禁止复述这段结尾。
+    # 只锚定同一场景的上一拍（history 条目带 scene_id 标签；旧存档无标签则回退最近任意一条）。
+    # 跨场景时不注入，让规则 1 的"刚进入场景可交代环境"分支生效，避免拖旧场景结尾续写新场景开场。
+    prev_tail = ""
+    for h in reversed(state.get("history", [])):
+        if h.get("assistant") and (not h.get("scene_id") or h.get("scene_id") == plan.scene_id):
+            prev_tail = h["assistant"][-200:]
+            break
+    if prev_tail:
+        instruction += "\n\n【上一拍结尾（本拍从这里自然接续；严禁复述/重述/铺垫这段剧情）】\n……" + prev_tail
+
+    # 离谱动作检测：meta/越权/作弊类 free-input → 标记让 LLM 按规则 15 嘲讽拒绝 + 重输出口
+    # 只保留明确的多字 meta/作弊短语。不用"系统/无限/召唤/法术/传送/复制"等常用词做子串拦截，
+    # 它们会误伤正常 RP（"系统地分析局势""无限感激""召唤兵丁抬走尸体""把文书传送给洛阳"），
+    # 甚至 LLM 生成的合法选项（含"传送"等词）被点击后自触发。
+    _ABSURD_KW = ("创造模式", "上帝模式", "作弊", "开挂", "金手指", "控制台",
+                  "存档", "读档", "退出游戏", "结束游戏", "新建世界", "我是玉皇大帝")
+    last_user = ""
+    for h in reversed(state.get("history", [])):
+        if h.get("user"):
+            last_user = h["user"]
+            break
+    if last_user and any(k in last_user for k in _ABSURD_KW):
+        instruction += "\n\n【注意】玩家本拍动作疑似离谱/越权/meta（改世界规则/作弊/召唤等）。按规则 15 处理：世界幽默拒绝 + 嘲讽吐槽 + 选项给重输出口，剧情不推进。"
+
     messages = [{"role": "system", "content": WORLD_BASE}]
     # 状态面板作为第二个 system message
     messages.append({"role": "system", "content": context_panel})
@@ -403,7 +438,6 @@ def parse_output(text: str) -> dict:
     except json.JSONDecodeError:
         pass
     # 尝试提取 {...} 块
-    import re
     m = re.search(r'\{.*\}', text, re.S)
     if m:
         try:
@@ -412,8 +446,26 @@ def parse_output(text: str) -> dict:
                 return data
         except json.JSONDecodeError:
             pass
-    # 兜底：文本为叙事，选项为空
-    return {"narrative": text, "options": []}
+    # 兜底：文本为叙事，选项为空。若正文后粘连残缺 JSON（截断时），剥离之再给玩家
+    return {"narrative": _strip_json_tail(text), "options": []}
+
+
+def _strip_json_tail(text: str) -> str:
+    """剥离叙事末尾粘连的残缺 JSON 尾巴（LLM 截断时 parse 失败，兜底 narrative 会带
+    `"options"`/`"relations_delta"` 等片段直接给玩家看）。
+
+    仅当文本以 `{"narrative": "` 开头才处理：正文 = 引号后到下一个 `",` 或 `"}` 结束。
+    中文叙事正常不含裸 ASCII 双引号，该启发式在兜底路径（已退化的输出）下可接受。
+    """
+    m = re.match(r'^\s*\{\s*"narrative":\s*"(.*)', text, re.S)
+    if not m:
+        return text
+    body = m.group(1)
+    for marker in ('",', '"}'):
+        idx = body.find(marker)
+        if idx >= 0:
+            return body[:idx]
+    return body
 
 
 async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, on_chunk=None) -> dict:
@@ -429,7 +481,7 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, o
     # 收集流式输出（Phase 4 经 on_chunk 透出 SSE）
     draft = ""
     async for chunk in stream_chat(
-        messages, max_tokens=2048, **PARAMS_PLAY, stop=STOP_SEQUENCES
+        messages, max_tokens=3200, **PARAMS_PLAY, stop=STOP_SEQUENCES
     ):
         draft += chunk
         if on_chunk:
@@ -459,7 +511,7 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, o
     data["options"] = options[:3]
 
     # 后处理：从叙事文本提取 state_updates（轻量正则，不额外调 LLM）
-    extracted = _extract_state_updates(data["narrative"], data["options"], plan)
+    extracted = _extract_state_updates(data["narrative"], data["options"], plan, data)
 
     return {
         "narrative": data["narrative"],
@@ -471,8 +523,11 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, o
     }
 
 
-def _extract_state_updates(narrative: str, options: list, plan: ScenePlan) -> dict:
-    """从叙事文本提取状态更新（纯规则，不污染主 prompt，不额外调 LLM）"""
+def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_data: dict = None) -> dict:
+    """从叙事文本提取状态更新（纯规则，不污染主 prompt，不额外调 LLM）
+    llm_data: LLM 输出的 JSON（可选）——其中的 relations_delta/trust_delta 按角色给出独立变化，优先采用；
+    未被 LLM 覆盖的互动角色退回全局情绪启发式。
+    """
     result: dict = {"memory_add": [], "relations_delta": {}, "trust_delta": {},
                     "foreshadowing_add": [], "rumors_add": [], "flags_add": []}
 
@@ -487,8 +542,7 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan) -> di
             break
     result["memory_add"] = [first_sentence[:80]]
 
-    # 2. 关系变化只作用于"实际互动角色"（锁定台词说话人 / distance_map 核心+互动），
-    # 避免叙事泛泛提到全体已知角色造成关系噪声（原实现会对所有 KNOWN_NAMES 套同一 delta）
+    # 2. 互动角色集合：锁定台词说话人（KNOWN）/ distance_map 核心+互动
     interact_names = set()
     for line in plan.locked_lines:
         sp = line.get("speaker", "")
@@ -498,24 +552,67 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan) -> di
         if dist in ("核心", "互动"):
             interact_names.add(name)
 
-    # 3. 简单上下文情感检测（只对互动角色）
-    if interact_names:
+    # 3. LLM 按角色输出的关系变化（优先）：只接受互动/已知角色、整数、限幅 ±8
+    llm_rel: dict = {}
+    llm_trust: dict = {}
+    if isinstance(llm_data, dict):
+        # 泛型/群类键（黄金兵/老者/黑影/乡绅/小黄门）不接受差分：跨章复用会混淆不同个体
+        valid = (interact_names | KNOWN_NAMES) - GENERIC_NAMES
+        # LLM 可能把差分输出成 list/string/bool 等非 dict 形态 → 逐字段 isinstance 防护，
+        # 避免 .items() 抛 AttributeError 崩掉整回合（options 已有同类类型归一，差分不能漏）。
+        # 数值：拒绝 bool（isinstance(True,int) 为真）；round 而非 int（float 2.5→2 是截断不是舍入）；
+        # 钳位 ±8，与规则 13 及启发式回退一致。
+        rel_raw = llm_data.get("relations_delta") or {}
+        tr_raw = llm_data.get("trust_delta") or {}
+        if isinstance(rel_raw, dict):
+            for k, v in rel_raw.items():
+                if k in valid and isinstance(v, (int, float)) and not isinstance(v, bool):
+                    llm_rel[k] = max(-8, min(8, round(v)))
+        if isinstance(tr_raw, dict):
+            for k, v in tr_raw.items():
+                if k in valid and isinstance(v, (int, float)) and not isinstance(v, bool):
+                    llm_trust[k] = max(-8, min(8, round(v)))
+    covered = set(llm_rel) | set(llm_trust)
+
+    # 关系差分：LLM 覆盖的角色用各自独立数值；未覆盖的互动角色退回全局情绪启发式。
+    # 泛型/群类键不持久化（见 GENERIC_NAMES），避免同一键跨章累计污染。
+    names = (interact_names | covered) - GENERIC_NAMES
+    if names:
         POS = {"帮", "救", "谢", "好", "友", "敬", "信", "护", "助", "善", "恩", "忠", "义"}
         NEG = {"敌", "杀", "恨", "贼", "疑", "怒", "逃", "谎", "骗", "叛", "奸", "恶"}
         pos_count = sum(1 for w in POS if w in narrative)
         neg_count = sum(1 for w in NEG if w in narrative)
+        rel_base = min(8, max(-8, (pos_count - neg_count) * 2))
 
-        for name in interact_names:
-            if name not in narrative:
-                continue  # 没提到就不动关系
-            # 好感变化：基于叙事基调 ±8 以内
-            rel_delta = min(8, max(-8, (pos_count - neg_count) * 2))
-            if rel_delta != 0:
-                result["relations_delta"][name] = rel_delta
-            # 信任变化：通常微正（见面即建立基础信任）
-            trust_delta = max(-3, min(4, rel_delta // 2 + 1))
-            if trust_delta != 0:
-                result["trust_delta"][name] = trust_delta
+        for name in names:
+            # covered 且本场声明的互动角色（锁定台词说话人 / distance_map 核心+互动）：
+            #   信任 LLM 差分，不要求叙事里字面出现名字——叙事可能用代称/尊称（如"曹孟德"→键"曹操"）
+            #   或规则 12 要求的派系代称（贼军/溃兵 → 键"黄金兵"），字面检查会静默丢弃差分。
+            # 其余（未覆盖的启发式 / covered 但仅 KNOWN 幻觉性提及）：叙事未字面提到就不动关系。
+            if name in covered and name in interact_names:
+                pass
+            elif name not in narrative:
+                continue
+            if name in covered:
+                rd = llm_rel.get(name)
+                if rd is not None and rd != 0:
+                    result["relations_delta"][name] = rd
+                td = llm_trust.get(name)
+                if td is not None:
+                    if td != 0:
+                        result["trust_delta"][name] = td
+                elif rd is not None:
+                    # LLM 给了关系但漏了信任（规则 13 未强制逐键完整）：按关系回退派生
+                    # （与启发式同公式），防该角色的信任永久冻结在旧值
+                    derived = max(-3, min(4, rd // 2 + 1))
+                    if derived != 0:
+                        result["trust_delta"][name] = derived
+            else:
+                if rel_base != 0:
+                    result["relations_delta"][name] = rel_base
+                trust_delta = max(-3, min(4, rel_base // 2 + 1))
+                if trust_delta != 0:
+                    result["trust_delta"][name] = trust_delta
 
     # 4. 伏笔检测（关键词）
     FORESHADOW_KW = {"日后", "有朝一日", "欠你", "承诺", "约定", "改日", "时机成熟",

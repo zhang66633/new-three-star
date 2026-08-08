@@ -20,7 +20,7 @@ class PlayerState(TypedDict):
 
 
 class EraState(TypedDict):
-    chapter: str             # 篇章 id（P1 黄巾风起 / P2 洛阳暗夜 / …）
+    chapter: str             # 篇章 id（P1 黄金风起 / P2 洛阳暗夜 / …）
     year: int                # 年份
     season: str              # 季节
     location: str            # 时代层面的位置
@@ -92,7 +92,7 @@ class GameState(TypedDict):
 
 
 def new_game_state() -> GameState:
-    """开局状态：P1 黄巾风起 · 雨夜醒来"""
+    """开局状态：P1 黄金风起 · 雨夜醒来"""
     return {
         "player": {
             "identity": "无名旅人",
@@ -105,7 +105,7 @@ def new_game_state() -> GameState:
             "notes": [],
         },
         "era": {
-            "chapter": "P1 黄巾风起",
+            "chapter": "P1 黄金风起",
             "year": 184,
             "season": "春",
             "location": "颍川·荒野",

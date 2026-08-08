@@ -62,9 +62,10 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 全局毛笔光标（水墨书写隐喻）；热点在笔尖 */
+/* 全局毛笔光标（水墨书写隐喻）；热点在笔尖
+   PNG ≤32×32（Windows 光标尺寸上限内，超出会被 OS 拒绝→回退旧 SVG），SVG 作 fallback */
 html, body, body * {
-  cursor: url('/cursor-brush.svg') 16 26, auto !important;
+  cursor: url('/cursor-brush.png') 5 24, url('/cursor-brush.svg') 16 26, auto !important;
 }
 /* 文本输入保持文本光标（方便打字） */
 body input, body textarea {

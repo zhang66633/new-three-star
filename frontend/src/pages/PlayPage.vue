@@ -458,55 +458,89 @@ async function startGame() {
   })
 }
 
-// ── 墨迹点击粒子（全局任意点击：双圈金墨涟漪 + 墨滴飞溅 + 中央金晕）──
+// 点击溅色：绑定当前背景(atmo)主题色——波/光/墨色随背景变化
+const SPLASH_COLORS: Record<string, { edge: string; flash: string; drop: string }> = {
+  '雨夜沉静': { edge: '#a8d4ec', flash: '#e2f3ff', drop: '#9cc8e2' },
+  '荒野苍茫': { edge: '#dcbc90', flash: '#f7e8cd', drop: '#c6a475' },
+  '战火远方': { edge: '#ff9a68', flash: '#ffddc5', drop: '#e87d50' },
+  '洛阳暗巷': { edge: '#e6c97a', flash: '#fff0c4', drop: '#cfb060' },
+  '水墨山岚': { edge: '#c6d6de', flash: '#f0f6f9', drop: '#a9bcc5' },
+  '破晓行军': { edge: '#e6c97a', flash: '#fff0c4', drop: '#cfb060' },
+  '竹林清幽': { edge: '#a7c997', flash: '#e8f2e1', drop: '#8ab07c' },
+  '黄河怒涛': { edge: '#e7c27c', flash: '#fff3c8', drop: '#d4ac6e' },
+  '帐中暖光': { edge: '#ffc65e', flash: '#fff3ce', drop: '#eab353' },
+  '雪夜孤城': { edge: '#ecf5fb', flash: '#ffffff', drop: '#d2e4f0' },
+  '星空原野': { edge: '#deeaf4', flash: '#f5faff', drop: '#c9d9e8' },
+  '血色残阳': { edge: '#db6a50', flash: '#ffd5c5', drop: '#b24e3a' },
+}
+
+// ── 墨迹点击粒子（全局点击：水面细波扩散 + 中央落点微光 + 弧线飞溅的亮墨滴）──
 function inkSplash(e: PointerEvent) {
+  // 系统减弱动态效果时静默跳过：粒子是纯装饰，不值得触犯无障碍偏好
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
   // 文本输入/文本域不触发（避免干扰打字）
   const t = e.target as HTMLElement | null
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
   const x = e.clientX
   const y = e.clientY
-  // 多层金墨波纹（5 圈同心，逐层放大、错峰扩散）
-  const RINGS = [
-    { max: 70,  delay: 0,   dur: 0.85, bw: 2 },
-    { max: 100, delay: 100, dur: 0.95, bw: 1.6 },
-    { max: 130, delay: 200, dur: 1.05, bw: 1.3 },
-    { max: 160, delay: 300, dur: 1.15, bw: 1.1 },
-    { max: 190, delay: 400, dur: 1.25, bw: 0.9 },
-  ]
-  for (const r of RINGS) {
-    const ripple = document.createElement('span')
-    ripple.className = 'click-ripple'
-    ripple.style.left = x + 'px'
-    ripple.style.top = y + 'px'
-    ripple.style.setProperty('--r-max', r.max + 'px')
-    ripple.style.setProperty('--r-dur', r.dur + 's')
-    ripple.style.setProperty('--r-delay', r.delay + 'ms')
-    ripple.style.borderWidth = r.bw + 'px'
-    document.body.appendChild(ripple)
-    ripple.addEventListener('animationend', () => ripple.remove())
+  // 当前背景主题色：溅色随 atmo 背景绑定
+  const pal = SPLASH_COLORS[currentAtmo.value] ?? SPLASH_COLORS['雨夜沉静']
+
+  // 节点自移除：animationend 主通道 + setTimeout 兜底（tab 隐藏/动画被抑制时也能清掉）
+  const selfRemove = (node: HTMLElement, ms: number) => {
+    node.addEventListener('animationend', () => node.remove())
+    setTimeout(() => node.remove(), ms)
   }
-  // 墨滴飞溅（墨色为主，掺金）——更多、更远、更大
+
+  // 1) 水面细波：3 圈薄亮缘，指数外扩、先亮后淡（克制，不糊）
+  const BASE = 220
+  const WAVES = [
+    { from: 0.1,  delay: 0,   dur: 0.8 },
+    { from: 0.45, delay: 130, dur: 0.95 },
+    { from: 0.75, delay: 260, dur: 1.1 },
+  ]
+  for (const w of WAVES) {
+    const wave = document.createElement('span')
+    wave.className = 'click-wave'
+    wave.style.left = x + 'px'
+    wave.style.top = y + 'px'
+    wave.style.width = wave.style.height = BASE + 'px'
+    wave.style.setProperty('--ws', String(w.from))
+    wave.style.setProperty('--wdur', w.dur + 's')
+    wave.style.setProperty('--wdelay', w.delay + 'ms')
+    wave.style.setProperty('--s-edge', pal.edge)
+    document.body.appendChild(wave)
+    selfRemove(wave, w.delay + w.dur * 1000 + 200)
+  }
+
+  // 2) 中央落点微光：轻闪一下即散（不是浓晕）
+  const flash = document.createElement('span')
+  flash.className = 'click-flash'
+  flash.style.left = x + 'px'
+  flash.style.top = y + 'px'
+  flash.style.setProperty('--s-flash', pal.flash)
+  document.body.appendChild(flash)
+  selfRemove(flash, 600)
+
+  // 3) 墨滴飞溅：细而密的青白水珠，上抛弧线下落，微光晕精致克制
   for (let i = 0; i < 16; i++) {
     const d = document.createElement('span')
-    d.className = 'click-droplet'
-    const angle = (Math.PI * 2 * i) / 16 + (Math.random() - 0.5) * 0.7
-    const dist = 28 + Math.random() * 44
-    d.style.setProperty('--dx', `${Math.cos(angle) * dist}px`)
-    d.style.setProperty('--dy', `${Math.sin(angle) * dist}px`)
+    d.className = 'click-drop'
+    const angle = (Math.PI * 2 * i) / 16 + (Math.random() - 0.5) * 0.8
+    const dist = 26 + Math.random() * 46
+    // toFixed(2)：避免极小的 cos/sin 序列化成指数记法（1e-15px 是非法 CSS 长度，
+    // 该声明会被丢弃，墨滴原地淡出而不飞）
+    d.style.setProperty('--dx', `${(Math.cos(angle) * dist).toFixed(2)}px`)
+    d.style.setProperty('--dy', `${(Math.sin(angle) * dist).toFixed(2)}px`)
+    d.style.setProperty('--sag', `${dist * 0.35 + 6}px`)
+    d.style.setProperty('--s-drop', pal.drop)
     d.style.left = x + 'px'
     d.style.top = y + 'px'
-    d.style.width = d.style.height = `${5 + Math.random() * 5}px`
-    d.style.background = Math.random() < 0.4 ? '#e8a838' : '#0d0d0d'
+    d.style.width = d.style.height = `${3 + Math.random() * 3}px`
+    d.style.background = `radial-gradient(circle at 35% 30%, color-mix(in srgb, white 40%, ${pal.drop}), ${pal.drop})`
     document.body.appendChild(d)
-    d.addEventListener('animationend', () => d.remove())
+    selfRemove(d, 900)
   }
-  // 中央金墨晕（点击处扩散的金光团）
-  const blot = document.createElement('span')
-  blot.className = 'click-blot'
-  blot.style.left = x + 'px'
-  blot.style.top = y + 'px'
-  document.body.appendChild(blot)
-  blot.addEventListener('animationend', () => blot.remove())
 }
 
 // ── 墨染转场（场景切换时触发）──
@@ -696,7 +730,7 @@ const eraLabel = computed(() => {
   const era = gameState.value?.era
   return era ? `${era.year} 年 · ${era.season}` : '184 年 · 春'
 })
-const eraChapter = computed(() => gameState.value?.era?.chapter ?? 'P1 黄巾风起')
+const eraChapter = computed(() => gameState.value?.era?.chapter ?? 'P1 黄金风起')
 
 const characterRels = computed(() => gameState.value?.relations ?? {})
 const trust = computed(() => gameState.value?.trust ?? {})
@@ -1594,46 +1628,65 @@ onBeforeUnmount(() => {
 
 <!-- 点击墨迹粒子：元素 append 到 document.body，scoped 会给类加 data-v 属性导致匹配不到 → 必须非 scoped -->
 <style>
-.click-ripple {
+.click-wave {
   position: fixed;
-  transform: translate(-50%, -50%);
+  left: 0; top: 0;
+  pointer-events: none;
   z-index: 99;
-  pointer-events: none;
-  width: 10px; height: 10px;
   border-radius: 50%;
-  border: 2px solid rgba(232, 168, 56, 0.8);
-  box-shadow: 0 0 12px 2px rgba(232, 168, 56, 0.4), inset 0 0 8px rgba(232, 168, 56, 0.15);
+  transform: translate(-50%, -50%) scale(var(--ws));
   opacity: 0;
-  animation: ripple-expand var(--r-dur, 0.7s) ease-out var(--r-delay, 0ms) both;
+  background: radial-gradient(
+    circle,
+    transparent 56%,
+    color-mix(in srgb, var(--s-edge, #a8d4ec) 45%, transparent) 66%, /* 波峰亮缘（薄而克制） */
+    color-mix(in srgb, var(--s-edge, #a8d4ec) 13%, transparent) 78%, /* 波后尾迹（更薄） */
+    transparent 90%
+  );
+  animation:
+    wave-grow var(--wdur, 0.9s) cubic-bezier(0.16, 1, 0.3, 1) var(--wdelay, 0ms) both,
+    wave-fade var(--wdur, 0.9s) cubic-bezier(0.3, 0, 0.55, 1) var(--wdelay, 0ms) both;
 }
-@keyframes ripple-expand {
-  0%   { width: 10px; height: 10px; opacity: 0.95; }
-  100% { width: var(--r-max, 130px); height: var(--r-max, 130px); opacity: 0; }
+@keyframes wave-grow {
+  0%   { transform: translate(-50%, -50%) scale(var(--ws)); }
+  100% { transform: translate(-50%, -50%) scale(1); }
 }
-.click-droplet {
-  position: fixed;
-  z-index: 100;
-  pointer-events: none;
-  border-radius: 50%;
-  box-shadow: 0 0 9px 2px rgba(0, 0, 0, 0.45);
-  animation: droplet-fly 0.7s ease-out both;
+@keyframes wave-fade {
+  0%   { opacity: 0.6; }
+  100% { opacity: 0; }
 }
-@keyframes droplet-fly {
-  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) scale(0.1); opacity: 0; }
-}
-.click-blot {
+
+/* 中央落点微光：小、快、轻，一闪即散 */
+.click-flash {
   position: fixed;
   transform: translate(-50%, -50%);
   z-index: 98;
   pointer-events: none;
-  width: 14px; height: 14px;
+  width: 6px; height: 6px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(232, 168, 56, 0.5) 0%, rgba(232, 168, 56, 0.16) 55%, transparent 75%);
-  animation: blot-spread 0.55s ease-out both;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--s-flash, #e2f3ff) 90%, transparent) 0%,
+    color-mix(in srgb, var(--s-flash, #e2f3ff) 28%, transparent) 45%,
+    transparent 72%);
+  animation: flash-pop 0.4s ease-out both;
 }
-@keyframes blot-spread {
-  0%   { width: 14px; height: 14px; opacity: 0.95; }
-  100% { width: 64px; height: 64px; opacity: 0; }
+@keyframes flash-pop {
+  0%   { width: 5px; height: 5px; opacity: 0.9; }
+  100% { width: 24px; height: 24px; opacity: 0; }
+}
+
+/* 亮墨滴：径向渐变模拟受光的小液滴 + 微光晕；弧线飞行（先上抛后下落） */
+.click-drop {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 50%;
+  box-shadow: 0 0 5px 0.5px color-mix(in srgb, var(--s-drop, #9cc8e2) 45%, transparent);
+  animation: drop-fly 0.65s cubic-bezier(0.16, 0.55, 0.45, 1) both;
+}
+@keyframes drop-fly {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  50%  { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.5 - var(--sag))) scale(0.75); opacity: 0.95; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + var(--sag) * 0.6)) scale(0.12); opacity: 0; }
 }
 </style>

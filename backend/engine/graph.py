@@ -309,11 +309,16 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
             else:
                 # skeleton_pos 保持当前场景（director_node 已写 plan.scene_id），续生成探索拍
                 result["scene_turns"] = scene_turns + 1
-    # 追加 assistant 叙事回历史（供 writer build_messages 的"最近6轮"看到上轮输出）
-    if action:
-        narr = (result.get("last_output") or {}).get("narrative", "")
-        if narr:
-            history = list(result.get("history", []))
-            history.append({"assistant": narr[:600]})
-            result["history"] = history[-12:]  # 防无限增长，保留最近 12 轮
+    # 追加 assistant 叙事回历史（供 writer build_messages 的"最近几轮"看到上轮输出）
+    # 存尾部（叙事末尾=故事接续点），供 build_messages 提取"上一拍结尾"作接续锚点。
+    # 附 scene_id（本回合演出的场景，director 已写入 plan_summary）：build_messages 只锚定
+    # 同一场景的上一拍结尾，跨场景不串台。
+    # 不门控 action：开局叙事（action=""）也入库，让第 2 回合（首个玩家选择）有真实的接续锚点，
+    # 规则 1 的"场景中途"分支才会触发，LLM 不会重新描写开场。
+    narr = (result.get("last_output") or {}).get("narrative", "")
+    if narr:
+        history = list(result.get("history", []))
+        ps = (result.get("meta") or {}).get("plan_summary") or {}
+        history.append({"assistant": narr[-900:], "scene_id": ps.get("scene_id", "")})
+        result["history"] = history[-12:]  # 防无限增长，保留最近 12 轮
     return to_dict(result)
