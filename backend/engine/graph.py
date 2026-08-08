@@ -102,7 +102,8 @@ async def narrate_node(state: GameState) -> dict:
 
     # 记忆检索注入（PIN + top5 LTM + STM）
     player_action = (state.get("history") or [{}])[-1].get("user", "") if state.get("history") else ""
-    memory_pack = retrieve_memories(state, f"{plan.setting} {player_action}")
+    # 检索以玩家动作为主（setting 是常量，会让开场记忆反复命中占据检索结果）
+    memory_pack = retrieve_memories(state, player_action or plan.setting)
 
     # 叙事生成（SSE 流式由 play.py 跑完引擎后分块，这里不接流式回调）
     output = await narrate(state, plan, memory_pack=memory_pack)
@@ -191,9 +192,7 @@ async def remember_node(state: GameState) -> dict:
     scene_memory = (ps.get("aftermath") or {}).get("memory_add", [])
     if not memory_adds and scene_memory:
         memory_adds = scene_memory
-    if not memory_adds and output.get("narrative"):
-        # 叙事前 60 字作最后兜底（含场景信息，去重由 stm_append 的 id 哈希处理）
-        memory_adds = [output["narrative"][:60]]
+    # （无 narrative[:60] 兜底：与 writer 的事件提取统一，避免"环境复述"进记忆）
     # 可读时间标记
     era = state.get("era", {})
     time_label = f"{era.get('year', '?')}年·{era.get('season', '?')}" if era else ""

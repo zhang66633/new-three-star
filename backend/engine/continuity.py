@@ -137,6 +137,15 @@ def after_beat(state, output, plan, player_choice: dict = None) -> dict:
             performed.add(t)
     ss["performed_lines"] = sorted(performed)
 
+    # performed_events：当拍 memory_add（LLM events 摘要 / 兜底事件句）进已演出事件，
+    # 供连续性块"已演出事件"注入 → 后续拍不重演
+    new_events = ((output or {}).get("state_updates") or {}).get("memory_add") or []
+    evts = list(ss.get("performed_events") or [])
+    for ev in new_events:
+        if ev and ev not in evts:
+            evts.append(ev)
+    ss["performed_events"] = evts[-8:]
+
     ss["first_beat_done"] = True
     ss["beat_index"] = int(ss.get("beat_index", 0)) + 1
     # 只写真实玩家选择（开局 action="" 或空文本不写）

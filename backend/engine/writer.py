@@ -120,8 +120,8 @@ WRITER_INSTRUCTION = """
 5b. 感官细节覆盖至少两类（视觉/听觉优先），点到即止；以动作、对话推进为主，不冗长不端架子
 6. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）
 7. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，不要 ```json，直接输出 JSON 对象），格式：
-{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}, "memory": "本拍客观事件摘要"}}
-其中 memory 是本拍 1 条客观事件摘要（30-60 字，写"谁/做了什么/结果"，如"黑影问话后跑掉，你决定先找地方避雨"；不写内心独白、不写风景环境；本拍无实质事件时可省略）
+{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}, "events": [{{"actor": "黑影", "action": "问话后跑掉", "result": "你决定先找地方避雨"}}]}}
+其中 events 是本拍 1-3 条关键事件（每条 {{actor, action, result}} 客观陈述，如 {{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}；不写内心独白、不写风景环境；本拍无实质事件时可省略）
 8. 严禁全知旁白宣告世界侧的无觉察（如'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
 9. 选项 text/effect 严禁 meta 词与现代词出口给 NPC（如"穿越者""现代""剧本"）；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
 10. 若发生时空跳跃（跨年/大段路程），叙事须显式交代（如'数月后''几天路程'），不得无标记硬切
@@ -506,6 +506,18 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, o
     }
 
 
+def _extract_event_sentence(narrative: str) -> str:
+    """兜底事件提取：从叙事中找"事件句"（含玩家决策/去向/动作标记），而非叙事开头的
+    环境描写；无标记时取叙事第二个完整句（第一句多为环境定位）。"""
+    EVENT_MARKS = ("你决定", "你追", "你躲", "你问", "你答", "你往", "你朝", "你走进",
+                   "你来到", "你转身", "你发现", "黑影", "跑了", "传来", "冲向", "跟上")
+    sents = [s.strip() for s in re.split(r'[。！？\n]', narrative) if s.strip()]
+    for s in sents:
+        if len(s) > 4 and any(m in s for m in EVENT_MARKS):
+            return s[:80]
+    return (sents[1] if len(sents) > 1 else (sents[0] if sents else ""))[:80]
+
+
 def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_data: dict = None) -> dict:
     """从叙事文本提取状态更新（纯规则，不污染主 prompt，不额外调 LLM）
     llm_data: LLM 输出的 JSON（可选）——其中的 relations_delta/trust_delta 按角色给出独立变化，优先采用；
@@ -514,20 +526,28 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
     result: dict = {"memory_add": [], "relations_delta": {}, "trust_delta": {},
                     "foreshadowing_add": [], "rumors_add": [], "flags_add": []}
 
-    # 1. 记忆条目：LLM 输出的 memory（本拍客观事件摘要）优先——它知道"本拍发生了什么"；
-    #    缺失/非字符串时退回叙事开头启发式（兜底，避免记忆面板存环境不存事件）
-    mem_text = llm_data.get("memory") if isinstance(llm_data, dict) else None
-    if isinstance(mem_text, str) and mem_text.strip():
-        result["memory_add"] = [mem_text.strip()[:80]]
-    else:
-        # 兜底：叙事前 120 字第一句（无 LLM memory 时）
-        first_sentence = narrative[:120].strip()
-        for sep in ("。", "！", "？", "\n"):
-            idx = first_sentence.find(sep)
-            if idx > 20:
-                first_sentence = first_sentence[:idx+1]
-                break
-        result["memory_add"] = [first_sentence[:80]]
+    # 1. 记忆条目：LLM 输出的 events[]（结构化关键事件）优先——它知道"本拍发生了什么"；
+    #    缺失/非 list 时退回事件句提取（兜底，避免记忆面板存环境不存事件）
+    if isinstance(llm_data, dict):
+        ev_list = llm_data.get("events") or []
+        if isinstance(ev_list, list):
+            parts = []
+            for e in ev_list[:3]:
+                if not isinstance(e, dict):
+                    continue
+                actor = str(e.get("actor", "") or "").strip()
+                action = str(e.get("action", "") or "").strip()
+                r = str(e.get("result", "") or "").strip()
+                s = (actor + action) if (actor and action) else (action or actor)
+                if r:
+                    s = (s + "，" + r) if s else r
+                if s:
+                    parts.append(s)
+            if parts:
+                result["memory_add"] = ["；".join(parts)[:80]]
+    if not result["memory_add"]:
+        # 兜底：从叙事提取事件句（跳过环境开场），找不到则取叙事中第二个完整句
+        result["memory_add"] = [_extract_event_sentence(narrative)]
 
     # 2. 互动角色集合：锁定台词说话人（KNOWN）/ distance_map 核心+互动
     interact_names = set()
