@@ -1419,35 +1419,6 @@ onBeforeUnmount(() => {
 .mi-pin:hover { opacity: 0.7; }
 .mi-pin.pinned { opacity: 1; }
 
-/* ── 墨迹点击粒子（全局任意点击：金墨涟漪 + 墨滴飞溅）── */
-.click-ripple {
-  position: fixed;
-  transform: translate(-50%, -50%);
-  z-index: 99;
-  pointer-events: none;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  border: 1px solid rgba(232, 168, 56, 0.55);
-  opacity: 0;
-  animation: ripple-expand 0.7s ease-out both;
-}
-@keyframes ripple-expand {
-  0%   { width: 8px; height: 8px; opacity: 0.9; }
-  100% { width: 84px; height: 84px; opacity: 0; }
-}
-.click-droplet {
-  position: fixed;
-  z-index: 100;
-  pointer-events: none;
-  border-radius: 50%;
-  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.35);
-  animation: droplet-fly 0.5s ease-out both;
-}
-@keyframes droplet-fly {
-  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) scale(0.15); opacity: 0; }
-}
-
 /* ── 墨染转场遮罩（场景切换时 1.2s 墨迹扩散）── */
 .ink-transition {
   position: fixed;
@@ -1598,5 +1569,36 @@ onBeforeUnmount(() => {
   .choice-btn:active {
     transform: none !important;
   }
+}
+</style>
+
+<!-- 点击墨迹粒子：元素 append 到 document.body，scoped 会给类加 data-v 属性导致匹配不到 → 必须非 scoped -->
+<style>
+.click-ripple {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: 99;
+  pointer-events: none;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 168, 56, 0.55);
+  opacity: 0;
+  animation: ripple-expand 0.7s ease-out both;
+}
+@keyframes ripple-expand {
+  0%   { width: 8px; height: 8px; opacity: 0.9; }
+  100% { width: 84px; height: 84px; opacity: 0; }
+}
+.click-droplet {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 50%;
+  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.35);
+  animation: droplet-fly 0.5s ease-out both;
+}
+@keyframes droplet-fly {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.15); opacity: 0; }
 }
 </style>
