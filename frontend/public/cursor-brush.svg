@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- 笔杆（竹色） -->
+  <rect x="13.5" y="1" width="5" height="12" rx="1.4" fill="#8a5a2b"/>
+  <rect x="14.3" y="1" width="1.1" height="12" fill="#a5763f" opacity="0.6"/>
+  <!-- 金属箍 -->
+  <rect x="12.8" y="12.5" width="6.4" height="2.8" rx="0.8" fill="#9aa0a6"/>
+  <!-- 笔头（墨尖） -->
+  <path d="M16 15.3 C 12 19.6 12 24.6 15 28.2 C 15.6 29 16.4 29 17 28.2 C 20 24.6 20 19.6 16 15.3 Z" fill="#0c0c0c"/>
+  <path d="M16 18 C 14.3 21.8 14.3 24.4 15.7 27" stroke="#333" stroke-width="0.7" fill="none" opacity="0.85"/>
+</svg>

@@ -138,14 +138,14 @@
             :key="i"
             class="choice-btn"
             :class="tensionClass(opt.tension)"
-            @click="sparkBurst($event.target); chooseOption(opt)"
+            @click="chooseOption(opt)"
           >
             <span class="choice-text">{{ opt.text }}</span>
             <span v-if="opt.effect" class="choice-effect">{{ opt.effect }}</span>
           </button>
         </template>
         <!-- options 缺失/被截断时的兜底：给玩家一个继续入口，避免硬卡死 -->
-        <button v-else class="choice-btn tension-mid" @click="sparkBurst($event.target); sendAction('继续前行', 0)">
+        <button v-else class="choice-btn tension-mid" @click="sendAction('继续前行', 0)">
           <span class="choice-text">继续前行……</span>
           <span class="choice-effect">（选项未及到达，先走一步）</span>
         </button>
@@ -156,7 +156,7 @@
             placeholder="或者，你想做点什么……"
             @keydown.enter="submitFree"
           />
-          <button class="free-submit" :disabled="!freeInput.trim()" @click="sparkBurst($event.target); submitFree()">行动</button>
+          <button class="free-submit" :disabled="!freeInput.trim()" @click="submitFree()">行动</button>
         </div>
       </footer>
 
@@ -364,6 +364,11 @@ const LOADING_STATUS = [
 // ── 初始化 ──
 onMounted(() => {
   startGame()
+  window.addEventListener('pointerdown', inkSplash, { passive: true })
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', inkSplash)
 })
 
 async function startGame() {
@@ -453,27 +458,34 @@ async function startGame() {
   })
 }
 
-// ── 金色粒子爆发（选项点击反馈）──
-function sparkBurst(el: EventTarget | null) {
-  if (!(el instanceof HTMLElement)) return
-  const rect = el.getBoundingClientRect()
-  const cx = rect.left + rect.width / 2
-  const cy = rect.top + rect.height / 2
-  const container = document.body
-
-  for (let i = 0; i < 18; i++) {
-    const spark = document.createElement('span')
-    spark.className = 'spark-particle'
-    const angle = (Math.PI * 2 * i) / 18 + (Math.random() - 0.5) * 0.4
-    const dist = 40 + Math.random() * 60
-    spark.style.setProperty('--sx', `${Math.cos(angle) * dist}px`)
-    spark.style.setProperty('--sy', `${Math.sin(angle) * dist}px`)
-    spark.style.left = cx + 'px'
-    spark.style.top = cy + 'px'
-    spark.style.animationDuration = `${0.5 + Math.random() * 0.4}s`
-    spark.style.animationDelay = `${Math.random() * 0.06}s`
-    container.appendChild(spark)
-    spark.addEventListener('animationend', () => spark.remove())
+// ── 墨迹点击粒子（全局任意点击：金墨涟漪 + 墨滴飞溅）──
+function inkSplash(e: PointerEvent) {
+  // 文本输入/文本域不触发（避免干扰打字）
+  const t = e.target as HTMLElement | null
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
+  const x = e.clientX
+  const y = e.clientY
+  // 金墨涟漪
+  const ripple = document.createElement('span')
+  ripple.className = 'click-ripple'
+  ripple.style.left = x + 'px'
+  ripple.style.top = y + 'px'
+  document.body.appendChild(ripple)
+  ripple.addEventListener('animationend', () => ripple.remove())
+  // 墨滴飞溅（墨色为主，掺金）
+  for (let i = 0; i < 10; i++) {
+    const d = document.createElement('span')
+    d.className = 'click-droplet'
+    const angle = (Math.PI * 2 * i) / 10 + (Math.random() - 0.5) * 0.6
+    const dist = 16 + Math.random() * 28
+    d.style.setProperty('--dx', `${Math.cos(angle) * dist}px`)
+    d.style.setProperty('--dy', `${Math.sin(angle) * dist}px`)
+    d.style.left = x + 'px'
+    d.style.top = y + 'px'
+    d.style.width = d.style.height = `${3 + Math.random() * 4}px`
+    d.style.background = Math.random() < 0.35 ? '#e8a838' : '#0d0d0d'
+    document.body.appendChild(d)
+    d.addEventListener('animationend', () => d.remove())
   }
 }
 
@@ -1407,21 +1419,33 @@ onBeforeUnmount(() => {
 .mi-pin:hover { opacity: 0.7; }
 .mi-pin.pinned { opacity: 1; }
 
-/* ── 金色粒子爆发（选项点击反馈）── */
-.spark-particle {
+/* ── 墨迹点击粒子（全局任意点击：金墨涟漪 + 墨滴飞溅）── */
+.click-ripple {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: 99;
+  pointer-events: none;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1px solid rgba(232, 168, 56, 0.55);
+  opacity: 0;
+  animation: ripple-expand 0.7s ease-out both;
+}
+@keyframes ripple-expand {
+  0%   { width: 8px; height: 8px; opacity: 0.9; }
+  100% { width: 84px; height: 84px; opacity: 0; }
+}
+.click-droplet {
   position: fixed;
   z-index: 100;
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: #e8a838;
-  box-shadow: 0 0 6px 2px rgba(232, 168, 56, 0.6);
   pointer-events: none;
-  animation: spark-fly var(--spark-dur, 0.65s) cubic-bezier(0.16, 1, 0.3, 1) both;
-  animation-delay: var(--spark-delay, 0s);
+  border-radius: 50%;
+  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.35);
+  animation: droplet-fly 0.5s ease-out both;
 }
-@keyframes spark-fly {
+@keyframes droplet-fly {
   0%   { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--sx), var(--sy)) scale(0); opacity: 0; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.15); opacity: 0; }
 }
 
 /* ── 墨染转场遮罩（场景切换时 1.2s 墨迹扩散）── */
