@@ -16,6 +16,14 @@
       </div>
     </transition>
 
+    <!-- 名场面失败提示（错过关键名场面 → 读档重打上个名场面） -->
+    <transition name="error-fade">
+      <div v-if="failed" class="error-banner fail-banner">
+        <span class="error-text">{{ failMessage }}</span>
+        <button class="error-retry" @click="reloadSave">读档重打</button>
+      </div>
+    </transition>
+
     <!-- 返回星图 -->
     <button class="back-btn" @click="goBack" aria-label="返回星图">←</button>
 
@@ -33,6 +41,7 @@
       <header class="era-banner">
         <span class="era-label">{{ eraLabel }}</span>
         <span class="era-chapter">{{ eraChapter }}</span>
+        <span v-if="worldClockLabel" class="era-clock" :title="'世界时钟 · 名场面时节行动预算'">{{ worldClockLabel }}</span>
         <span class="era-goldline"></span>
         <!-- 8 PHASE 质量指示灯 -->
         <button
@@ -252,7 +261,7 @@ import { usePlaySse } from '../composables/usePlaySse'
 import type { GameState, OptionSpec, MemoryItem, PhaseReport } from '../types/play'
 
 const router = useRouter()
-const { playStep, isStreaming } = usePlaySse()
+const { playStep, isStreaming, loadGame } = usePlaySse()
 const playGuanyu = inject<() => void>('playGuanyu', () => {})
 
 // ── NPC 人设速查（对齐 backend/engine/writer.py PERSONA_FULL）──
@@ -299,6 +308,8 @@ const freeInput = ref('')
 const currentStreamText = ref('')
 const showMemory = ref(false)
 const errorMessage = ref('')   // 请求失败的用户可见错误提示
+const failed = ref(false)      // 名场面目标机制：错过关键名场面 → 失败态
+const failMessage = ref('')    // 失败提示文案（读档重打）
 const stmList = computed<MemoryItem[]>(() => gameState.value?.memory?.stm ?? [])
 const ltmList = computed<MemoryItem[]>(() => gameState.value?.memory?.ltm ?? [])
 const pinItems = computed<MemoryItem[]>(() => {
@@ -455,6 +466,7 @@ async function startGame() {
       errorMessage.value = '世界短暂失序……请稍后重试'
       console.error(msg)
     },
+    onFail: (msg) => handleFail(msg),
   })
 }
 
@@ -648,6 +660,7 @@ async function sendAction(action: string, tension: number) {
       errorMessage.value = '世界短暂失序……请重试'
       console.error(msg)
     },
+    onFail: (msg) => handleFail(msg),
   })
 }
 
@@ -731,6 +744,36 @@ const eraLabel = computed(() => {
   return era ? `${era.year} 年 · ${era.season}` : '184 年 · 春'
 })
 const eraChapter = computed(() => gameState.value?.era?.chapter ?? 'P1 黄金风起')
+
+// 名场面目标机制：世界时钟（时节 + 剩余行动回合）——目标全可见
+const worldClockLabel = computed(() => {
+  const wc = gameState.value?.world_clock
+  if (!wc) return ''
+  return `${wc.season} · 剩 ${wc.turns_left} 回合`
+})
+
+// 错过关键名场面 → 失败态 + 读档重打（服务端 last_fame 自动存档）
+function handleFail(msg: string) {
+  hideLoader()
+  failed.value = true
+  failMessage.value = msg
+  loadPhase.value = 'options'
+}
+
+async function reloadSave() {
+  const st = await loadGame('last_fame')
+  if (st) {
+    gameState.value = st
+    failed.value = false
+    failMessage.value = ''
+    options.value = st.last_output?.options ?? []
+    const narr = st.last_output?.narrative ?? ''
+    if (narr) narrativeBlocks.value = [{ text: narr, isScene: false, streaming: false }]
+    loadPhase.value = 'options'
+  } else {
+    errorMessage.value = '没有可读的存档（上个名场面存档点不存在）'
+  }
+}
 
 const characterRels = computed(() => gameState.value?.relations ?? {})
 const trust = computed(() => gameState.value?.trust ?? {})
@@ -932,6 +975,16 @@ onBeforeUnmount(() => {
   width: 120px;
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(202, 138, 4, 0.4), transparent);
+}
+/* 名场面世界时钟（章节时节 + 剩余行动回合） */
+.era-clock {
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: rgba(226, 232, 240, 0.6);
+  border: 1px solid rgba(202, 138, 4, 0.35);
+  border-radius: 999px;
+  padding: 2px 10px;
+  white-space: nowrap;
 }
 
 /* 8 PHASE 质量指示灯 */

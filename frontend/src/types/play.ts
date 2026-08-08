@@ -78,6 +78,8 @@ export interface GameState {
   turn: number
   retry_count: number
   history: { user?: string; assistant?: string }[]
+  scene_state: { scene_id?: string; qualifications?: string[] } | null
+  world_clock: { chapter: string; season: string; turns_left: number } | null
   last_output: NarrativeOutput | null
   last_trace: string
   meta: Record<string, unknown>
@@ -93,3 +95,4 @@ export type StreamEvent =
   | { type: 'phase'; report: PhaseReport }
   | { type: 'done' }
   | { type: 'err'; content: string }
+  | { type: 'fail'; content: string }
