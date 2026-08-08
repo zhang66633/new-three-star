@@ -120,7 +120,8 @@ WRITER_INSTRUCTION = """
 5b. 感官细节覆盖至少两类（视觉/听觉优先），点到即止；以动作、对话推进为主，不冗长不端架子
 6. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）
 7. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，不要 ```json，直接输出 JSON 对象），格式：
-{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}}}
+{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}, "memory": "本拍客观事件摘要"}}
+其中 memory 是本拍 1 条客观事件摘要（30-60 字，写"谁/做了什么/结果"，如"黑影问话后跑掉，你决定先找地方避雨"；不写内心独白、不写风景环境；本拍无实质事件时可省略）
 8. 严禁全知旁白宣告世界侧的无觉察（如'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
 9. 选项 text/effect 严禁 meta 词与现代词出口给 NPC（如"穿越者""现代""剧本"）；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
 10. 若发生时空跳跃（跨年/大段路程），叙事须显式交代（如'数月后''几天路程'），不得无标记硬切
@@ -558,16 +559,20 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
     result: dict = {"memory_add": [], "relations_delta": {}, "trust_delta": {},
                     "foreshadowing_add": [], "rumors_add": [], "flags_add": []}
 
-    # 1. 记忆条目：只取 1 条最重要的客观事实摘要（叙事前 80 字精炼）
-    # 去除第一人称代词、内心独白标记，保留事件骨架
-    first_sentence = narrative[:120].strip()
-    # 找第一个句号/换行作为自然断点
-    for sep in ("。", "！", "？", "\n"):
-        idx = first_sentence.find(sep)
-        if idx > 20:
-            first_sentence = first_sentence[:idx+1]
-            break
-    result["memory_add"] = [first_sentence[:80]]
+    # 1. 记忆条目：LLM 输出的 memory（本拍客观事件摘要）优先——它知道"本拍发生了什么"；
+    #    缺失/非字符串时退回叙事开头启发式（兜底，避免记忆面板存环境不存事件）
+    mem_text = llm_data.get("memory") if isinstance(llm_data, dict) else None
+    if isinstance(mem_text, str) and mem_text.strip():
+        result["memory_add"] = [mem_text.strip()[:80]]
+    else:
+        # 兜底：叙事前 120 字第一句（无 LLM memory 时）
+        first_sentence = narrative[:120].strip()
+        for sep in ("。", "！", "？", "\n"):
+            idx = first_sentence.find(sep)
+            if idx > 20:
+                first_sentence = first_sentence[:idx+1]
+                break
+        result["memory_add"] = [first_sentence[:80]]
 
     # 2. 互动角色集合：锁定台词说话人（KNOWN）/ distance_map 核心+互动
     interact_names = set()

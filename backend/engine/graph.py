@@ -177,18 +177,18 @@ async def remember_node(state: GameState) -> dict:
     output = state.get("last_output") or {}
     updates = output.get("state_updates", {}) or {}
 
-    # 1. 记忆追加
+    # 1. 记忆追加：动态事件（LLM memory）优先 → 场景固定摘要兜底 → 叙事开头最后兜底。
+    #    场景固定摘要每拍相同，若优先会覆盖玩家选择产生的事件，记忆面板只剩"定位"没有"进展"；
+    #    叙事开头是环境描写不是事件，两者都只在 LLM memory 缺席时才启用。
     memory_adds = updates.get("memory_add", [])
-    if not memory_adds and output.get("narrative"):
-        # 叙事前 60 字作 STM 条目（含场景信息，去重由 stm_append 的 id 哈希处理）
-        memory_adds = [output["narrative"][:60]]
-    # 场景标记（供前端记忆抽屉显示场景上下文）
     ps = state.get("meta", {}).get("plan_summary", {})
     scene_label = f"{ps.get('chapter_label', '')}·{ps.get('title', '')}".strip("·") or ""
-    # 场景设计记忆（aftermath.memory_add，策划摘要事实）优先：比叙事截断更干净
     scene_memory = (ps.get("aftermath") or {}).get("memory_add", [])
-    if scene_memory:
+    if not memory_adds and scene_memory:
         memory_adds = scene_memory
+    if not memory_adds and output.get("narrative"):
+        # 叙事前 60 字作最后兜底（含场景信息，去重由 stm_append 的 id 哈希处理）
+        memory_adds = [output["narrative"][:60]]
     # 可读时间标记
     era = state.get("era", {})
     time_label = f"{era.get('year', '?')}年·{era.get('season', '?')}" if era else ""
