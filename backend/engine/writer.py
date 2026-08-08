@@ -15,7 +15,7 @@ import re
 
 from .state import GameState
 from .director import ScenePlan
-from .continuity import _is_first_beat, prev_tail
+from .continuity import render_continuity_block
 
 logger = logging.getLogger(__name__)
 
@@ -109,11 +109,10 @@ WRITER_INSTRUCTION = """
 【场景设定】{setting}
 【世界侧正常演出】{world_normal}
 【玩家视角差异（仅玩家可感知，世界侧不讨论）】{player_pov}
-{locked_lines}
 【在场角色人设】{personas}
 
 【输出要求】
-1. 生成 600-1000 字叙事正文（第二人称"你"）。若本场景刚进入（历史里尚无本场景叙事），可交代场景环境；若已在场景中途（历史里有本场景上一拍叙事），**必须承接上一拍继续推进，严禁重新描写已发生过的开场**（不得再次"你醒来""你刚到""夜色中你立于……"等已演出过的起手），每拍都是连续镜头，只写这拍新发生的事
+1. 生成 600-1000 字叙事正文（第二人称"你"），只写本拍新发生的事；每拍都是连续镜头（首拍只开场/非首拍续接推进，由【连续性】块判定，本规则不再重复）
 2. 玩家视角差异通过玩家内心/观察自然呈现（如：你记得史书上写的是'黄巾'……），但世界侧一切正常
 3. 基调"轻松幽默网文"：语言利落、节奏明快、说人话；多用短句短段，一行一镜头；画面感保留但忌堆叠意象、忌抒情长句、忌过度蒙太奇。把"乐子人看戏感"放最前面——沉重场面也先幽默后紧张，先搞笑再出血
 4. 叙述者是"乐子人"：用看戏的轻快口吻讲三国，世界越惨越荒唐旁白越带劲；NPC 越严肃，叙述越要扒他一层滑稽；灾难场合用反差吐槽（如满城兵荒马乱，偏偏你饿得肚子先叫）；绝不煽情、绝不诉苦、绝不上价值
@@ -130,9 +129,7 @@ WRITER_INSTRUCTION = """
 12. 派系名称克制：'黄金军''黄金兵'等带'黄金'的词每场至多出现 1-2 次，其余一律用代称（贼军、溃兵、那支人马、叛军、他们）；不得反复念叨'黄金''黄金当立'——口号只按锁定台词逐字出现
 13. 关系/信任按角色分别给出：relations_delta、trust_delta 里，为本场真正与玩家互动或在场的每个角色给出**各自独立**的数值（-8~+8，正=好感/信任上升，负=下降）；数值须因角色而异，严禁所有角色填同一值；没实际互动的角色不要列入
 14. 幽默手法（每场至少用 2 种，点到即止不过度）：① 反差/荒诞——严肃场面混入鸡毛蒜皮；② 冷幽默——一本正经说胡话；③ 夸张——小事说成大场面；④ 自嘲——无名氏的自我调侃；⑤ 看戏点评——对历史名场面隔岸观火；⑥ 巧合梗——蹩脚世界的巧合堆叠（从玩家视角吐槽）。严禁 meta 词、严禁全知旁白、严禁"点明不对劲"
-15. 若玩家本拍动作离谱/越权/meta（试图改变世界规则、召唤现代事物、要求创造/作弊/上帝模式、命令 NPC 做不可能之事等）：**世界不得真的改变**——叙事用乐子人语气幽默拒绝（旁白或 NPC 给一句嘲讽吐槽，如"你咋不上天呢？"），动作滑稽落空、无实际后果；选项须含"换个说法/再想想"等重输出口（可作额外第 4 个选项，不挤占 2-3 个常规行动选项），不推进主线；NPC 把玩家的话当疯话自然接住，不把 meta 词当回事
-16. 场景首拍（历史里没有本场景的上一拍叙事）：只交代开场情境与在场者（醒来、身处何地、刚发生了什么），**把路线/方向选择留给玩家选项**——不得替玩家做出未选择的行为（如直接写"你追了上去""你决定跟他走"等替玩家选路/选线的动作），不提前开启逃亡/战斗/某条暗线。**本场景非首拍（历史里有本场景上一拍叙事）：必须从上一拍结尾推进剧情，严禁重新交代开场或重演已演出的场景事件**
-17. 承接上一拍时，结尾出现的模糊指代（'黑影''那个人'）与已出场角色视为同一对象，不得凭空实体化成新身份（如把'黑影'写成与上拍给饼老者无关的另一个'于老头'）；玩家上拍选择跟随/互动的对象，本拍继续与其互动""".strip()
+15. 若玩家本拍动作离谱/越权/meta（试图改变世界规则、召唤现代事物、要求创造/作弊/上帝模式、命令 NPC 做不可能之事等）：**世界不得真的改变**——叙事用乐子人语气幽默拒绝（旁白或 NPC 给一句嘲讽吐槽，如"你咋不上天呢？"），动作滑稽落空、无实际后果；选项须含"换个说法/再想想"等重输出口（可作额外第 4 个选项，不挤占 2-3 个常规行动选项），不推进主线；NPC 把玩家的话当疯话自然接住，不把 meta 词当回事""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -335,19 +332,6 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
         lines.append(f"⚠️ 天意修正 x{len(corrected)}（最近：{corrected[-1] if corrected else '无'}）")
         lines.append(f"  当前 tension：{tension}/100")
 
-    # ── 锁定台词 ──
-    locked = plan.locked_lines
-    if locked:
-        lines.append("")
-        # 首拍必须逐字演出；非首拍不得重演首拍场景事件（场景级数据每拍注入，措辞须区分）
-        if _is_first_beat(state, plan):
-            lock_note = "本场景首拍：必须逐字出现"
-        else:
-            lock_note = "本场景已演出过：角色在场可自然点题，严禁重演首拍场景事件（如黑影问话后跑掉）"
-        lines.append(f"🔒 锁定台词（{lock_note}）")
-        for l in locked:
-            lines.append(f"  [{l.get('speaker', '?')}] {l.get('text', '')}")
-
     # ── 📋 质量检查单 ──
     lines.append("")
     lines.append("📋 质量检查单（输出前逐项确认）")
@@ -366,18 +350,10 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     # ── 完整状态面板（LLM 思维链）──
     context_panel = _build_context_panel(state, plan, memory_pack)
 
-    # 人设分层
-    names = [l["speaker"] for l in plan.locked_lines if l.get("speaker")]
+    # 人设分层（speaker 去重：锁定台词同一角色多条时避免人设重复注入）
+    names = list(dict.fromkeys(l["speaker"] for l in plan.locked_lines if l.get("speaker")))
     personas = _load_persona_layer(names, plan.distance_map)
 
-    locked_raw = "\n".join(
-        f"[{l['speaker']}] {l['text']}" for l in plan.locked_lines
-    ) or "（无）"
-    # 首拍 vs 非首拍：锁定台词首拍必须逐字演出；非首拍不得重演首拍场景事件
-    if _is_first_beat(state, plan):
-        locked = f"【锁定台词（本场景首拍：必须逐字出现，说话人标注）】\n{locked_raw}"
-    else:
-        locked = f"【锁定台词（本场景已演出过：角色在场可自然点题，但严禁重演首拍场景事件，如黑影问话后跑掉）】\n{locked_raw}"
     pov = "\n".join(f"· {p}" for p in plan.player_pov) or "（无）"
 
     instruction = WRITER_INSTRUCTION.format(
@@ -386,9 +362,10 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
         setting=plan.setting,
         world_normal=plan.world_normal,
         player_pov=pov,
-        locked_lines=locked,
         personas=personas,
     )
+    # 连续性块（唯一注入点）：结构化上一拍事实 + 锁定台词数据驱动（首拍全量/非首拍只注未演出）
+    instruction += "\n\n" + render_continuity_block(state, plan)
 
     # 场景手调选项池注入（registry options：含 tension/effect，LLM 可选用或改写）
     if plan.options:
@@ -402,13 +379,6 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     retry = getattr(plan, "meta_retry", None)
     if retry:
         instruction += "\n\n【上次校验失败原因（必须针对性修复）】\n" + "\n".join(f"- {r}" for r in retry)
-
-    # 上一拍结尾注入：作为接续锚点，让 LLM 从结尾自然接续，且明确禁止复述这段结尾。
-    # 锚点取 continuity.prev_tail —— 优先 scene_state.next_anchor（结构化，Step 2 后生效），
-    # 缺失回退同场景历史尾部；跨场景 scene_id 不匹配时不注入（规则 1"刚进入可交代环境"生效）。
-    tail_anchor = prev_tail(state, plan)
-    if tail_anchor:
-        instruction += "\n\n【上一拍结尾（本拍从这里自然接续；严禁复述/重述/铺垫这段剧情）】\n……" + tail_anchor
 
     # 离谱动作检测：meta/越权/作弊类 free-input → 标记让 LLM 按规则 15 嘲讽拒绝 + 重输出口
     # 只保留明确的多字 meta/作弊短语。不用"系统/无限/召唤/法术/传送/复制"等常用词做子串拦截，
@@ -427,13 +397,14 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     messages = [{"role": "system", "content": WORLD_BASE}]
     # 状态面板作为第二个 system message
     messages.append({"role": "system", "content": context_panel})
-    # 历史（最近 6 条 ≈ 3 轮：每轮 1 user + 1 assistant）
+    # 历史（最近 6 条 ≈ 3 轮）：user 全透传（玩家动作序列）；assistant 只透传本场景拍——
+    # 跨场景旧拍由连续性块的"场景过渡"（transition_note）承载，不把旧场景散文当本场景对话
     for h in state.get("history", [])[-6:]:
         if h.get("user"):
             messages.append({"role": "user", "content": h["user"]})
-        if h.get("assistant"):
-            # 存储端已做头尾拼接（graph 段），直接透传；不再 [:600] 切片——
-            # 旧式切片会切断叙事结尾（续接点）且对 >900 字叙事留 100 字死区
+        elif h.get("assistant"):
+            if h.get("scene_id") and h.get("scene_id") != plan.scene_id:
+                continue
             messages.append({"role": "assistant", "content": h["assistant"]})
     messages.append({"role": "user", "content": instruction})
     return messages

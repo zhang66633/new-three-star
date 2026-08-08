@@ -89,8 +89,15 @@ def in_scene_names(state, plan) -> set:
 def on_scene_entry(state, plan) -> dict:
     """场景入场：初始化 scene_state。由 director 节点在 scene_id 变化时调用（Step 2 接线）。
 
+    跨场景时用上一场景的结尾锚点生成 transition_note（只注入一次，取代跨场景散文透传）。
     返回 {"scene_state": {...}}（节点返回值，LangGraph 合并回 state）。
     """
+    transition_note = ""
+    old_ss = state.get("scene_state") or {}
+    if isinstance(old_ss, dict) and old_ss.get("scene_id") and old_ss.get("scene_id") != plan.scene_id:
+        anchor = (old_ss.get("next_anchor") or "").strip()
+        if anchor:
+            transition_note = f"你从上一场景一路辗转至此（上场景收尾：……{anchor}）"
     return {"scene_state": {
         "scene_id": plan.scene_id,
         "first_beat_done": False,
@@ -102,7 +109,7 @@ def on_scene_entry(state, plan) -> dict:
         "present_names": sorted(in_scene_names(state, plan)),
         "player_choice": {},
         "next_anchor": "",
-        "transition_note": "",
+        "transition_note": transition_note,
     }}
 
 
@@ -136,6 +143,63 @@ def after_beat(state, output, plan, player_choice: dict = None) -> dict:
     if player_choice and player_choice.get("text"):
         ss["player_choice"] = player_choice
     return {"scene_state": ss}
+
+
+def locked_lines_note(state, plan) -> dict:
+    """锁定台词注入信息（数据驱动，取代"全量展示+禁止引用"的矛盾措辞）。
+
+    返回 {status, must_perform[]}：首拍全量逐字；非首拍只注入 performed_lines 里
+    还没演出的项（已演出项从 prompt 消失，LLM 无从重演）。
+    """
+    first = _is_first_beat(state, plan)
+    ss = state.get("scene_state") or {}
+    performed = set(ss.get("performed_lines") or []) if isinstance(ss, dict) else set()
+    all_lines = [l.get("text", "") for l in plan.locked_lines if l.get("text")]
+    if first:
+        return {"status": "opening", "must_perform": all_lines}
+    return {"status": "ongoing", "must_perform": [t for t in all_lines if t not in performed]}
+
+
+def render_continuity_block(state, plan) -> str:
+    """唯一连续性块：注入上一拍结构化事实 + 锁定台词数据驱动，取代 prev_tail 文本锚、
+    _is_first_beat 历史扫描的 prose 化与规则 1/16/17 的否定式反例。
+
+    全正向表述：不写"严禁重演 X"（负向提示会 priming 被禁内容），而是列出
+    已演出事实 + 未演出锁定台词，让"只写本拍新发生的事"成为数据驱动的自然结果。
+    """
+    ss = state.get("scene_state") or {}
+    first = _is_first_beat(state, plan)
+    lines = ["【连续性 · 上一拍（只读事实，本拍从这里继续）】"]
+
+    if isinstance(ss, dict) and ss.get("scene_id") == plan.scene_id:
+        beat = int(ss.get("beat_index", 1))
+        lines.append(f"· 场景：{plan.chapter_label} · {plan.title} · 第 {beat}/{plan.min_turns} 拍（{'首拍，只开场' if first else '首拍已完成，续接推进'}）")
+        choice = ss.get("player_choice") or {}
+        if choice.get("text"):
+            eff = f" → 承诺后果：{choice['effect']}" if choice.get("effect") else ""
+            lines.append(f"· 上拍玩家选择：「{choice['text']}」{eff}")
+        anchor = (ss.get("next_anchor") or "").strip()
+        if anchor:
+            lines.append(f"· 上拍结尾：……{anchor}")
+        tn = (ss.get("transition_note") or "").strip()
+        if tn:
+            lines.append(f"· 场景过渡：{tn}")
+        events = ss.get("performed_events") or []
+        if events:
+            lines.append("· 已演出事件：" + "；".join(events))
+    else:
+        lines.append(f"· 场景：{plan.chapter_label} · {plan.title} · 第 1/{plan.min_turns} 拍（首拍，只开场）")
+
+    note = locked_lines_note(state, plan)
+    if note["must_perform"]:
+        shown = [f"[{l['speaker']}]{l['text']}" for l in plan.locked_lines if l.get("text") in note["must_perform"]]
+        lines.append("· 本拍可出现的锁定台词：" + "；".join(shown))
+
+    if first:
+        lines.append("· 本拍任务：只交代开场情境与在场者，把路线/方向选择留给玩家选项——不替玩家做未选择的行为，不提前开启逃亡/战斗/暗线。")
+    else:
+        lines.append("· 本拍任务：从上一拍结尾继续推进，只写本拍新发生的事。")
+    return "\n".join(lines)
 
 
 def resolve_player_choice(action: str, plan) -> dict:
