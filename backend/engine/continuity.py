@@ -151,6 +151,17 @@ def after_beat(state, output, plan, player_choice: dict = None) -> dict:
     # 只写真实玩家选择（开局 action="" 或空文本不写）
     if player_choice and player_choice.get("text"):
         ss["player_choice"] = player_choice
+    # qualifications：玩家选中行动（含 prep_actions 准备期行动盘）的 grants 累积就位条件
+    choice = player_choice or {}
+    idx = choice.get("option_index")
+    if isinstance(idx, int) and 0 <= idx < len(plan.options):
+        grants = plan.options[idx].get("grants") or []
+        if grants:
+            quals = list(ss.get("qualifications") or [])
+            for g in grants:
+                if g and g not in quals:
+                    quals.append(g)
+            ss["qualifications"] = quals
     return {"scene_state": ss}
 
 

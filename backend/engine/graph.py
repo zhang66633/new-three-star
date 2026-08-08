@@ -12,7 +12,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, START, END
 
 from .state import GameState, new_game_state, from_dict, to_dict
-from .director import choose_scene, ScenePlan
+from .director import choose_scene, ScenePlan, fame_should_block_advance, CHAPTER_CLOCK, _SEASON_ORDER
 from .writer import narrate
 from .validator import validate
 from .corrector import classify_tension, apply_correction
@@ -69,6 +69,7 @@ def director_node(state: GameState) -> dict:
                 "player_pov": plan.player_pov,
                 "locked_lines": plan.locked_lines,
                 "distance_map": plan.distance_map,
+                "prep_actions": plan.prep_actions,
                 "atmo": plan.atmo,
                 "music": plan.music,
                 "flags_on_enter": plan.flags_on_enter,
@@ -87,6 +88,9 @@ def director_node(state: GameState) -> dict:
         **({"scene_state": on_scene_entry(state, plan)["scene_state"]}
            if not isinstance(state.get("scene_state"), dict)
            or (state.get("scene_state") or {}).get("scene_id") != plan.scene_id else {}),
+        # 世界时钟：章节切换时初始化（每章一条时间轴，见 director.CHAPTER_CLOCK）
+        **({"world_clock": {"chapter": plan.chapter, **CHAPTER_CLOCK.get(plan.chapter, {"season": "春", "turns_left": 3})}}
+           if (state.get("world_clock") or {}).get("chapter") != plan.chapter else {}),
     }
 
 
@@ -326,11 +330,35 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             scene_turns = state.get("scene_turns", 1)
             min_turns = ps.get("min_turns", 1)
             if scene_turns >= min_turns:
-                result["skeleton_pos"] = ps["next_pos"]
-                result["scene_turns"] = 1  # 进入下一场景，驻留计数重置
+                next_pos = ps["next_pos"]
+                # 名场面门禁（世界时钟）：时节未到 → 驻留攒就位；时节到未就位 → 错过失败
+                gate = fame_should_block_advance(next_pos, state)
+                if gate == "":
+                    result["skeleton_pos"] = next_pos
+                    result["scene_turns"] = 1  # 进入下一场景，驻留计数重置
+                elif gate == "miss":
+                    # 错过关键名场面 → 标记失败（前端提示失败 + 读档回上个名场面重打）
+                    result["skeleton_pos"] = next_pos
+                    result["scene_turns"] = 1
+                    result["fame_missed"] = next_pos
+                # gate == "wait"：名场面时节未到（还没发生），驻留当前场景攒就位（不推进）
             else:
                 # skeleton_pos 保持当前场景（director_node 已写 plan.scene_id），续生成探索拍
                 result["scene_turns"] = scene_turns + 1
+    # 世界时钟推进：每拍（有玩家动作）消耗世界时间；turns_left 扣尽则时节前进
+    if action:
+        wc = dict(state.get("world_clock") or {})
+        if wc:
+            tl = int(wc.get("turns_left", 0)) - 1
+            if tl <= 0:
+                seasons = list(_SEASON_ORDER.keys())
+                cur = wc.get("season", "春")
+                nxt = seasons[(seasons.index(cur) + 1) % 4] if cur in _SEASON_ORDER else "春"
+                wc["season"] = nxt
+                wc["turns_left"] = 3  # 每时节固定行动预算
+            else:
+                wc["turns_left"] = tl
+            result["world_clock"] = wc
     # 追加 assistant 叙事回历史（存尾部 + scene_id；开局 action="" 也入库）
     narr = (result.get("last_output") or {}).get("narrative", "")
     if narr:

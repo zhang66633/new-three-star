@@ -87,6 +87,7 @@ class GameState(TypedDict):
     retry_count: int              # 本轮重写次数
     history: list[dict]           # 对话历史（前端回传）
     scene_state: Optional[dict]   # 连续性子系统：结构化"上一拍状态"（见 continuity.py，取代窗口化历史反推）
+    world_clock: Optional[dict]   # 名场面世界时钟 {chapter, season, turns_left}（见 director.py 名场面门禁）
     last_output: Optional[NarrativeOutput]
     last_trace: str               # 最近一次修正痕迹 id（''=无）
     meta: dict                    # 运行时信息（plan/距离映射等，不持久化）
@@ -131,6 +132,7 @@ def new_game_state() -> GameState:
         "retry_count": 0,
         "history": [],
         "scene_state": None,      # None = 未初始化（旧存档/未接线），continuity 回退历史扫描
+        "world_clock": None,      # None = 未初始化，director 章节切换时写入 {chapter, season, turns_left}
         "last_output": None,
         "last_trace": "",
         "meta": {},

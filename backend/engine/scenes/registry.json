@@ -203,6 +203,11 @@
     "effect": "触发客栈风声，走向 P2_s2 捉放曹线"
    }
   ],
+  "prep_actions": [
+   {"text": "投靠曹操门下，自荐为随从", "cost_turns": 1, "grants": ["在曹操身边"], "effect": "消耗1次秋日行动，进入曹操幕（凑近刺董名场面）"},
+   {"text": "打听曹操行踪，尾随至宫道口", "cost_turns": 2, "grants": ["在曹操身边"], "effect": "消耗2次行动，摸到曹操身边"},
+   {"text": "原地观望，不掺和", "cost_turns": 1, "grants": [], "effect": "消耗1次行动，无就位收益"}
+  ],
   "aftermath": {
    "flow": "P2_s2_ci",
    "memory_add": [
@@ -267,7 +272,10 @@
   "flags_on_enter": [
    "见证者_刺董败露",
    "知情者_曹操身份"
-  ]
+  ],
+  "fame_moment": true,
+  "fame_season": "秋",
+  "entry_conditions": ["在曹操身边"]
  },
  "P2_s3_escape": {
   "scene_id": "P2_s3_escape",
