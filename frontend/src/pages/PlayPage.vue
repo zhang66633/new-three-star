@@ -458,35 +458,48 @@ async function startGame() {
   })
 }
 
-// ── 墨迹点击粒子（全局任意点击：金墨涟漪 + 墨滴飞溅）──
+// ── 墨迹点击粒子（全局任意点击：双圈金墨涟漪 + 墨滴飞溅 + 中央金晕）──
 function inkSplash(e: PointerEvent) {
   // 文本输入/文本域不触发（避免干扰打字）
   const t = e.target as HTMLElement | null
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
   const x = e.clientX
   const y = e.clientY
-  // 金墨涟漪
-  const ripple = document.createElement('span')
-  ripple.className = 'click-ripple'
-  ripple.style.left = x + 'px'
-  ripple.style.top = y + 'px'
-  document.body.appendChild(ripple)
-  ripple.addEventListener('animationend', () => ripple.remove())
-  // 墨滴飞溅（墨色为主，掺金）
-  for (let i = 0; i < 10; i++) {
+  // 双圈金墨涟漪（内圈快、外圈慢）
+  for (let ring = 0; ring < 2; ring++) {
+    const ripple = document.createElement('span')
+    ripple.className = 'click-ripple'
+    ripple.style.left = x + 'px'
+    ripple.style.top = y + 'px'
+    if (ring === 1) {
+      ripple.style.setProperty('--r-max', '150px')
+      ripple.style.setProperty('--r-dur', '0.9s')
+    }
+    document.body.appendChild(ripple)
+    ripple.addEventListener('animationend', () => ripple.remove())
+  }
+  // 墨滴飞溅（墨色为主，掺金）——更多、更远、更大
+  for (let i = 0; i < 16; i++) {
     const d = document.createElement('span')
     d.className = 'click-droplet'
-    const angle = (Math.PI * 2 * i) / 10 + (Math.random() - 0.5) * 0.6
-    const dist = 16 + Math.random() * 28
+    const angle = (Math.PI * 2 * i) / 16 + (Math.random() - 0.5) * 0.7
+    const dist = 28 + Math.random() * 44
     d.style.setProperty('--dx', `${Math.cos(angle) * dist}px`)
     d.style.setProperty('--dy', `${Math.sin(angle) * dist}px`)
     d.style.left = x + 'px'
     d.style.top = y + 'px'
-    d.style.width = d.style.height = `${3 + Math.random() * 4}px`
-    d.style.background = Math.random() < 0.35 ? '#e8a838' : '#0d0d0d'
+    d.style.width = d.style.height = `${5 + Math.random() * 5}px`
+    d.style.background = Math.random() < 0.4 ? '#e8a838' : '#0d0d0d'
     document.body.appendChild(d)
     d.addEventListener('animationend', () => d.remove())
   }
+  // 中央金墨晕（点击处扩散的金光团）
+  const blot = document.createElement('span')
+  blot.className = 'click-blot'
+  blot.style.left = x + 'px'
+  blot.style.top = y + 'px'
+  document.body.appendChild(blot)
+  blot.addEventListener('animationend', () => blot.remove())
 }
 
 // ── 墨染转场（场景切换时触发）──
@@ -1579,26 +1592,41 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%);
   z-index: 99;
   pointer-events: none;
-  width: 8px; height: 8px;
+  width: 12px; height: 12px;
   border-radius: 50%;
-  border: 1px solid rgba(232, 168, 56, 0.55);
+  border: 2px solid rgba(232, 168, 56, 0.75);
+  box-shadow: 0 0 14px 3px rgba(232, 168, 56, 0.45), inset 0 0 10px rgba(232, 168, 56, 0.2);
   opacity: 0;
-  animation: ripple-expand 0.7s ease-out both;
+  animation: ripple-expand var(--r-dur, 0.7s) ease-out both;
 }
 @keyframes ripple-expand {
-  0%   { width: 8px; height: 8px; opacity: 0.9; }
-  100% { width: 84px; height: 84px; opacity: 0; }
+  0%   { width: 12px; height: 12px; opacity: 1; }
+  100% { width: var(--r-max, 130px); height: var(--r-max, 130px); opacity: 0; }
 }
 .click-droplet {
   position: fixed;
   z-index: 100;
   pointer-events: none;
   border-radius: 50%;
-  box-shadow: 0 0 5px 1px rgba(0, 0, 0, 0.35);
-  animation: droplet-fly 0.5s ease-out both;
+  box-shadow: 0 0 9px 2px rgba(0, 0, 0, 0.45);
+  animation: droplet-fly 0.7s ease-out both;
 }
 @keyframes droplet-fly {
   0%   { transform: translate(0, 0) scale(1); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) scale(0.15); opacity: 0; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.1); opacity: 0; }
+}
+.click-blot {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: 98;
+  pointer-events: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(232, 168, 56, 0.5) 0%, rgba(232, 168, 56, 0.16) 55%, transparent 75%);
+  animation: blot-spread 0.55s ease-out both;
+}
+@keyframes blot-spread {
+  0%   { width: 14px; height: 14px; opacity: 0.95; }
+  100% { width: 64px; height: 64px; opacity: 0; }
 }
 </style>
