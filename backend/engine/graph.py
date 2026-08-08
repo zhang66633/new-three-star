@@ -300,23 +300,29 @@ def get_graph():
 
 # ═════════ 外部入口（router 调用）═════════
 
-async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict:
-    """跑一轮：输入前端回传 state + 玩家动作 + 所选选项干预度 → 输出更新后的 state"""
+def _prepare(state_dict: dict, action: str, tension: int) -> GameState:
+    """prepare：前端回传 dict → GameState + 玩家动作入史 + 干预度累积（空 action = 开局）"""
     state = from_dict(state_dict)
-    # 玩家动作入历史（空 action = 开局；assistant 输出在图跑完后追加）
     if action:
         state["history"] = state.get("history", []) + [{"user": action}]
     # 干预度累积（玩家所选选项的 tension；重修正后由 corrector 重置）
     if tension > 0:
         state["tension"] = max(0, min(100, state.get("tension", 0) + tension))
-    result = await get_graph().ainvoke(state)
-    # 场景推进：玩家提交选择后（action 非空），按场景 aftermath.flow 更新 skeleton_pos
+    return state
+
+
+def _commit(result: dict, state: GameState, action: str) -> dict:
+    """commit：场景推进（aftermath.flow 更新 skeleton_pos/scene_turns）+ assistant 叙事入库。
+
+    场景推进在图中 director 已写 skeleton_pos=plan.scene_id 的基础上做驻留计数：
+    min_turns 满则推进到 next_pos，否则驻留多拍探索。
+    assistant 存尾部 + scene_id，开局（action=""）也入库供第 2 回合接续锚点。
+    """
     if action:
         ps = result.get("meta", {}).get("plan_summary")
         # END 哨兵（占位自循环安全阀）不推进 skeleton_pos：registry 无 'END' 场景，
         # 盲写会回退 P1_s1_rain 造成"带记忆的伪重开"。保持当前场景挂起。
         if ps and ps.get("next_pos") and ps.get("next_pos") != "END":
-            # min_turns 探索预算：本场景驻留满轮次才推进（开放情境场景可多拍探索）
             scene_turns = state.get("scene_turns", 1)
             min_turns = ps.get("min_turns", 1)
             if scene_turns >= min_turns:
@@ -325,16 +331,10 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
             else:
                 # skeleton_pos 保持当前场景（director_node 已写 plan.scene_id），续生成探索拍
                 result["scene_turns"] = scene_turns + 1
-    # 追加 assistant 叙事回历史（供 writer build_messages 的"最近几轮"看到上轮输出）
-    # 存尾部（叙事末尾=故事接续点），供 build_messages 提取"上一拍结尾"作接续锚点。
-    # 附 scene_id（本回合演出的场景，director 已写入 plan_summary）：build_messages 只锚定
-    # 同一场景的上一拍结尾，跨场景不串台。
-    # 不门控 action：开局叙事（action=""）也入库，让第 2 回合（首个玩家选择）有真实的接续锚点，
-    # 规则 1 的"场景中途"分支才会触发，LLM 不会重新描写开场。
+    # 追加 assistant 叙事回历史（存尾部 + scene_id；开局 action="" 也入库）
     narr = (result.get("last_output") or {}).get("narrative", "")
     if narr:
-        # 头尾都留：>900 字时若只存尾部，writer 历史消息会丢叙事开头（场景环境/在场者）。
-        # 拼接开头一小段 + 完整结尾（省略符标注），writer 不再切片，prev_tail 取末尾自然连续。
+        # 头尾都留：>900 字时只存尾部会丢叙事开头（场景环境/在场者），拼接开头一小段 + 完整结尾
         if len(narr) > 900:
             stored = narr[:400].rstrip() + "……" + narr[-900:]
         else:
@@ -344,3 +344,10 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
         history.append({"assistant": stored, "scene_id": ps.get("scene_id", "")})
         result["history"] = history[-12:]  # 防无限增长，保留最近 12 轮
     return to_dict(result)
+
+
+async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict:
+    """跑一轮（三分离）：prepare → 图执行 → commit"""
+    state = _prepare(state_dict, action, tension)
+    result = await get_graph().ainvoke(state)
+    return _commit(result, state, action)

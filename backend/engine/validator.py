@@ -358,6 +358,37 @@ def check_no_pointing_out(narrative: str) -> list[str]:
     return []
 
 
+def check_repetition(state: dict, output: dict) -> tuple[list[str], list[str]]:
+    """重演检测（连续性子系统 scene_state 提供已演出事实）：
+
+    - hard：已演出的锁定台词（performed_lines）在本拍叙事中再次逐字出现 →
+      上一拍已演出的台词重演（重复开场），进 rewrite 循环修正。
+    - soft：已演出事件（performed_events）关键片段再次出现 → 记录疑似重演（阈值待校准）。
+    """
+    hard: list[str] = []
+    soft: list[str] = []
+    narrative = output.get("narrative", "") or ""
+    ss = state.get("scene_state")
+    if not narrative or not isinstance(ss, dict):
+        return hard, soft
+
+    def _norm(s):
+        return re.sub(r"[，。！？、；：\s·…—'\"“”‘’]", "", s)
+
+    n = _norm(narrative)
+    # hard：已演出锁定台词再次逐字出现（可靠的重演信号）
+    for t in ss.get("performed_lines") or []:
+        tn = _norm(t)
+        if tn and tn in n:
+            hard.append(f"P7: 重演——锁定台词『{t[:18]}』已在上一拍演出，本拍再次出现（删除重演部分，从上一拍结尾推进）")
+    # soft：已演出事件关键片段再次出现（散文改写可能漏掉逐字匹配）
+    for ev in ss.get("performed_events") or []:
+        frags = _distinctive_fragments(str(ev), min_len=8, max_len=12)
+        if any(f in n for f in frags):
+            soft.append(f"P7: 重演疑似——事件『{str(ev)[:20]}』关键片段在本拍重新出现")
+    return hard, soft
+
+
 def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str]]:
     """确定性层全检：返回 (硬失败原因, 软自检原因)。
 
@@ -397,6 +428,10 @@ def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str
     soft += check_word_count(output.get("narrative", ""))
     soft += check_narrative_balance(output.get("narrative", ""))
     soft += check_emotion_chain(output.get("narrative", ""))
+    # 连续性子系统：重演检测（hard 重复开场台词 → 进 rewrite；soft 疑似记录）
+    rep_hard, rep_soft = check_repetition(state, output)
+    hard += rep_hard
+    soft += rep_soft
     return hard, soft
 
 
