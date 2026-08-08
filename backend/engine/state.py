@@ -13,6 +13,9 @@ class PlayerState(TypedDict):
     alive: bool
     location: str            # 当前位置（颍川/洛阳/…）
     reputation: int          # 声望 0-100
+    personality: str         # 性格标签（如"冷静·多疑·仁厚"）— 人格铁律锁定
+    goal: str                # 当前阶段目标（如"在乱世中活下去"）
+    inner_voice: str         # 最近内心独白（每轮更新）
     notes: list[str]         # 玩家视角的差异记录（"黄金"vs"黄巾"等）
 
 
@@ -34,6 +37,8 @@ class MemoryItem(TypedDict):
     id: str
     text: str
     ts: int                  # 轮次时间戳
+    scene: str               # 场景标记（如 "颍川·雨夜荒野"）
+    time: str                # 可读时间标记（如 "184年·春"）
 
 
 class MemoryState(TypedDict):
@@ -75,6 +80,8 @@ class GameState(TypedDict):
     skeleton_pos: str             # 当前骨架位置（场景 id）
     tension: int                  # 历史干预度累计 0-100
     corrected: list[str]          # 已发生的修正记录
+    foreshadowing: list[str]      # P2 未解伏笔/承诺追踪（如"曹操欠你一个人情"）
+    world_rumors: list[str]       # §3.6 世界动态（流言/军报/势力变动）
     # ── 引擎 ──
     turn: int
     retry_count: int              # 本轮重写次数
@@ -92,6 +99,9 @@ def new_game_state() -> GameState:
             "alive": True,
             "location": "颍川",
             "reputation": 0,
+            "personality": "沉稳·机敏·仁心",  # 人格铁律锁定（开局默认，玩家行为可自然偏移）
+            "goal": "在乱世中活下去，弄清自己为何在此",
+            "inner_voice": "",
             "notes": [],
         },
         "era": {
@@ -113,6 +123,8 @@ def new_game_state() -> GameState:
         "skeleton_pos": "P1_s1_rain",
         "tension": 0,
         "corrected": [],
+        "foreshadowing": [],
+        "world_rumors": ["颍川传言：黄金军近日在附近出没", "朝廷发榜征兵"],
         "turn": 0,
         "retry_count": 0,
         "history": [],
@@ -127,14 +139,41 @@ def to_dict(state: GameState) -> dict:
     return dict(state)
 
 
+# 前端回传白名单 + 长度上限（防提示注入 / 超大 body / 内存 DoS）
+# 键白名单 = new_game_state 的全部顶层键；字符串/列表做长度钳制
+_STR_CAP = 2000      # 单个字符串上限（action/叙事/记忆条目）
+_LIST_CAP = 200      # 单个列表上限（history/memory/flags 等）
+_DICT_CAP = 100      # 单个 dict 上限（relations/trust 等）
+
+
+def _cap(v, cap: int):
+    """递归钳制字符串长度与容器大小"""
+    if isinstance(v, str):
+        return v[:cap] if len(v) > cap else v
+    if isinstance(v, list):
+        return [_cap(x, cap) for x in v[:cap]]
+    if isinstance(v, dict):
+        return {k: _cap(x, cap) for k, x in list(v.items())[:cap]}
+    return v
+
+
 def from_dict(data: dict) -> GameState:
-    """前端回传 dict → GameState（容错缺字段）"""
+    """前端回传 dict → GameState（容错缺字段 + 白名单 + 长度钳制）"""
     base = new_game_state()
     for k, v in (data or {}).items():
-        if k in base:
-            base[k] = v
+        if k not in base:
+            continue  # 白名单外键丢弃（防注入）
+        # 嵌套 dict（player/era/knowledge/memory）：合并而非覆盖，保护新增字段
+        if isinstance(base[k], dict) and isinstance(v, dict):
+            merged = dict(base[k])
+            merged.update(_cap(v, _STR_CAP))
+            base[k] = merged
+        elif isinstance(base[k], dict):
+            base[k] = dict(base[k])  # 非 dict 覆盖 → 丢弃回默认
+        else:
+            base[k] = _cap(v, _LIST_CAP if isinstance(base[k], list) else _STR_CAP)
     # 深层容错：保证嵌套结构完整
     for k in ("player", "era", "knowledge", "memory"):
         if not isinstance(base.get(k), dict):
-            base[k] = base[k] if isinstance(base[k], dict) else {}
+            base[k] = {}
     return base

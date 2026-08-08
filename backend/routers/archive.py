@@ -2,7 +2,7 @@
 """
 /api/archive —— 世界观档案（静态展示页数据源）
 ================================================
-8 个世界观星球 → 静态档案页（读 knowledge/frameworks/*.json）
+9 个世界观档案 → 静态档案页（读 knowledge/frameworks/*.json）
 """
 import json
 import os
@@ -12,6 +12,18 @@ router = APIRouter()
 
 KNOWLEDGE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "knowledge")
 FRAMEWORKS_DIR = os.path.join(KNOWLEDGE_DIR, "frameworks")
+
+
+def _safe_framework_id(archive_id: str) -> str:
+    """路径遍历防护：只允许纯文件名（无路径分隔符 / 反斜杠 / 点前缀）"""
+    if not archive_id:
+        raise HTTPException(400, "非法 id")
+    name = os.path.basename(archive_id)
+    if name != archive_id or name in (".", "..") or name.startswith("."):
+        raise HTTPException(400, "非法 id")
+    if "/" in name or "\\" in name:
+        raise HTTPException(400, "非法 id")
+    return name
 
 
 @router.get("/archive/list")
@@ -38,6 +50,7 @@ async def archive_list():
 @router.get("/archive/{archive_id}")
 async def archive_detail(archive_id: str):
     """单个世界观档案详情"""
+    archive_id = _safe_framework_id(archive_id)
     path = os.path.join(FRAMEWORKS_DIR, f"{archive_id}.json")
     if not os.path.exists(path):
         # 尝试按文件名匹配（id 可能是中文名）

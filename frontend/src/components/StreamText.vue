@@ -1,12 +1,9 @@
 <template>
-  <div class="stream-text" :class="{ typing }">
-    <span v-html="displayHtml"></span>
-    <span v-if="typing" class="caret" aria-hidden="true">▌</span>
-  </div>
+  <span class="stream-text" :class="{ typing }">{{ displayed }}<span v-if="typing" class="caret" aria-hidden="true">▌</span></span>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onBeforeUnmount, computed } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 
 const props = withDefaults(defineProps<{
   text: string          // 完整文本（更新时增量流式输出）
@@ -14,8 +11,8 @@ const props = withDefaults(defineProps<{
   chunkSize?: number    // 每帧字数（>1 则按块输出）
 }>(), {
   text: '',
-  speed: 24,
-  chunkSize: 1,
+  speed: 12,
+  chunkSize: 3,
 })
 
 const displayed = ref('')
@@ -23,13 +20,19 @@ const typing = ref(false)
 let timer: number | null = null
 let target = ''
 
+// immediate: 首次挂载（text 已完整）也要触发打字；之后增量更新不重置
 watch(() => props.text, (val) => {
   stop()
+  // 新文本是旧文本的延伸 → 不重置，从当前位置继续；否则全新段落重新打
+  const isExtension = val.startsWith(target) && target.length > 0
+  if (!isExtension) {
+    displayed.value = ''
+  }
   target = val
-  // 全量重建（新段落）
-  displayed.value = ''
+  const remaining = target.length - displayed.value.length
+  if (remaining <= 0) { typing.value = false; return }
   typing.value = true
-  let pos = 0
+  let pos = displayed.value.length
   const tick = () => {
     pos += props.chunkSize
     displayed.value = target.slice(0, pos)
@@ -39,43 +42,40 @@ watch(() => props.text, (val) => {
     }
   }
   timer = window.setInterval(tick, props.speed)
-})
+}, { immediate: true })
 
 onBeforeUnmount(() => stop())
 
 function stop() {
   if (timer) { clearInterval(timer); timer = null }
 }
-
-// 简单转义 + 保留换行/标点样式
-const displayHtml = computed(() => {
-  const esc = displayed.value
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br/>')
-  return esc
-})
 </script>
 
 <style scoped>
+/* 纯文本渲染：white-space 继承父级 .narrative-text（pre-line 保留换行），
+   与流式直出分支像素级一致，不再依赖 v-html/<br/> */
 .stream-text {
-  font-family: var(--font-body);
-  line-height: 1.9;
-  letter-spacing: 0.04em;
-  color: rgba(248, 250, 252, 0.92);
-  word-break: break-word;
+  white-space: inherit;
+  overflow-wrap: inherit;
+}
+/* 流式输出中：逐字微辉光（极淡琥珀色，不抢注意力） */
+.stream-text.typing {
+  text-shadow: 0 0 1px rgba(202, 138, 4, 0.12);
 }
 .caret {
   display: inline-block;
   width: 2px;
-  height: 1.15em;
   margin-left: 2px;
-  vertical-align: text-bottom;
-  background: #ca8a04;
-  box-shadow: 0 0 8px rgba(202, 138, 4, 0.7);
-  animation: caret-blink 0.9s step-end infinite;
+  color: #ca8a04;
+  text-shadow: 0 0 10px rgba(202, 138, 4, 0.8), 0 0 20px rgba(202, 138, 4, 0.3);
+  animation: caret-blink 0.9s step-end infinite, caret-glow 1.8s ease-in-out infinite;
 }
 @keyframes caret-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
+}
+@keyframes caret-glow {
+  0%, 100% { text-shadow: 0 0 10px rgba(202, 138, 4, 0.8), 0 0 20px rgba(202, 138, 4, 0.3); }
+  50%      { text-shadow: 0 0 14px rgba(202, 138, 4, 1),   0 0 28px rgba(202, 138, 4, 0.45); }
 }
 </style>

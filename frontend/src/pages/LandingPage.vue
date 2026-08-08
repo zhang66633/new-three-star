@@ -16,7 +16,7 @@
 
     <!-- 2D星图（移动端降级） -->
     <div v-else class="planet-graph mobile-graph" :class="{ active: entered }">
-      <MobileStarMap :worlds="WORLDS" @navigate="onMobileNavigate" />
+      <MobileStarMap :worlds="MOBILE_WORLDS" @navigate="onMobileNavigate" />
     </div>
 
     <!-- 暗角 -->
@@ -105,12 +105,15 @@ const isMobile = (() => {
 
 function onMobileNavigate(id: string) {
   if (warpActive.value) return
-  const world = WORLDS.find(w => w.id === id)
+  const world = [...WORLDS, TIANYI_WORLD].find(w => w.id === id)
   warpColor.value = world?.color || '#aabbff'
   warpActive.value = true
   setTimeout(() => {
     if (id === 'create') {
       router.push('/create')
+    } else if (id === 'tianyi') {
+      playGuanyu()
+      router.push('/play')
     } else {
       playGuanyu()
       router.push(`/worldview/${id}`)
@@ -131,8 +134,20 @@ const WORLDS = [
   { id: 'elo', name: '天平竞技场', tagline: '尽力了', color: '#14b8a6', desc: '天意是匹配算法，不关心谁赢只关心胜率收敛到五成' },
 ]
 
-// 当前开放的世界（只有天意）
-const OPEN_WORLDS = ['tianyi']
+// 叙事游戏入口（天意主星）——桌面 3D 星图与移动端星图共用
+const TIANYI_WORLD = {
+  id: 'tianyi',
+  name: '天意',
+  tagline: '偶然落入此世的你，将亲历一段被蹩脚神明写歪的三国',
+  color: '#ff5533',
+  desc: '雨夜醒来，无名无籍。这个世界的史书写错了每一个字，而只有你记得真相。',
+}
+
+// 移动端星图节点：9 个世界观 + 天意主星（create 由 MobileStarMap 内部追加）
+const MOBILE_WORLDS = [...WORLDS, TIANYI_WORLD]
+
+// 当前开放的世界（只有天意 + create）
+const OPEN_WORLDS = ['tianyi', 'create']
 function isOpenWorld(id: string) {
   return OPEN_WORLDS.includes(id)
 }
@@ -773,16 +788,12 @@ async function initGraph() {
     isNebula: false,
   }))
 
-  // 天意大星球 —— 唯一的游玩入口
+  // 天意大星球 —— 唯一的游玩入口（与移动端共用 TIANYI_WORLD 定义）
   nodes.push({
-    id: 'tianyi',
-    name: '天意',
-    tagline: '偶然落入此世的你，将亲历一段被蹩脚神明写歪的三国',
-    color: '#ff5533',
+    ...TIANYI_WORLD,
     val: 40,
     isNebula: false,
     isMain: true,
-    desc: '雨夜醒来，无名无籍。这个世界的史书写错了每一个字，而只有你记得真相。',
   } as any)
 
   nodes.push({

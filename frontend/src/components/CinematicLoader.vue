@@ -48,7 +48,7 @@ interface Quote {
 
 const props = withDefaults(defineProps<{
   show: boolean
-  title?: string          // 章节标题（如「新三国 星空」）
+  title?: string          // 章节标题（如「三国」）
   chapterLabel?: string   // 章节铭牌（如「建安三年 · 许都」）
   quotes?: Quote[]        // 自定义台词池（默认用新三台词）
   interval?: number       // 轮换间隔 ms

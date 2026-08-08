@@ -26,6 +26,12 @@
   /* 强调 */
   --accent-cinnabar: #c04030;
   --accent-gold: #e8a838;
+  --accent-bronze: #5a7a6a;
+
+  /* tension 三色（对齐设计系统） */
+  --tension-low: #4a9ea0;      /* 青·顺历史 0-30 */
+  --tension-mid: #e8a838;      /* 鎏金·局部干预 31-70 */
+  --tension-high: #c04030;     /* 赤铁·硬干预 71-100 */
 
   /* 连线 */
   --link-color: rgba(160, 160, 200, 0.15);

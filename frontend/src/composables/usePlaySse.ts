@@ -27,6 +27,7 @@ export function usePlaySse() {
       onPlayer?: (text: string) => void
       onState: (state: GameState) => void
       onOptions: (options: OptionSpec[]) => void
+      onPhase?: (report: StreamEvent & { type: 'phase' }) => void
       onDone: () => void
       onError?: (msg: string) => void
     },
@@ -91,6 +92,9 @@ export function usePlaySse() {
               case 'options':
                 handlers.onOptions(ev.options)
                 break
+              case 'phase':
+                handlers.onPhase?.(ev)
+                break
               case 'done':
                 fireDone()
                 break
@@ -103,15 +107,39 @@ export function usePlaySse() {
           }
         }
       }
-      // 尾部残留行处理
+      // 尾部残留行处理（统一走 switch，state/options 也可能在流尾被截断）
       if (buffer.trim()) {
         const trimmed = buffer.trim()
         if (trimmed.startsWith('data: ')) {
           const payload = trimmed.slice(6)
           try {
             const ev = JSON.parse(payload) as StreamEvent
-            if (ev.type === 'done') fireDone()
-            if (ev.type === 'chunk') handlers.onChunk((ev as { content: string }).content)
+            switch (ev.type) {
+              case 'chunk':
+                handlers.onChunk(ev.content)
+                break
+              case 'scene':
+                handlers.onScene?.(ev as StreamEvent & { type: 'scene' })
+                break
+              case 'player':
+                handlers.onPlayer?.(ev.content)
+                break
+              case 'state':
+                handlers.onState(ev.state)
+                break
+              case 'options':
+                handlers.onOptions(ev.options)
+                break
+              case 'phase':
+                handlers.onPhase?.(ev as StreamEvent & { type: 'phase' })
+                break
+              case 'done':
+                fireDone()
+                break
+              case 'err':
+                handlers.onError?.(ev.content)
+                break
+            }
           } catch { /* ignore */ }
         }
       }

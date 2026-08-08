@@ -5,6 +5,9 @@ export interface PlayerState {
   alive: boolean
   location: string
   reputation: number
+  personality: string
+  goal: string
+  inner_voice: string
   notes: string[]
 }
 
@@ -26,6 +29,15 @@ export interface MemoryItem {
   id: string
   text: string
   ts: number
+  scene?: string   // 场景标记（如 "颍川·雨夜荒野"）
+  time?: string    // 可读时间（如 "184年·春"）
+}
+
+/** 8 PHASE 校验报告（对齐后端 phase_report） */
+export interface PhaseReport {
+  deterministic?: { phase: string; pass: boolean; reason: string }[]
+  llm?: Record<string, { pass: boolean; reason: string }>
+  summary?: string
 }
 
 export interface MemoryState {
@@ -61,6 +73,8 @@ export interface GameState {
   skeleton_pos: string
   tension: number
   corrected: string[]
+  foreshadowing: string[]
+  world_rumors: string[]
   turn: number
   retry_count: number
   history: { user?: string; assistant?: string }[]
@@ -71,11 +85,11 @@ export interface GameState {
 
 // SSE 事件类型（Phase 4 协议）
 export type StreamEvent =
-  | { type: 'scene'; scene: { scene_id: string; chapter_label: string; title: string; location: string; music?: string } }
+  | { type: 'scene'; scene: { scene_id: string; chapter_label: string; title: string; location: string; music?: string; atmo?: string } }
   | { type: 'chunk'; content: string }
   | { type: 'player'; content: string }
   | { type: 'state'; state: GameState }
   | { type: 'options'; options: OptionSpec[] }
-  | { type: 'phase'; report: Record<string, unknown> }
+  | { type: 'phase'; report: PhaseReport }
   | { type: 'done' }
   | { type: 'err'; content: string }

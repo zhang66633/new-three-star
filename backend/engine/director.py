@@ -44,9 +44,10 @@ class ScenePlan:
         self.player_pov = scene.get("player_pov", [])
         self.locked_lines = scene.get("locked_lines", [])
         self.options = scene.get("options", [])
-        self.music = scene.get("music", "")  # 场景音乐标记（guanyu=关羽之歌）
-        self.distance_map = distance_map   # {角色: 远观|互动|核心}
-        self.next_pos = next_pos           # 下一场景 id（由 aftereffect 决定）
+        self.atmo = scene.get("atmo", "雨夜沉静")  # 氛围标签（匹配 AtmoBackground）
+        self.music = scene.get("music", "")
+        self.distance_map = distance_map
+        self.next_pos = next_pos
 
     @classmethod
     def from_summary(cls, s: dict) -> "ScenePlan":
@@ -64,6 +65,7 @@ class ScenePlan:
             "player_pov": s.get("player_pov", []),
             "locked_lines": s.get("locked_lines", []),
             "options": s.get("options", []),
+            "atmo": s.get("atmo", "雨夜沉静"),
             "music": s.get("music", ""),
         }
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
@@ -85,16 +87,71 @@ def choose_scene(state: GameState) -> ScenePlan:
 
     # 距离映射：从场景的锁定台词/选项中提取角色 → 默认"远观"
     distance_map = _infer_distance_map(scene, state)
-    # 下一场景
+    # 下一场景（状态驱动岔路）
     next_pos = _resolve_next(scene, state)
+    # 安全阀：防止 placeholder 场景自循环耗尽 LLM 额度
+    if next_pos == pos:
+        import logging
+        logger = logging.getLogger(__name__)
+        turn = state.get("turn", 0)
+        if turn > 15:
+            logger.warning(
+                f"场景自循环检测: {pos} → {next_pos}（turn={turn}），"
+                f"可能缺少后续场景。使用 END 终止。"
+            )
+            next_pos = "END"
     return ScenePlan(scene, distance_map, next_pos)
 
 
 def _resolve_next(scene: dict, state: GameState) -> str:
-    """解析场景 aftermath.flow → 下一场景 id（状态驱动岔路入口）"""
+    """解析场景 aftermath.flow → 下一场景 id（状态驱动岔路）
+
+    flow 支持三种格式：
+    1. 字符串：直接作为下一场景 id（线性推进）
+    2. 字典：{"flag_name": "scene_id", ...} — 按 state.flags 匹配第一条
+       - 特殊 key "default" 始终兜底
+       - 特殊 key "tension_high" / "tension_mid" 按 tension 阈值匹配
+    3. 空：停留在当前场景（死路保护见调用方）
+
+    安全阀：若解析结果 = 当前 scene_id（自循环），且 turn > 20，
+    记录 warning 但不阻断（由 graph 层的 turn 上限兜底）。
+    """
     aftermath = scene.get("aftermath", {})
     flow = aftermath.get("flow", "")
-    # 占位符替换（后续扩展：按 flags/tension 岔路）
+
+    # ── 字典分支 ──
+    if isinstance(flow, dict):
+        flags = set(state.get("flags", []))
+        tension = state.get("tension", 0)
+        turn = state.get("turn", 0)
+
+        # 天意修正标志（corrected 非空 → tension 曾触发）
+        if state.get("corrected"):
+            flags.add("天意修正")
+
+        # ① 优先匹配 flags
+        for flag_name, target in flow.items():
+            if flag_name in ("default", "tension_high", "tension_mid", "tension_low"):
+                continue
+            if flag_name in flags:
+                return target
+
+        # ② tension 阈值匹配
+        if tension > 70 and "tension_high" in flow:
+            return flow["tension_high"]
+        if tension > 30 and "tension_mid" in flow:
+            return flow["tension_mid"]
+
+        # ③ 兜底
+        if "default" in flow:
+            return flow["default"]
+        # 取第一个非特殊 key 的值
+        for k, v in flow.items():
+            if not k.startswith("tension_"):
+                return v
+        return ""
+
+    # ── 字符串分支（直接返回）──
     return flow
 
 
