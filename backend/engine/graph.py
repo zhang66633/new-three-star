@@ -317,8 +317,14 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
     # 规则 1 的"场景中途"分支才会触发，LLM 不会重新描写开场。
     narr = (result.get("last_output") or {}).get("narrative", "")
     if narr:
+        # 头尾都留：>900 字时若只存尾部，writer 历史消息会丢叙事开头（场景环境/在场者）。
+        # 拼接开头一小段 + 完整结尾（省略符标注），writer 不再切片，prev_tail 取末尾自然连续。
+        if len(narr) > 900:
+            stored = narr[:400].rstrip() + "……" + narr[-900:]
+        else:
+            stored = narr
         history = list(result.get("history", []))
         ps = (result.get("meta") or {}).get("plan_summary") or {}
-        history.append({"assistant": narr[-900:], "scene_id": ps.get("scene_id", "")})
+        history.append({"assistant": stored, "scene_id": ps.get("scene_id", "")})
         result["history"] = history[-12:]  # 防无限增长，保留最近 12 轮
     return to_dict(result)

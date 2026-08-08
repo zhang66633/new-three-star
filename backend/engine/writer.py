@@ -128,7 +128,7 @@ WRITER_INSTRUCTION = """
 12. 派系名称克制：'黄金军''黄金兵'等带'黄金'的词每场至多出现 1-2 次，其余一律用代称（贼军、溃兵、那支人马、叛军、他们）；不得反复念叨'黄金''黄金当立'——口号只按锁定台词逐字出现
 13. 关系/信任按角色分别给出：relations_delta、trust_delta 里，为本场真正与玩家互动或在场的每个角色给出**各自独立**的数值（-8~+8，正=好感/信任上升，负=下降）；数值须因角色而异，严禁所有角色填同一值；没实际互动的角色不要列入
 14. 幽默手法（每场至少用 2 种，点到即止不过度）：① 反差/荒诞——严肃场面混入鸡毛蒜皮；② 冷幽默——一本正经说胡话；③ 夸张——小事说成大场面；④ 自嘲——无名氏的自我调侃；⑤ 看戏点评——对历史名场面隔岸观火；⑥ 巧合梗——蹩脚世界的巧合堆叠（从玩家视角吐槽）。严禁 meta 词、严禁全知旁白、严禁"点明不对劲"
-15. 若玩家本拍动作离谱/越权/meta（试图改变世界规则、召唤现代事物、要求创造/作弊/上帝模式、命令 NPC 做不可能之事等）：**世界不得真的改变**——叙事用乐子人语气幽默拒绝（旁白或 NPC 给一句嘲讽吐槽，如"你咋不上天呢？"），动作滑稽落空、无实际后果；选项须含"换个说法/再想想"等重输出口，不推进主线；NPC 把玩家的话当疯话自然接住，不把 meta 词当回事""".strip()
+15. 若玩家本拍动作离谱/越权/meta（试图改变世界规则、召唤现代事物、要求创造/作弊/上帝模式、命令 NPC 做不可能之事等）：**世界不得真的改变**——叙事用乐子人语气幽默拒绝（旁白或 NPC 给一句嘲讽吐槽，如"你咋不上天呢？"），动作滑稽落空、无实际后果；选项须含"换个说法/再想想"等重输出口（可作额外第 4 个选项，不挤占 2-3 个常规行动选项），不推进主线；NPC 把玩家的话当疯话自然接住，不把 meta 词当回事""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -417,12 +417,14 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     messages = [{"role": "system", "content": WORLD_BASE}]
     # 状态面板作为第二个 system message
     messages.append({"role": "system", "content": context_panel})
-    # 历史（最近 6 轮）
+    # 历史（最近 6 条 ≈ 3 轮：每轮 1 user + 1 assistant）
     for h in state.get("history", [])[-6:]:
         if h.get("user"):
             messages.append({"role": "user", "content": h["user"]})
         if h.get("assistant"):
-            messages.append({"role": "assistant", "content": h["assistant"][:600]})
+            # 存储端已做头尾拼接（graph 段），直接透传；不再 [:600] 切片——
+            # 旧式切片会切断叙事结尾（续接点）且对 >900 字叙事留 100 字死区
+            messages.append({"role": "assistant", "content": h["assistant"]})
     messages.append({"role": "user", "content": instruction})
     return messages
 
