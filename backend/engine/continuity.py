@@ -1,0 +1,166 @@
+# -*- coding: utf-8 -*-
+"""
+Continuity（连续性子系统 · 一等公民）
+====================================
+定位：把"上一拍状态"落成持久化结构化字段 scene_state，取代一切从被窗口化的历史
+（存 12 轮、喂 6 条）反推"已演出"的机制——prev_tail 文本锚 / _is_first_beat 历史扫描
+/ 规则 prose 判定。
+
+本文件是"上一拍状态"的唯一读写点：生成侧（writer/build_messages/context）与校验侧
+（validator）都从这里取事实，不再有第二份"已演出"推断。
+
+scene_state 结构：
+    scene_id: str               权威场景边界（与 skeleton_pos 同步；prompt 可见）
+    first_beat_done: bool       首拍是否完成 —— 取代 _is_first_beat 历史扫描
+    beat_index: int             本场景第几拍（1 起）
+    performed_events: list      本场景已演出事件（去重键）—— 取代"从历史推断已演出"
+    performed_lines: list       已逐字演出的锁定台词（去重键）
+    answered_questions: list    已权威回答的玩家提问（防 Q&A 重复）
+    pov_consumed: list          已消费的 player_pov 条目（非首拍不再全量注入）
+    present_names: list         本拍在场角色（确定性）
+    player_choice: dict         上拍玩家选择 {text, effect, option_index, tension, has_effect}
+    next_anchor: str            上拍结尾锚点（最后一句完整句）—— 取代 prev_tail 200 字文本
+    transition_note: str        跨场景过渡摘要（换场景时生成，只注入一次）
+
+迁移策略：scene_state 缺失（旧存档 / 尚未接线）时回退现有历史扫描逻辑，保证行为不变；
+接线完成后（nodes 接入 on_scene_entry/after_beat，见重构 Step 2/3）走结构化路径。
+"""
+import re
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .state import GameState
+    from .director import ScenePlan
+
+
+# ═════════ 读侧：连续性事实查询（迁移版：有字段读字段，无则回退历史扫描）═════════
+
+def _is_first_beat(state, plan) -> bool:
+    """本场景是否首拍。
+
+    优先读 scene_state.first_beat_done（接线后由 after_beat 写回）；缺失（旧存档/未接线）
+    回退历史扫描（现有行为）保证兼容。
+    """
+    ss = state.get("scene_state") or {}
+    if isinstance(ss, dict) and ss.get("scene_id") == plan.scene_id and "first_beat_done" in ss:
+        return not ss["first_beat_done"]
+    return not any(
+        h.get("assistant") and h.get("scene_id") == plan.scene_id
+        for h in state.get("history", [])
+    )
+
+
+def prev_tail(state, plan) -> str:
+    """上一拍结尾锚点。
+
+    优先读 scene_state.next_anchor（结构化，最后一句完整句，by after_beat 写回）；
+    缺失回退现有逻辑：历史里同场景最近的 assistant 尾部 200 字。
+    """
+    ss = state.get("scene_state") or {}
+    if isinstance(ss, dict) and ss.get("scene_id") == plan.scene_id and ss.get("next_anchor"):
+        return ss["next_anchor"]
+    for h in reversed(state.get("history", [])):
+        if h.get("assistant") and (not h.get("scene_id") or h.get("scene_id") == plan.scene_id):
+            return h["assistant"][-200:]
+    return ""
+
+
+def in_scene_names(state, plan) -> set:
+    """在场角色单一来源（present 语义：锁定台词说话人 + distance_map + 关系>40）。
+
+    供 context panel 渲染；extract 的"互动角色"是另一语义（interact），不在此统一。
+    """
+    names = set()
+    for line in plan.locked_lines:
+        sp = line.get("speaker", "")
+        if sp:
+            names.add(sp)
+    for name in plan.distance_map:
+        names.add(name)
+    relations = state.get("relations", {})
+    for name, v in relations.items():
+        if v > 40:
+            names.add(name)
+    return names
+
+
+# ═════════ 写侧：scene_state 生命周期（Step 2 接线到 director/remember 节点）═════════
+
+def on_scene_entry(state, plan) -> dict:
+    """场景入场：初始化 scene_state。由 director 节点在 scene_id 变化时调用（Step 2 接线）。
+
+    返回 {"scene_state": {...}}（节点返回值，LangGraph 合并回 state）。
+    """
+    return {"scene_state": {
+        "scene_id": plan.scene_id,
+        "first_beat_done": False,
+        "beat_index": 1,
+        "performed_events": [],
+        "performed_lines": [],
+        "answered_questions": [],
+        "pov_consumed": [],
+        "present_names": sorted(in_scene_names(state, plan)),
+        "player_choice": {},
+        "next_anchor": "",
+        "transition_note": "",
+    }}
+
+
+def after_beat(state, output, plan, player_choice: dict = None) -> dict:
+    """每拍后更新 scene_state。由 remember 节点调用（Step 2 接线）。
+
+    骨架版提取：锁定台词逐字出现记 performed_lines；叙事末句记 next_anchor。
+    结构化 performed_events 的强化提取在 Step 4（memory events[] 单一事件源）。
+    """
+    narrative = (output or {}).get("narrative", "") or ""
+    ss = dict(state.get("scene_state") or {})
+    if ss.get("scene_id") != plan.scene_id:
+        ss = on_scene_entry(state, plan)["scene_state"]  # 跨场景则重建（含首拍置位）
+
+    # next_anchor：叙事最后一句完整句（只注入一次，取代 prev_tail 200 字文本）
+    last = _last_sentence(narrative)
+    if last:
+        ss["next_anchor"] = last
+
+    # performed_lines：锁定台词逐字出现记入（去重键 = 台词文本）
+    performed = set(ss.get("performed_lines") or [])
+    for line in plan.locked_lines:
+        t = line.get("text", "")
+        if t and t in narrative:
+            performed.add(t)
+    ss["performed_lines"] = sorted(performed)
+
+    ss["first_beat_done"] = True
+    ss["beat_index"] = int(ss.get("beat_index", 0)) + 1
+    if player_choice:
+        ss["player_choice"] = player_choice
+    return {"scene_state": ss}
+
+
+def resolve_player_choice(action: str, plan) -> dict:
+    """玩家动作 → 结构化 player_choice：匹配场景选项回填承诺后果。
+
+    由 narrate 节点调用（Step 2 接线）。自由输入则 {text, effect:"", has_effect:False}。
+    """
+    action = (action or "").strip()
+    for i, opt in enumerate(plan.options or []):
+        if opt.get("text") and opt["text"].strip() == action:
+            return {
+                "text": action,
+                "effect": opt.get("effect", ""),
+                "option_index": i,
+                "tension": opt.get("tension", 0),
+                "has_effect": bool(opt.get("effect")),
+            }
+    return {"text": action, "effect": "", "option_index": -1, "tension": 0, "has_effect": False}
+
+
+# ═════════ 内部工具 ═════════
+
+def _last_sentence(text: str) -> str:
+    """叙事最后一句完整句（next_anchor 用）；无句读时取末尾 80 字。"""
+    t = text.strip()
+    if not t:
+        return ""
+    m = re.findall(r'[^。！？]*[。！？]', t)
+    return m[-1].strip() if m else t[-80:]

@@ -15,6 +15,7 @@ import re
 
 from .state import GameState
 from .director import ScenePlan
+from .continuity import _is_first_beat, prev_tail
 
 logger = logging.getLogger(__name__)
 
@@ -360,19 +361,6 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     return "\n".join(lines)
 
 
-def _is_first_beat(state: GameState, plan: ScenePlan) -> bool:
-    """本场景是否首拍：历史里尚无本场景（同 scene_id）的 assistant 叙事。
-
-    用于区分锁定台词的注入力度——locked_lines 是场景级数据、每拍都注入，
-    但"必须逐字出现"只在首拍成立；非首拍再强制会让 LLM 每拍重演开场事件
-    （如黑影问话后跑掉，三遍重复的根因）。
-    """
-    return not any(
-        h.get("assistant") and h.get("scene_id") == plan.scene_id
-        for h in state.get("history", [])
-    )
-
-
 def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) -> list[dict]:
     """组装 LLM messages：system(世界底色) + 状态面板 + user(场景指令) + 历史"""
     # ── 完整状态面板（LLM 思维链）──
@@ -416,15 +404,11 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
         instruction += "\n\n【上次校验失败原因（必须针对性修复）】\n" + "\n".join(f"- {r}" for r in retry)
 
     # 上一拍结尾注入：作为接续锚点，让 LLM 从结尾自然接续，且明确禁止复述这段结尾。
-    # 只锚定同一场景的上一拍（history 条目带 scene_id 标签；旧存档无标签则回退最近任意一条）。
-    # 跨场景时不注入，让规则 1 的"刚进入场景可交代环境"分支生效，避免拖旧场景结尾续写新场景开场。
-    prev_tail = ""
-    for h in reversed(state.get("history", [])):
-        if h.get("assistant") and (not h.get("scene_id") or h.get("scene_id") == plan.scene_id):
-            prev_tail = h["assistant"][-200:]
-            break
-    if prev_tail:
-        instruction += "\n\n【上一拍结尾（本拍从这里自然接续；严禁复述/重述/铺垫这段剧情）】\n……" + prev_tail
+    # 锚点取 continuity.prev_tail —— 优先 scene_state.next_anchor（结构化，Step 2 后生效），
+    # 缺失回退同场景历史尾部；跨场景 scene_id 不匹配时不注入（规则 1"刚进入可交代环境"生效）。
+    tail_anchor = prev_tail(state, plan)
+    if tail_anchor:
+        instruction += "\n\n【上一拍结尾（本拍从这里自然接续；严禁复述/重述/铺垫这段剧情）】\n……" + tail_anchor
 
     # 离谱动作检测：meta/越权/作弊类 free-input → 标记让 LLM 按规则 15 嘲讽拒绝 + 重输出口
     # 只保留明确的多字 meta/作弊短语。不用"系统/无限/召唤/法术/传送/复制"等常用词做子串拦截，
