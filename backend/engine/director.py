@@ -46,6 +46,7 @@ class ScenePlan:
         self.options = scene.get("options", [])
         self.atmo = scene.get("atmo", "雨夜沉静")  # 氛围标签（匹配 AtmoBackground）
         self.music = scene.get("music", "")
+        self.flags_on_enter = scene.get("flags_on_enter", [])  # 入场锚定 flag（关键节点必亲历）
         self.distance_map = distance_map
         self.next_pos = next_pos
 
@@ -67,6 +68,7 @@ class ScenePlan:
             "options": s.get("options", []),
             "atmo": s.get("atmo", "雨夜沉静"),
             "music": s.get("music", ""),
+            "flags_on_enter": s.get("flags_on_enter", []),
         }
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
 

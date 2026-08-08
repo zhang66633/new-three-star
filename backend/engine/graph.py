@@ -74,6 +74,13 @@ def director_node(state: GameState) -> dict:
         era["location"] = plan.location
     era["chapter"] = plan.chapter
 
+    # 入场锚定 flag：关键节点"必亲历"的工程保证（如 见证者_官道之辩），
+    # 由 registry 场景 flags_on_enter 声明，director 直接写入，不依赖 LLM 关键词碰运气
+    flags = list(state.get("flags", []))
+    for f in plan.flags_on_enter:
+        if f not in flags:
+            flags.append(f)
+
     return {
         "meta": {
             **state.get("meta", {}),
@@ -92,11 +99,13 @@ def director_node(state: GameState) -> dict:
                 "distance_map": plan.distance_map,
                 "atmo": plan.atmo,
                 "music": plan.music,
+                "flags_on_enter": plan.flags_on_enter,
             },
             # 记录上轮时空（供 validate P0 时间连续性检测）
             "prev_era": dict(state.get("era", {})),
         },
         "era": era,
+        "flags": flags,
         "skeleton_pos": plan.scene_id,
         "retry_count": 0,  # 每轮重置重写计数
         "turn": state.get("turn", 0) + 1,  # turn 在导演层自增（每真实回合一次，不被重写污染）
