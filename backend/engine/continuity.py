@@ -132,7 +132,8 @@ def after_beat(state, output, plan, player_choice: dict = None) -> dict:
 
     ss["first_beat_done"] = True
     ss["beat_index"] = int(ss.get("beat_index", 0)) + 1
-    if player_choice:
+    # 只写真实玩家选择（开局 action="" 或空文本不写）
+    if player_choice and player_choice.get("text"):
         ss["player_choice"] = player_choice
     return {"scene_state": ss}
 

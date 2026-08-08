@@ -17,6 +17,7 @@ from .writer import narrate
 from .validator import validate
 from .corrector import classify_tension, apply_correction
 from .remember import stm_append, promote_stm_to_ltm, retrieve_memories
+from .continuity import on_scene_entry, after_beat, resolve_player_choice
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,10 @@ def director_node(state: GameState) -> dict:
         "skeleton_pos": plan.scene_id,
         "retry_count": 0,  # 每轮重置重写计数
         "turn": state.get("turn", 0) + 1,  # turn 在导演层自增（每真实回合一次，不被重写污染）
+        # 连续性子系统：场景变化时初始化 scene_state（开局 scene_state=None 也触发首拍登记）
+        **({"scene_state": on_scene_entry(state, plan)["scene_state"]}
+           if not isinstance(state.get("scene_state"), dict)
+           or (state.get("scene_state") or {}).get("scene_id") != plan.scene_id else {}),
     }
 
 
@@ -237,7 +242,7 @@ async def remember_node(state: GameState) -> dict:
         if f not in flags:
             flags.append(f)
 
-    return {
+    ret = {
         "memory": st.get("memory", {}),
         "relations": relations,
         "trust": trust,
@@ -245,6 +250,18 @@ async def remember_node(state: GameState) -> dict:
         "world_rumors": rumors,
         "flags": flags,
     }
+    # 6. 连续性子系统：每拍写回 scene_state（next_anchor/performed_lines/player_choice）
+    ps = state.get("meta", {}).get("plan_summary")
+    if ps:
+        plan_now = ScenePlan.from_summary(ps)
+        action = ""
+        for h in reversed(state.get("history", [])):
+            if h.get("user"):
+                action = h["user"]
+                break
+        choice = resolve_player_choice(action, plan_now) if action else {}
+        ret.update(after_beat(state, output, plan_now, player_choice=choice))
+    return ret
 
 
 # ═════════ 图构建 ═════════
