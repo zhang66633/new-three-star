@@ -69,6 +69,7 @@ class ScenePlan:
         self.music = scene.get("music", "")
         self.flags_on_enter = scene.get("flags_on_enter", [])  # 入场锚定 flag（关键节点必亲历）
         self.aftermath = scene.get("aftermath", {})  # aftermath（flow/memory_add，供 remember 记忆接线）
+        self.min_turns = scene.get("min_turns", 1)  # 探索预算：本场景至少驻留轮数（0/1=每轮推进）
         self.distance_map = distance_map
         self.next_pos = next_pos
 
@@ -92,6 +93,7 @@ class ScenePlan:
             "music": s.get("music", ""),
             "flags_on_enter": s.get("flags_on_enter", []),
             "aftermath": s.get("aftermath", {}),
+            "min_turns": s.get("min_turns", 1),
         }
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
 

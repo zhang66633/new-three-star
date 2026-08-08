@@ -126,6 +126,7 @@ def new_game_state() -> GameState:
         "foreshadowing": [],
         "world_rumors": ["颍川传言：黄金军近日在附近出没", "朝廷发榜征兵"],
         "turn": 0,
+        "scene_turns": 1,          # 当前场景已驻留轮次（min_turns 探索预算用）
         "retry_count": 0,
         "history": [],
         "last_output": None,

@@ -117,7 +117,8 @@ WRITER_INSTRUCTION = """
 {{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}]}}
 8. 严禁全知旁白宣告世界侧的无觉察（如'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
 9. 选项 text/effect 严禁 meta 词与现代词出口给 NPC（如"穿越者""现代""剧本"）；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
-10. 若发生时空跳跃（跨年/大段路程），叙事须显式交代（如'数月后''几天路程'），不得无标记硬切""".strip()
+10. 若发生时空跳跃（跨年/大段路程），叙事须显式交代（如'数月后''几天路程'），不得无标记硬切
+11. 已在更早场景揭示过的世界差异（如黄金/黄巾）不再重复强调；仅当出现新信息时一笔带过（如'老样子，黄金'），不得每场都当作新发现来写""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -168,6 +169,7 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     lines.append(f"  篇章：{era.get('chapter', '?')}")
     lines.append(f"  位置：{era.get('location', plan.location)}")
     lines.append(f"  当前场景：{plan.chapter_label} · {plan.title}")
+    lines.append(f"  场景轮次：第 {state.get('scene_turns', 1)}/{plan.min_turns} 拍（探索拍可续：本轮可推进新互动，下轮再续另一处）")
     lines.append(f"  场景设定：{plan.setting}")
     lines.append(f"  氛围基调：{plan.atmo}")
     if plan.world_normal:

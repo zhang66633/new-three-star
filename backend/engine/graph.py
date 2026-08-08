@@ -72,6 +72,7 @@ def director_node(state: GameState) -> dict:
                 "music": plan.music,
                 "flags_on_enter": plan.flags_on_enter,
                 "aftermath": plan.aftermath,
+                "min_turns": plan.min_turns,
             },
             # 记录上轮时空（供 validate P0 时间连续性检测）
             "prev_era": dict(state.get("era", {})),
@@ -299,7 +300,15 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
         # END 哨兵（占位自循环安全阀）不推进 skeleton_pos：registry 无 'END' 场景，
         # 盲写会回退 P1_s1_rain 造成"带记忆的伪重开"。保持当前场景挂起。
         if ps and ps.get("next_pos") and ps.get("next_pos") != "END":
-            result["skeleton_pos"] = ps["next_pos"]
+            # min_turns 探索预算：本场景驻留满轮次才推进（开放情境场景可多拍探索）
+            scene_turns = state.get("scene_turns", 1)
+            min_turns = ps.get("min_turns", 1)
+            if scene_turns >= min_turns:
+                result["skeleton_pos"] = ps["next_pos"]
+                result["scene_turns"] = 1  # 进入下一场景，驻留计数重置
+            else:
+                # skeleton_pos 保持当前场景（director_node 已写 plan.scene_id），续生成探索拍
+                result["scene_turns"] = scene_turns + 1
     # 追加 assistant 叙事回历史（供 writer build_messages 的"最近6轮"看到上轮输出）
     if action:
         narr = (result.get("last_output") or {}).get("narrative", "")
