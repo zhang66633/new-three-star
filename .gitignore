@@ -39,3 +39,5 @@ backend/knowledge/rag_index.pkl
 # Logs
 *.log
 backend/uvicorn.log
+
+materials/intro_assets/

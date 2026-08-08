@@ -9,7 +9,7 @@ from collections import Counter
 socket.setdefaulttimeout(600)  # 10 分钟
 
 req = urllib.request.Request(
-    'http://localhost:8001/api/play/step',
+    'http://localhost:8000/api/play/step',
     data=json.dumps({'action': '', 'game_state': {}, 'tension': 0}).encode('utf-8'),
     headers={'Content-Type': 'application/json'})
 

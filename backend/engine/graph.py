@@ -69,6 +69,7 @@ def director_node(state: GameState) -> dict:
                 "player_pov": plan.player_pov,
                 "locked_lines": plan.locked_lines,
                 "distance_map": plan.distance_map,
+                "options": plan.scene.get("options", []),  # 普通场景选项（独立于行动盘）
                 "prep_actions": plan.prep_actions,
                 "atmo": plan.atmo,
                 "music": plan.music,
@@ -91,6 +92,12 @@ def director_node(state: GameState) -> dict:
         # 世界时钟：章节切换时初始化（每章一条时间轴，见 director.CHAPTER_CLOCK）
         **({"world_clock": {"chapter": plan.chapter, **CHAPTER_CLOCK.get(plan.chapter, {"season": "春", "turns_left": 3})}}
            if (state.get("world_clock") or {}).get("chapter") != plan.chapter else {}),
+        # 名场面目标机制：进入名场面前置准备场景（其 aftermath.flow 指向名场面）时即落档，
+        # 保证玩家 miss 名场面后能读档回到准备场景重打（首幕若无 last_fame 将无法重打）
+        **({"auto_save": plan.scene_id}
+           if is_fame_scene(plan.next_pos)
+           and (not isinstance(state.get("scene_state"), dict)
+                or (state.get("scene_state") or {}).get("scene_id") != plan.scene_id) else {}),
     }
 
 
@@ -332,7 +339,15 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             if scene_turns >= min_turns:
                 next_pos = ps["next_pos"]
                 # 名场面门禁（世界时钟）：时节未到 → 驻留攒就位；时节到未就位 → 错过失败
-                gate = fame_should_block_advance(next_pos, state)
+                # 当拍就位放行：remember_node 已把本拍玩家所选行动（prep_action）的 grants 写进
+                # result.scene_state.qualifications——门禁若只读 pre-graph state 会漏掉"推进当拍
+                # 才完成就位"，误判 miss（P6 审查 medium finding）。以 result 的 scene_state 为准，
+                # 使当拍攒的就位条件对门禁可见。
+                gate_state = dict(state)
+                rs = result.get("scene_state")
+                if isinstance(rs, dict) and rs.get("qualifications"):
+                    gate_state["scene_state"] = rs
+                gate = fame_should_block_advance(next_pos, gate_state)
                 if gate == "":
                     result["skeleton_pos"] = next_pos
                     result["scene_turns"] = 1  # 进入下一场景，驻留计数重置
@@ -349,10 +364,23 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                 # skeleton_pos 保持当前场景（director_node 已写 plan.scene_id），续生成探索拍
                 result["scene_turns"] = scene_turns + 1
     # 世界时钟推进：每拍（有玩家动作）消耗世界时间；turns_left 扣尽则时节前进
+    # 章节切换拍：director_node 已把 result.world_clock 初始化为新章时钟（如 P2 秋/5），
+    # 必须以 result 为准，否则用旧章 state 时钟推进会覆盖掉新章时钟（P6 审查 high finding）。
     if action:
-        wc = dict(state.get("world_clock") or {})
+        wc = dict(result.get("world_clock") or state.get("world_clock") or {})
         if wc:
-            tl = int(wc.get("turns_left", 0)) - 1
+            # 行动消耗世界时间：prep_action 声明 cost_turns（如"尾随宫道口"耗 2 拍）；
+            # 普通选项默认 1 拍。按所选行动实际扣减（P6 审查 low finding：cost_turns 从不生效）。
+            cost = 1
+            try:
+                if ps:
+                    plan_now = ScenePlan.from_summary(ps)
+                    ch = resolve_player_choice(action, plan_now)
+                    if ch.get("option_index") is not None and 0 <= ch["option_index"] < len(plan_now.options):
+                        cost = int(plan_now.options[ch["option_index"]].get("cost_turns", 1) or 1)
+            except Exception:
+                cost = 1  # 匹配失败兜底 1 拍，不影响游玩
+            tl = int(wc.get("turns_left", 0)) - cost
             if tl <= 0:
                 seasons = list(_SEASON_ORDER.keys())
                 cur = wc.get("season", "春")
@@ -374,6 +402,28 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
         ps = (result.get("meta") or {}).get("plan_summary") or {}
         history.append({"assistant": stored, "scene_id": ps.get("scene_id", "")})
         result["history"] = history[-12:]  # 防无限增长，保留最近 12 轮
+    # 名场面目标机制：准备期行动盘硬注入——不依赖 LLM 生成（LLM 池只含普通选项，避免改写破坏
+    # grants 精确匹配）。文本原样保留，带 cost_turns/grants/is_prep 标记；与 LLM 选项去重。
+    ps = (result.get("meta") or {}).get("plan_summary") or {}
+    prep_actions = ps.get("prep_actions") or []
+    if prep_actions:
+        opts = list(((result.get("last_output") or {}).get("options")) or [])
+        seen = {o.get("text") for o in opts if isinstance(o, dict)}
+        for pa in prep_actions:
+            t = (pa.get("text") or "").strip()
+            if not t or t in seen:
+                continue
+            seen.add(t)
+            opts.append({
+                "text": t,
+                "type": "minor",  # 行动盘默认低干预（前端以 is_prep 区分样式）
+                "tension": 0,
+                "effect": pa.get("effect", ""),
+                "grants": pa.get("grants", []),
+                "cost_turns": pa.get("cost_turns", 1),
+                "is_prep": True,
+            })
+        result["last_output"]["options"] = opts
     return to_dict(result)
 
 

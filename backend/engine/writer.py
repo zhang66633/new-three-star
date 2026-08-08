@@ -368,12 +368,19 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     instruction += "\n\n" + render_continuity_block(state, plan)
 
     # 场景手调选项池注入（registry options：含 tension/effect，LLM 可选用或改写）
-    if plan.options:
+    # 仅注入普通场景选项（plan.scene.options），行动盘（prep_actions）独立提示——
+    # 行动盘文本必须原样提供给玩家（grants 精确匹配），不交给 LLM 改写。
+    scene_opts = [o for o in plan.options if not o.get("grants")] or plan.scene.get("options", [])
+    if scene_opts:
         pool = "\n".join(
             f"- {o.get('text', '')}（type={o.get('type', 'minor')} tension={o.get('tension', 0)}｜{o.get('effect', '')}）"
-            for o in plan.options[:3]
+            for o in scene_opts[:3]
         )
         instruction += "\n\n【可选骨架选项（可原样采用或在此基础上改写，至少保留 2-3 个）】\n" + pool
+    # 准备期行动盘提示：LLM 不做、不写、不改写——由后端硬注入为玩家独立选项区
+    if plan.prep_actions:
+        board = "\n".join(f"- {p.get('text', '')}（消耗 {p.get('cost_turns', 1)} 次行动）" for p in plan.prep_actions)
+        instruction += "\n\n【准备期行动盘（玩家可选的独立行动区，勿在选项中重复生成，文本由后端原样提供）】\n" + board
 
     # 重写失败原因注入
     retry = getattr(plan, "meta_retry", None)

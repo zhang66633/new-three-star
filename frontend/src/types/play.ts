@@ -51,6 +51,10 @@ export interface OptionSpec {
   type: 'major' | 'minor'
   tension: number
   effect: string
+  // 准备期行动盘（P6 名场面目标机制）：由后端硬注入，玩家可选，grants 精确匹配累积就位条件
+  is_prep?: boolean
+  grants?: string[]
+  cost_turns?: number
 }
 
 export interface NarrativeOutput {
@@ -85,9 +89,18 @@ export interface GameState {
   meta: Record<string, unknown>
 }
 
+// 名场面目标（名场面前置场景时由 scene 事件附带，前端目标面板展示）
+export interface FameGoal {
+  scene_id: string
+  title: string
+  season: string
+  entry_conditions: string[]
+  current_qualifications: string[]
+}
+
 // SSE 事件类型（Phase 4 协议）
 export type StreamEvent =
-  | { type: 'scene'; scene: { scene_id: string; chapter_label: string; title: string; location: string; music?: string; atmo?: string } }
+  | { type: 'scene'; scene: { scene_id: string; chapter_label: string; title: string; location: string; music?: string; atmo?: string; fame_goal?: FameGoal | null } }
   | { type: 'chunk'; content: string }
   | { type: 'player'; content: string }
   | { type: 'state'; state: GameState }

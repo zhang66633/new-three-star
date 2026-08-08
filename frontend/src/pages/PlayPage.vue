@@ -24,15 +24,23 @@
       </div>
     </transition>
 
-    <!-- 开场叙述（穿越 + 世界背景 + 规则，WebGL 多彩水波背景） -->
+    <!-- 开场（高清墨彩视频背景 + 标题 + 穿越旁白 + 规则） -->
     <transition name="intro-fade">
       <div v-if="showIntro" class="intro-overlay">
         <IntroBackground />
-        <div class="intro-veil"></div>
+        <button class="intro-skip" @click="skipIntro">跳过 ▸</button>
         <div class="intro-content">
           <button class="intro-back" @click="goBack">← 返回星图</button>
+          <!-- 标题：固定位置，静悬于画面中央，不随段落移动 -->
           <div class="intro-title">新三国 · 星空</div>
-          <div class="intro-type" :class="{ done: introDone }">{{ introText }}</div>
+          <!-- 穿越旁白：一段一段渐渐浮现（宇宙漂浮感） -->
+          <div class="intro-lines">
+            <transition-group name="intro-line">
+              <p v-for="(line, i) in INTRO_LINES" v-show="visibleLines >= i + 1" :key="i" class="intro-line">
+                {{ line }}
+              </p>
+            </transition-group>
+          </div>
           <transition name="error-fade">
             <div v-if="introDone" class="intro-rules">
               <div class="rule-row"><span class="rule-mark"></span>目标 · 亲身经历名场面——刺董 / 捉放曹 / 屠族，站到历史正中央</div>
@@ -162,10 +170,28 @@
       </main>
 
       <!-- 选项区（仅选项阶段显示） -->
-      <footer class="choice-area" :class="{ 'choice-reveal': loadPhase === 'options' }" v-if="loadPhase === 'options'">
-        <template v-if="options.length > 0">
+      <footer class="choice-area" :class="{ 'choice-reveal': loadPhase === 'options' }" v-if="loadPhase === 'options' && !failed">
+        <!-- 行动盘（准备期行动，后端硬注入；grants 精确匹配累积就位条件） -->
+        <div v-if="prepOptions.length > 0" class="prep-board">
+          <div class="prep-board-title">准备期行动盘</div>
           <button
-            v-for="(opt, i) in options"
+            v-for="(opt, i) in prepOptions"
+            :key="'prep-' + i"
+            class="choice-btn prep-btn"
+            @click="chooseOption(opt)"
+          >
+            <span class="choice-text">{{ opt.text }}</span>
+            <span class="prep-meta">
+              <span v-if="opt.cost_turns" class="prep-cost">耗{{ opt.cost_turns }}时</span>
+              <span v-if="opt.grants && opt.grants.length" class="prep-grants">就位：{{ opt.grants.join('、') }}</span>
+            </span>
+            <span v-if="opt.effect" class="choice-effect">{{ opt.effect }}</span>
+          </button>
+        </div>
+        <!-- 普通选项（LLM 生成 / 场景推进） -->
+        <template v-if="normalOptions.length > 0">
+          <button
+            v-for="(opt, i) in normalOptions"
             :key="i"
             class="choice-btn"
             :class="tensionClass(opt.tension)"
@@ -180,6 +206,23 @@
           <span class="choice-text">继续前行……</span>
           <span class="choice-effect">（选项未及到达，先走一步）</span>
         </button>
+        <!-- 名场面目标面板（名场面前置场景：下一目标 + 就位条件 vs 已累积） -->
+        <div v-if="fameGoal" class="fame-goal" :class="{ 'fame-goal-met': fameGoalMet }">
+          <div class="fame-goal-title">
+            目标名场面 · {{ fameGoal.title }}
+            <span class="fame-goal-season">{{ fameGoal.season }}时</span>
+          </div>
+          <div class="fame-goal-conds">
+            <span
+              v-for="c in fameGoal.entry_conditions"
+              :key="c"
+              class="fame-cond"
+              :class="{ 'fame-cond-met': fameGoal.current_qualifications.includes(c) }"
+            >{{ fameGoal.current_qualifications.includes(c) ? '✓' : '○' }} {{ c }}</span>
+          </div>
+          <div v-if="fameGoalMet" class="fame-goal-tip">就位已备，可推进名场面</div>
+          <div v-else class="fame-goal-tip">未就位——从行动盘攒就位条件，错过即失败</div>
+        </div>
         <div class="free-row">
           <input
             v-model="freeInput"
@@ -281,7 +324,7 @@ import StreamText from '../components/StreamText.vue'
 import AtmoBackground from '../components/AtmoBackground.vue'
 import ParticleLayer from '../components/ParticleLayer.vue'
 import { usePlaySse } from '../composables/usePlaySse'
-import type { GameState, OptionSpec, MemoryItem, PhaseReport } from '../types/play'
+import type { GameState, OptionSpec, MemoryItem, PhaseReport, FameGoal } from '../types/play'
 
 const router = useRouter()
 const { playStep, isStreaming, loadGame } = usePlaySse()
@@ -327,15 +370,25 @@ interface NarrativeBlock {
 const gameState = ref<GameState | null>(null)
 const narrativeBlocks = ref<NarrativeBlock[]>([])
 const options = ref<OptionSpec[]>([])
+// 名场面目标机制：普通选项（LLM 生成）与行动盘（后端硬注入 is_prep）分区
+const normalOptions = computed(() => options.value.filter(o => !o.is_prep))
+const prepOptions = computed(() => options.value.filter(o => o.is_prep))
+// 名场面目标面板（scene 事件附带：下一名场面 + 就位条件 vs 已累积）
+const fameGoal = ref<FameGoal | null>(null)
+const fameGoalMet = computed(() => {
+  const g = fameGoal.value
+  if (!g) return false
+  const qs = new Set(g.current_qualifications)
+  return g.entry_conditions.every(c => qs.has(c))
+})
 const freeInput = ref('')
 const currentStreamText = ref('')
 const showMemory = ref(false)
 const errorMessage = ref('')   // 请求失败的用户可见错误提示
 const failed = ref(false)      // 名场面目标机制：错过关键名场面 → 失败态
 const failMessage = ref('')    // 失败提示文案（读档重打）
-const showIntro = ref(true)    // 开场叙述页（穿越 + 世界背景 + 规则）
-const introText = ref('')      // 打字机已打出文本
-const introDone = ref(false)   // 打字机是否完成（显示规则 + 开始按钮）
+const showIntro = ref(true)    // 开场叙述页（高清墨彩视频背景）
+const introDone = ref(false)   // 旁白全浮现后置 true（显示规则 + 开始按钮）
 const stmList = computed<MemoryItem[]>(() => gameState.value?.memory?.stm ?? [])
 const ltmList = computed<MemoryItem[]>(() => gameState.value?.memory?.ltm ?? [])
 const pinItems = computed<MemoryItem[]>(() => {
@@ -398,45 +451,47 @@ const LOADING_STATUS = [
   '生死不明，便是死了……',
 ]
 
-// ── 开场叙述（打字机：穿越 + 世界背景）──
+// ── 开场叙述：穿越旁白一段一段渐渐浮现（宇宙漂浮感）──
 const INTRO_LINES = [
-  '你记得自己睡前还在刷手机——高楼的灯、城市的路、一条新闻标题：“黄巾起义，波及八州”。',
+  '你记得最后一眼，是手机屏的冷光——高楼、车流、一条推送：黄巾起义，波及八州。',
   '再睁眼，是雨夜，是泥沟，是粗麻衣。你到了一个三国——一个好像不太对劲的三国。',
-  '人们管那支起事的军队叫“黄金军”，不是“黄巾军”。史书在你脑子里是黄巾，眼前的人说的是黄金。',
-  '这世界是被一个蹩脚的天意生成的：时间会跳、NPC 会忘事、巧合会堆叠。',
-  '但你顾不上琢磨这些。你的目标只有一个——亲身站到每个名场面的正中央。',
+  '你将会经历未知的冒险，希望你忘记之前的一切，因为你已经顾不得许多了，只当是你从来没有过那些。',
 ]
-let typeTimer = 0
+let introTimer = 0
+let visibleLines = ref(0)      // 已浮现的段落数（每段间隔渐显）
 function playIntro() {
   introDone.value = false
-  introText.value = ''
-  let li = 0
-  let ci = 0
-  const type = () => {
-    if (li >= INTRO_LINES.length) { introDone.value = true; return }
-    const line = INTRO_LINES[li]
-    if (ci < line.length) {
-      ci += 2
-      introText.value = INTRO_LINES.slice(0, li).join('\n') + '\n' + line.slice(0, ci)
-      typeTimer = window.setTimeout(type, 30)
-    } else {
-      li++
-      ci = 0
-      typeTimer = window.setTimeout(type, 350)
+  visibleLines.value = 0
+  let i = 0
+  const step = () => {
+    i++
+    visibleLines.value = i
+    if (i >= INTRO_LINES.length) {
+      // 全部浮现后稍停，再出现规则与开始
+      introTimer = window.setTimeout(() => { introDone.value = true }, 1800)
+      return
     }
+    introTimer = window.setTimeout(step, 2800)  // 每段间隔（放缓，从容漂浮）
   }
-  type()
+  introTimer = window.setTimeout(step, 900)     // 标题先现，旁白稍候
+}
+
+function skipIntro() {
+  // 跳过开场：显示规则 + 开始按钮（视频背景继续循环）
+  window.clearTimeout(introTimer)
+  visibleLines.value = INTRO_LINES.length
+  introDone.value = true
 }
 
 function beginAdventure() {
-  window.clearTimeout(typeTimer)
+  window.clearTimeout(introTimer)
   showIntro.value = false
   startGame()
 }
 
 // ── 初始化 ──
 onMounted(() => {
-  playIntro()  // 先放开场叙述（穿越 + 世界背景 + 规则），点"开始历险"才进入游戏
+  playIntro()  // 先放开场叙述（穿越 + 世界背景），点"开始历险"才进入游戏
   window.addEventListener('pointerdown', inkSplash, { passive: true })
 })
 
@@ -654,7 +709,9 @@ async function sendAction(action: string, tension: number) {
       updateLastBlock()
     },
     onScene: (ev) => {
-      const scene = ev.scene as { music?: string; atmo?: string }
+      const scene = ev.scene as { music?: string; atmo?: string; fame_goal?: FameGoal | null }
+      // 名场面目标面板：每次 scene 事件更新（含本场景为名场面前置时的 fame_goal）
+      fameGoal.value = scene.fame_goal ?? null
       if (ev.scene.scene_id !== lastSceneId.value) {
         // 真场景切换：定格旧块 → 插分隔 → 更新铭牌 → 墨染 → 氛围
         freezeLastBlock(false)
@@ -815,11 +872,15 @@ const worldClockLabel = computed(() => {
 })
 
 // 错过关键名场面 → 失败态 + 读档重打（服务端 last_fame 自动存档）
+// 失败即终局：隐藏选项区与自由输入，仅保留"读档重打"入口（配合后端 miss 不下发 options）
 function handleFail(msg: string) {
   hideLoader()
   failed.value = true
   failMessage.value = msg
-  loadPhase.value = 'options'
+  options.value = []
+  currentStreamText.value = ''
+  // 不置 loadPhase——由后续 done 走完 onDone（choice-area 靠 v-if="!failed" 隐藏，
+  // 后端 fail 后不追加叙事/选项，读档按钮独立显示，不会与阶段状态冲突）
 }
 
 async function reloadSave() {
@@ -829,11 +890,28 @@ async function reloadSave() {
     failed.value = false
     failMessage.value = ''
     options.value = st.last_output?.options ?? []
+    // 读档场景上下文：按读档状态补场景分隔（章节·标题），重置 lastSceneId 防下一拍误判
+    const ps = st.meta?.plan_summary as { scene_id?: string; chapter_label?: string; title?: string } | undefined
+    const sid = ps?.scene_id ?? st.skeleton_pos ?? ''
+    lastSceneId.value = sid
+    currentStreamText.value = ''
     const narr = st.last_output?.narrative ?? ''
-    if (narr) narrativeBlocks.value = [{ text: narr, isScene: false, streaming: false }]
+    if (narr) {
+      narrativeBlocks.value = [{
+        text: narr,
+        isScene: true,
+        sceneTitle: ps?.chapter_label && ps?.title ? `${ps.chapter_label} · ${ps.title}` : '',
+        streaming: false,
+      }]
+    }
+    // 目标面板：读档后置空，由下一次 scene 事件自然刷新（entry_conditions 在前端不可得）
+    fameGoal.value = null
     loadPhase.value = 'options'
   } else {
-    errorMessage.value = '没有可读的存档（上个名场面存档点不存在）'
+    // 无存档：明确引导（不能读档重打，只能重开）
+    failed.value = false
+    failMessage.value = ''
+    errorMessage.value = '没有可读的存档（上个名场面存档点不存在）——首个名场面错过即失败，只能重开历险。'
   }
 }
 
@@ -912,37 +990,29 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* ── 开场叙述页（WebGL 多彩水波背景 + 打字机穿越叙事 + 规则）── */
+/* ── 开场叙述页（高清墨彩视频背景 + 标题置顶 + 旁白依次浮现 + 规则）── */
 .intro-overlay {
   position: fixed;
   inset: 0;
   z-index: 500;
   display: flex;
-  align-items: center;
+  align-items: flex-start;   /* 顶部对齐：标题固定最上方 */
   justify-content: center;
-  background: radial-gradient(ellipse at center, rgba(2, 2, 3, 0.3), rgba(2, 2, 3, 0.86) 78%);
-}
-.intro-veil {
-  position: fixed;
-  inset: 0;
-  z-index: 1;
-  background:
-    radial-gradient(ellipse at 50% 38%, rgba(202, 138, 4, 0.07), transparent 58%),
-    linear-gradient(180deg, rgba(2, 2, 3, 0.5), rgba(2, 2, 3, 0.78));
-  pointer-events: none;
+  background: #0a0a0c;   /* 兜底暗底（IntroBackground 视频覆盖其上） */
 }
 .intro-content {
   position: relative;
   z-index: 2;
-  max-width: 720px;
+  max-width: 760px;
   width: 90%;
-  padding: 40px 32px;
+  padding: 220px 32px 40px;  /* 顶部给固定标题留足空间，段落从标题下方开始 */
   text-align: center;
 }
 .intro-back {
-  position: absolute;
-  top: 28px;
-  left: 32px;
+  position: fixed;        /* 固定于视口左上角，不随剧情板块移动 */
+  top: 24px;
+  left: 28px;
+  z-index: 510;
   font-size: 0.85rem;
   letter-spacing: 0.25em;
   color: rgba(226, 232, 240, 0.55);
@@ -953,71 +1023,110 @@ onBeforeUnmount(() => {
   transition: color 0.3s;
 }
 .intro-back:hover { color: #f1f5f9; }
+.intro-skip {
+  position: fixed;
+  top: 28px;
+  right: 32px;
+  z-index: 510;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: rgba(226, 232, 240, 0.5);
+  background: transparent;
+  border: 1px solid rgba(226, 232, 240, 0.22);
+  border-radius: 999px;
+  padding: 6px 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.intro-skip:hover {
+  color: #f1f5f9;
+  border-color: rgba(232, 200, 140, 0.6);
+  background: rgba(232, 200, 140, 0.12);
+}
+/* 标题：固定钉在视口最上方中央，不随段落移动 */
 .intro-title {
-  font-family: var(--font-display, serif);
-  font-size: 2.6rem;
+  position: fixed;
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 520;
+  font-family: "Noto Serif SC", "STKaiti", "KaiTi", serif;
+  font-size: 2.5rem;
   font-weight: 700;
   letter-spacing: 0.5em;
   margin-right: -0.5em;
-  color: #f1f5f9;
-  text-shadow: 0 0 40px rgba(202, 138, 4, 0.35);
-  margin-bottom: 28px;
+  white-space: nowrap;
+  color: rgba(250, 248, 242, 0.96);
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
 }
-.intro-type {
-  font-family: var(--font-display, serif);
-  min-height: 230px;
-  font-size: 1.02rem;
-  line-height: 2.1;
+/* 旁白：一段一段渐渐浮现，微浮上移（宇宙漂浮感），无金线无边框 */
+.intro-lines {
+  max-width: 640px;
+  margin: 0 auto;
+  min-height: 190px;
+}
+.intro-line {
+  font-family: "Noto Serif SC", "STKaiti", "KaiTi", serif;
+  margin: 0 0 16px;
+  font-size: 1.0rem;
+  line-height: 1.9;
   letter-spacing: 0.1em;
-  color: rgba(226, 232, 240, 0.9);
-  white-space: pre-wrap;
-  text-align: left;
-  text-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
-  border-left: 1px solid rgba(202, 138, 4, 0.4);
-  padding-left: 20px;
+  color: rgba(248, 246, 240, 0.88);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+  animation: intro-line-float 4.2s ease-out forwards;
+}
+@keyframes intro-line-float {
+  0%   { opacity: 0; transform: translateY(18px); }
+  20%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 .intro-rules {
-  margin-top: 26px;
-  background: rgba(2, 2, 3, 0.55);
-  border: 1px solid rgba(202, 138, 4, 0.28);
+  margin-top: 24px;
+  max-width: 640px;
+  background: rgba(10, 10, 14, 0.55);
+  border: 1px solid rgba(232, 200, 140, 0.3);
   border-radius: 12px;
-  padding: 18px 22px;
+  padding: 18px 24px;
   display: grid;
   gap: 10px;
   text-align: left;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }
 .rule-row {
   font-size: 0.92rem;
   line-height: 1.6;
-  color: rgba(226, 232, 240, 0.9);
+  color: rgba(245, 239, 226, 0.9);
   letter-spacing: 0.04em;
 }
 .rule-mark {
   display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: rgba(202, 138, 4, 0.85);
+  width: 7px;
+  height: 7px;
+  background: #e8c88c;
   margin-right: 12px;
   vertical-align: middle;
+  border-radius: 1px;
 }
 .intro-begin {
   margin-top: 30px;
-  font-family: var(--font-display, serif);
+  font-family: "Noto Serif SC", "STKaiti", "KaiTi", serif;
   font-size: 1.15rem;
   letter-spacing: 0.4em;
   text-indent: 0.4em;
-  padding: 14px 44px;
-  color: #f1f5f9;
-  background: linear-gradient(180deg, rgba(202, 138, 4, 0.18), rgba(202, 138, 4, 0.06));
-  border: 1px solid rgba(202, 138, 4, 0.55);
+  padding: 14px 48px;
+  color: #1a1815;
+  background: linear-gradient(180deg, #f0dcae, #d2b478);
+  border: 1px solid #e8c88c;
   border-radius: 999px;
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 6px 24px rgba(232, 200, 140, 0.25);
 }
 .intro-begin:hover {
-  background: linear-gradient(180deg, rgba(202, 138, 4, 0.32), rgba(202, 138, 4, 0.12));
-  box-shadow: 0 0 30px rgba(202, 138, 4, 0.3);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(232, 200, 140, 0.4);
 }
 .intro-fade-enter-active { transition: opacity 0.8s; }
 .intro-fade-leave-active { transition: opacity 0.4s; }
@@ -1081,6 +1190,77 @@ onBeforeUnmount(() => {
 .error-fade-leave-to {
   opacity: 0;
   transform: translateX(-50%) translateY(-8px);
+}
+
+/* 名场面失败横幅：独立定位（不与 error-banner 重叠），墨红描金，读档入口突出 */
+.fail-banner {
+  top: 72px;
+  background: linear-gradient(180deg, rgba(40, 16, 12, 0.75), rgba(24, 10, 8, 0.85));
+  border: 1px solid rgba(192, 64, 48, 0.5);
+  border-left: 3px solid #c04030;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.55), inset 0 0 40px rgba(192, 64, 48, 0.08);
+}
+.fail-banner .error-text {
+  max-width: 340px;
+  line-height: 1.5;
+}
+.fail-banner .error-retry {
+  background: rgba(192, 64, 48, 0.25);
+  border-color: rgba(232, 168, 56, 0.6);
+  color: #f0c060;
+  padding: 6px 20px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.fail-banner .error-retry:hover {
+  background: rgba(192, 64, 48, 0.45);
+}
+
+/* ── 名场面目标面板（名场面前置场景展示：目标 + 就位条件 vs 已累积）── */
+.fame-goal {
+  margin: 10px 0 6px;
+  padding: 8px 14px;
+  background: rgba(12, 12, 20, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-left: 3px solid #c9a86a;
+  border-radius: 0 10px 10px 0;
+  font-size: 0.78rem;
+}
+.fame-goal-title {
+  color: rgba(232, 200, 140, 0.95);
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fame-goal-season {
+  font-size: 0.68rem;
+  color: rgba(202, 168, 100, 0.7);
+  border: 1px solid rgba(202, 168, 100, 0.3);
+  padding: 1px 8px;
+  border-radius: 20px;
+}
+.fame-goal-conds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.fame-cond {
+  color: rgba(148, 163, 184, 0.8);
+  font-size: 0.72rem;
+}
+.fame-cond-met {
+  color: #7ec8a0;
+}
+.fame-goal-tip {
+  margin-top: 4px;
+  font-size: 0.68rem;
+  color: rgba(192, 64, 48, 0.85);
+  letter-spacing: 0.03em;
+}
+.fame-goal-met .fame-goal-tip {
+  color: #7ec8a0;
 }
 
 /* 返回按钮 */
@@ -1414,6 +1594,47 @@ onBeforeUnmount(() => {
   line-height: 1.35;
   flex-shrink: 0;
 }
+
+/* ── 准备期行动盘（P6 名场面目标机制）：墨块金描边，独立于普通选项 ── */
+.prep-board {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  background: linear-gradient(180deg, rgba(20, 16, 10, 0.55), rgba(15, 12, 8, 0.4));
+  border: 1px solid rgba(210, 180, 120, 0.28);
+  border-left: 3px solid #d2b478;
+  border-radius: 0 12px 12px 0;
+  box-shadow: inset 0 0 24px rgba(210, 180, 120, 0.05);
+}
+.prep-board-title {
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  color: rgba(210, 180, 120, 0.9);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+.prep-btn {
+  background: rgba(24, 19, 12, 0.6);
+  border-color: rgba(210, 180, 120, 0.22);
+  border-left-color: #c9a86a;
+}
+.prep-btn:hover {
+  background: rgba(40, 30, 16, 0.7);
+  border-color: rgba(210, 180, 120, 0.5);
+  border-left-color: #d2b478;
+}
+.prep-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.68rem;
+  text-align: right;
+  flex-shrink: 0;
+}
+.prep-cost { color: rgba(180, 158, 120, 0.85); }
+.prep-grants { color: rgba(230, 200, 140, 0.9); letter-spacing: 0.04em; }
 
 /* tension 三色：左竖线 + 细边框 */
 .tension-low  { border-color: rgba(74, 158, 160, 0.2); border-left-color: #4a9ea0; }

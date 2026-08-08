@@ -148,9 +148,10 @@ _SEASON_ORDER = {"春": 0, "夏": 1, "秋": 2, "冬": 3}
 # 各章世界时钟初始（chapter → {season, turns_left}）；未登记章节回退春/3
 CHAPTER_CLOCK = {
     "P1 黄金风起": {"season": "春", "turns_left": 3},
-    # P2 名场面在秋；turns_left 须 ≥ 前置场景驻留拍数（P2_s1 min_turns=3），
-    # 让玩家在秋内完成准备（投靠等）再推进刺董，拖沓才触发季节超时
-    "P2 洛阳暗夜": {"season": "秋", "turns_left": 5},
+    # P2 名场面刺董在秋；时钟起点设"夏"，比 fame_season 早一个时节，让 wait 分支真正可达——
+    # 玩家在夏未就位时驻留攒就位（wait 缓冲），秋才硬判就位/miss（P6 审查 low finding：wait 死代码）。
+    # turns_left=5：约两个时节的准备窗口（夏末 2 拍 + 秋 3 拍），拖沓才触发季节超时。
+    "P2 洛阳暗夜": {"season": "夏", "turns_left": 5},
 }
 
 
