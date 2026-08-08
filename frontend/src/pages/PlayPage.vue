@@ -465,16 +465,23 @@ function inkSplash(e: PointerEvent) {
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return
   const x = e.clientX
   const y = e.clientY
-  // 双圈金墨涟漪（内圈快、外圈慢）
-  for (let ring = 0; ring < 2; ring++) {
+  // 多层金墨波纹（5 圈同心，逐层放大、错峰扩散）
+  const RINGS = [
+    { max: 70,  delay: 0,    dur: 0.55, bw: 2 },
+    { max: 100, delay: 60,   dur: 0.65, bw: 1.6 },
+    { max: 130, delay: 120,  dur: 0.75, bw: 1.3 },
+    { max: 160, delay: 180,  dur: 0.85, bw: 1.1 },
+    { max: 190, delay: 240,  dur: 0.95, bw: 0.9 },
+  ]
+  for (const r of RINGS) {
     const ripple = document.createElement('span')
     ripple.className = 'click-ripple'
     ripple.style.left = x + 'px'
     ripple.style.top = y + 'px'
-    if (ring === 1) {
-      ripple.style.setProperty('--r-max', '150px')
-      ripple.style.setProperty('--r-dur', '0.9s')
-    }
+    ripple.style.setProperty('--r-max', r.max + 'px')
+    ripple.style.setProperty('--r-dur', r.dur + 's')
+    ripple.style.setProperty('--r-delay', r.delay + 'ms')
+    ripple.style.borderWidth = r.bw + 'px'
     document.body.appendChild(ripple)
     ripple.addEventListener('animationend', () => ripple.remove())
   }
@@ -1592,15 +1599,15 @@ onBeforeUnmount(() => {
   transform: translate(-50%, -50%);
   z-index: 99;
   pointer-events: none;
-  width: 12px; height: 12px;
+  width: 10px; height: 10px;
   border-radius: 50%;
-  border: 2px solid rgba(232, 168, 56, 0.75);
-  box-shadow: 0 0 14px 3px rgba(232, 168, 56, 0.45), inset 0 0 10px rgba(232, 168, 56, 0.2);
+  border: 2px solid rgba(232, 168, 56, 0.8);
+  box-shadow: 0 0 12px 2px rgba(232, 168, 56, 0.4), inset 0 0 8px rgba(232, 168, 56, 0.15);
   opacity: 0;
-  animation: ripple-expand var(--r-dur, 0.7s) ease-out both;
+  animation: ripple-expand var(--r-dur, 0.7s) ease-out var(--r-delay, 0ms) both;
 }
 @keyframes ripple-expand {
-  0%   { width: 12px; height: 12px; opacity: 1; }
+  0%   { width: 10px; height: 10px; opacity: 0.95; }
   100% { width: var(--r-max, 130px); height: var(--r-max, 130px); opacity: 0; }
 }
 .click-droplet {
