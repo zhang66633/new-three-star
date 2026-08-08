@@ -135,8 +135,17 @@ def new_game_state() -> GameState:
 
 
 def to_dict(state: GameState) -> dict:
-    """GameState → 可 JSON 序列化 dict（直接是 TypedDict，无额外处理）"""
-    return dict(state)
+    """GameState → 可 JSON 序列化 dict
+
+    meta 只保留最小 plan_summary（前端场景上下文）：phase_report/validate_reasons/
+    retry_reasons/prev_era 是图内运行时信息，前端用 last_output.phase_report（SSE 单独发），
+    剔除可防状态体积随轮次膨胀。
+    """
+    d = dict(state)
+    meta = d.get("meta")
+    if isinstance(meta, dict):
+        d["meta"] = {"plan_summary": meta.get("plan_summary", {})}
+    return d
 
 
 # 前端回传白名单 + 长度上限（防提示注入 / 超大 body / 内存 DoS）
@@ -176,4 +185,23 @@ def from_dict(data: dict) -> GameState:
     for k in ("player", "era", "knowledge", "memory"):
         if not isinstance(base.get(k), dict):
             base[k] = {}
+    # relations/trust 值钳位 0-100 整数（防恶意前端放大/字符串/负数）
+    for k in ("relations", "trust"):
+        d = base.get(k)
+        if isinstance(d, dict):
+            clamped = {}
+            for name, v in list(d.items())[:_DICT_CAP]:
+                try:
+                    clamped[name] = max(0, min(100, int(v)))
+                except (TypeError, ValueError):
+                    continue
+            base[k] = clamped
+    # knowledge.hidden 收紧（防 check_hidden_leak O(n²) DoS：每条 ≤200 字、≤50 条）
+    kn = base.get("knowledge")
+    if isinstance(kn, dict) and isinstance(kn.get("hidden"), list):
+        kn["hidden"] = [str(h)[:200] for h in kn["hidden"]][:50]
+    # STM 截断到 6（防前端放大，与 remember.STM_CAP 一致）
+    mem = base.get("memory")
+    if isinstance(mem, dict) and isinstance(mem.get("stm"), list) and len(mem["stm"]) > 6:
+        mem["stm"] = mem["stm"][-6:]
     return base

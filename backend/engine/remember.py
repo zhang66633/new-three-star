@@ -51,6 +51,10 @@ def stm_append(state: dict, entry: str, scene_label: str = "", time_label: str =
     stm = list(mem.get("stm", []))
     ts = state.get("turn", 0)
     item = {"id": _new_id(entry, ts), "text": entry[:80], "ts": ts}
+    # 文本级去重：同一条事实不重复入 STM（id 哈希含 ts，跨轮同文本无法靠 id 去重，
+    # 如 P1_s1 开局+续场会重复写入同条记忆）
+    if any(m.get("text") == item["text"] for m in stm):
+        return state
     if scene_label:
         item["scene"] = scene_label
     if time_label:
@@ -116,6 +120,11 @@ async def promote_stm_to_ltm(state: dict) -> dict:
         except json.JSONDecodeError:
             items = []
     items = [str(i)[:150] for i in items if str(i).strip()]
+
+    # 压缩失败/解析空：不丢 STM，保留下轮重试（防静默数据丢失）
+    if not items:
+        logger.warning(f"记忆晋升失败（压缩结果空/解析失败），保留 STM {len(stm)} 条待下轮重试")
+        return state
 
     ltm = list(mem.get("ltm", []))
     ts = state.get("turn", 0)

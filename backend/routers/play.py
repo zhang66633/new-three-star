@@ -116,9 +116,12 @@ async def _step_events(req: PlayRequest):
             else:
                 yield payload
     finally:
-        # 客户端断连/异常时也清理：取消 keepalive、等待 runner 结束（防任务泄漏）
+        # 客户端断连/异常时也清理：取消 keepalive；runner 未完成则取消（停止占用 LLM 额度），
+        # 而非干等它跑完（避免断连后仍空转约 2 分钟）
         keepalive_active = False
         keeper.cancel()
+        if not runner.done():
+            runner.cancel()
         for t in (keeper, runner):
             try:
                 await t

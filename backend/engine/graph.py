@@ -5,6 +5,7 @@ LangGraph 图定义（新三国 星空 · 引擎主图）
 Phase 1: director → narrate → END
 Phase 2: director → narrate ⇄ validate(重写≤2) → corrector(按tension) → remember → END
 """
+import copy
 import logging
 from typing import Literal
 
@@ -22,38 +23,8 @@ logger = logging.getLogger(__name__)
 MAX_RETRY = 2
 
 
-# 流式回调：ContextVar 请求级作用域（不入 state，避免 JSON 序列化失败）
-# 用 contextvars 而非进程全局 —— 多个并发 /play 请求互不串流
-import contextvars as _cv
-
-_stream_cb_var: _cv.ContextVar = _cv.ContextVar("stream_cb", default=None)
-_options_cb_var: _cv.ContextVar = _cv.ContextVar("options_cb", default=None)
-
-
-def set_stream_cb(cb):
-    """设置当前请求的流式回调（ContextVar，任务/请求级隔离）"""
-    _stream_cb_var.set(cb)
-
-
-def get_stream_cb():
-    return _stream_cb_var.get()
-
-
-def clear_stream_cb():
-    _stream_cb_var.set(None)
-
-
-def set_options_cb(cb):
-    _options_cb_var.set(cb)
-
-
-def get_options_cb():
-    return _options_cb_var.get()
-
-
-def clear_options_cb():
-    _options_cb_var.set(None)
-
+# 流式：SSE 由 play.py 在引擎跑完后对最终叙事分块透出（post-validate 定稿分块）。
+# 引擎内不再用 ContextVar 流式回调（历史遗留两套设计，已统一为一套）。
 
 # ═════════ 节点实现 ═════════
 
@@ -100,6 +71,7 @@ def director_node(state: GameState) -> dict:
                 "atmo": plan.atmo,
                 "music": plan.music,
                 "flags_on_enter": plan.flags_on_enter,
+                "aftermath": plan.aftermath,
             },
             # 记录上轮时空（供 validate P0 时间连续性检测）
             "prev_era": dict(state.get("era", {})),
@@ -126,16 +98,8 @@ async def narrate_node(state: GameState) -> dict:
     player_action = (state.get("history") or [{}])[-1].get("user", "") if state.get("history") else ""
     memory_pack = retrieve_memories(state, f"{plan.setting} {player_action}")
 
-    # SSE 流式回调（从全局读取，不入 state）
-    cb = get_stream_cb()
-    output = await narrate(state, plan, memory_pack=memory_pack, on_chunk=cb)
-    # 立即回调 options（不等 validate/corrector/remember —— 减少前端等待）
-    opts_cb = get_options_cb()
-    if opts_cb and output.get("options"):
-        try:
-            opts_cb(output["options"])
-        except Exception:
-            pass
+    # 叙事生成（SSE 流式由 play.py 跑完引擎后分块，这里不接流式回调）
+    output = await narrate(state, plan, memory_pack=memory_pack)
     # 清重写标记（turn 由 director_node 自增，重写不污染轮次）
     meta = dict(state.get("meta", {}))
     meta.pop("retry_reasons", None)
@@ -220,10 +184,14 @@ async def remember_node(state: GameState) -> dict:
     # 场景标记（供前端记忆抽屉显示场景上下文）
     ps = state.get("meta", {}).get("plan_summary", {})
     scene_label = f"{ps.get('chapter_label', '')}·{ps.get('title', '')}".strip("·") or ""
+    # 场景设计记忆（aftermath.memory_add，策划摘要事实）优先：比叙事截断更干净
+    scene_memory = (ps.get("aftermath") or {}).get("memory_add", [])
+    if scene_memory:
+        memory_adds = scene_memory
     # 可读时间标记
     era = state.get("era", {})
     time_label = f"{era.get('year', '?')}年·{era.get('season', '?')}" if era else ""
-    st = dict(state)
+    st = copy.deepcopy(state)  # 深拷贝防嵌套 dict 原地改输入（浅拷贝别名隐患）
     # 只取最重要的 1 条（规范：每轮 1 条 STM 客观事实摘要）
     best = memory_adds[0] if memory_adds else (output.get("narrative", "")[:60])
     st = stm_append(st, str(best)[:80], scene_label=scene_label, time_label=time_label)
@@ -315,11 +283,8 @@ def get_graph():
 
 # ═════════ 外部入口（router 调用）═════════
 
-async def run_step(state_dict: dict, action: str = "", tension: int = 0, stream_cb=None) -> dict:
-    """跑一轮：输入前端回传 state + 玩家动作 + 所选选项干预度 → 输出更新后的 state
-
-    stream_cb: 可选回调（text: str）→ LLM chunk 逐块透出（SSE 流式）
-    """
+async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict:
+    """跑一轮：输入前端回传 state + 玩家动作 + 所选选项干预度 → 输出更新后的 state"""
     state = from_dict(state_dict)
     # 玩家动作入历史（空 action = 开局；assistant 输出在图跑完后追加）
     if action:
@@ -327,18 +292,13 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0, stream_
     # 干预度累积（玩家所选选项的 tension；重修正后由 corrector 重置）
     if tension > 0:
         state["tension"] = max(0, min(100, state.get("tension", 0) + tension))
-    # 流式回调：请求级 ContextVar（不入 state），完成后清理
-    if stream_cb:
-        set_stream_cb(stream_cb)
-    try:
-        result = await get_graph().ainvoke(state)
-    finally:
-        clear_stream_cb()
-        clear_options_cb()
+    result = await get_graph().ainvoke(state)
     # 场景推进：玩家提交选择后（action 非空），按场景 aftermath.flow 更新 skeleton_pos
     if action:
         ps = result.get("meta", {}).get("plan_summary")
-        if ps and ps.get("next_pos"):
+        # END 哨兵（占位自循环安全阀）不推进 skeleton_pos：registry 无 'END' 场景，
+        # 盲写会回退 P1_s1_rain 造成"带记忆的伪重开"。保持当前场景挂起。
+        if ps and ps.get("next_pos") and ps.get("next_pos") != "END":
             result["skeleton_pos"] = ps["next_pos"]
     # 追加 assistant 叙事回历史（供 writer build_messages 的"最近6轮"看到上轮输出）
     if action:

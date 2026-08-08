@@ -23,7 +23,7 @@ KNOWN_NAMES = {
     "袁术", "孙权", "周瑜", "陈宫", "王允", "貂蝉", "赵云", "马超", "黄忠",
     "魏延", "庞统", "姜维", "鲁肃", "吕蒙", "陆逊", "张角", "张宝", "张梁",
     "华雄", "颜良", "文丑", "邢道荣", "许攸", "蔡瑁", "徐庶", "法正", "孙坚",
-    "孙策", "汉献帝", "小黄门", "黄金兵", "老者", "黑影", "乡绅",
+    "孙策", "吕伯奢", "汉献帝", "小黄门", "黄金兵", "老者", "黑影", "乡绅",
 }
 
 # 人设分层注入（决策 8）
@@ -42,6 +42,7 @@ PERSONA_LIGHT = {
     "张梁": "张梁：张角之弟，黄金军将领，谨慎多疑。",
     "汉献帝": "汉献帝：傀儡天子，年幼无助。",
     "陈宫": "陈宫：谋士，刚直不阿。",
+    "吕伯奢": "吕伯奢：成皋吕家寨大当家，好客重情。",
     "孙权": "孙权：少年英主，善于用人。",
     "周瑜": "周瑜：儒将，才华横溢。",
     "赵云": "赵云：忠勇无双，白马银枪。",
@@ -64,6 +65,7 @@ PERSONA_FULL = {
     "张角": "张角：被天意吞噬的教主。清醒时悲天悯人，混沌时狂言呓语。黄金军已偏离其初衷。",
     "张宝": "张宝：张角之弟。嗜血好杀，视百姓为草芥。对兄长的疯癫深感不安但无法反抗。",
     "陈宫": "陈宫：刚直谋士。弃曹操投吕布，一生忠于理想。擅长看穿人心但拙于自保。",
+    "吕伯奢": "吕伯奢：成皋吕家寨大当家，占山为王的匪首与慈祥长辈一体，急公好义又粗豪。视曹操为旧友，杀猪宰鹅温酒设宴热情相待——被误杀时，死于自己的一片好心。",
     "孙权": "孙权：少年继位，天生政治家。表面从谏如流，内心深不可测。'生子当如孙仲谋'。",
     "周瑜": "周瑜：儒将，雅量高致。既生瑜何生亮。对孙策之死耿耿于怀。",
     "赵云": "赵云：忠勇无双。不争功不夺利，真正的'完美武将'。内心对乱世有深沉的悲悯。",
@@ -85,13 +87,14 @@ WORLD_BASE = """
 - 玩家不能使用现代词汇/知识解释世界（会被当作疯子，除非不解释）
 
 【铁律】
-1. 绝不出现 meta 语言：不出现"系统/AI/世界是假的/你在游戏中"等字样
-2. 绝不出现"点明不对劲"的提示：不写"没人觉得不对""后面是什么来着""世界跳过了一截"这类旁白/台词——世界完全正常地演出，玩家自己察觉差异
-3. 世界漏洞只通过玩家视角呈现：玩家是穿越者，用自己的认知对比发现偏差（如知道"黄巾"却看到"黄金"）——但世界侧一切正常，NPC 永不讨论这些偏差
+1. 绝不出现 meta 语言：不出现"系统/AI/世界是假的/你在游戏中/穿越者"等字样；玩家内心也不得把"穿越者"当确定事实向世界宣告
+2. 绝不出现"点明不对劲"的提示：严禁'没人觉得不对''无人察觉''世界似乎……'等任何宣告集体无觉察的全知旁白——世界完全正常地演出，玩家自己察觉差异；玩家内心可写"你记得史书上写的是黄巾"，但不得写"没有人觉得这是黄巾"
+3. 世界漏洞只通过玩家视角呈现：玩家用自己的认知对比发现偏差（如知道"黄巾"却看到"黄金"）——但世界侧一切正常，NPC 永不讨论这些偏差
 4. NPC 对玩家来历从不过问，正常对话自然接纳
 5. 历史大势不可推翻，但修正留痕且过程可被改写
 6. 玩家的关系、声望、记忆永远生效
 7. 输出为叙事文本 + 2-3 个选项；选项须是"少而重大"的道德两难或行动抉择
+8. 选项 text/effect 严禁 meta 词与现代词出口给 NPC（如"穿越者""现代""剧本"）；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
 """.strip()
 
 # 叙事生成指令
@@ -106,12 +109,15 @@ WRITER_INSTRUCTION = """
 【输出要求】
 1. 生成 600-1000 字叙事正文（第二人称"你"），描写当前场景
 2. 玩家视角差异通过玩家内心/观察自然呈现（如：你记得史书上写的是'黄巾'……），但世界侧一切正常
-3. 感官细节必须覆盖四类：视觉（光影色彩）、听觉（风声人语）、触觉（冷热风雨）、嗅觉（泥土血腥焦糊）
-4. 描写必须均衡四类：动作、对话、心理、环境（缺一不可）
-5. 角色情感反应必须完整推导：触发事件 → 身体反应 → 内心活动 → 外在行动（至少展现其中三段）
+3. 基调"轻松网文"：语言利落、节奏明快，多用短句短段；画面感保留，但忌堆叠比喻意象、忌抒情长句、忌过度蒙太奇；说人话
+4. 叙事语气带乐子人的轻盈——即使场景沉重（雨夜/杀戮/悲剧），叙述也不煽情不压抑，保持轻快的看戏感
+5. 感官细节覆盖至少两类（视觉/听觉优先），点到即止；以动作、对话推进为主，心理简洁带戏谑，不冗长不端架子
 6. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）
 7. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，不要 ```json，直接输出 JSON 对象），格式：
-{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "output_grade": "🟢|🟡|🔴", "output_focus": "本轮重点（一句话）"}}""".strip()
+{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}]}}
+8. 严禁全知旁白宣告世界侧的无觉察（如'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
+9. 选项 text/effect 严禁 meta 词与现代词出口给 NPC（如"穿越者""现代""剧本"）；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
+10. 若发生时空跳跃（跨年/大段路程），叙事须显式交代（如'数月后''几天路程'），不得无标记硬切""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -415,7 +421,6 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, o
     """
     from services.llm import stream_chat
     from config import PARAMS_PLAY, STOP_SEQUENCES
-    from services.validator import validate as deterministic_fix
     from services.deslop import deslop
 
     messages = build_messages(state, plan, memory_pack)
@@ -428,10 +433,14 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, o
         if on_chunk:
             on_chunk(chunk)
 
-    # 后处理链
+    # LLM 全挂检测：错误占位字符串不得当叙事正文（转异常走路由 err 分支）
+    if "[错误]" in draft and "LLM" in draft:
+        raise RuntimeError("LLM 服务不可用")
+
+    # 后处理链（services.validator 面向旧脚本格式，对散文近空操作且重复 deslop，已移除）
     draft = deslop(draft)
     data = parse_output(draft)
-    data["narrative"] = deterministic_fix(data.get("narrative", draft))
+    data["narrative"] = data.get("narrative", draft)
     options = data.get("options", [])
     # 容错：LLM 把 options 生成为对象/裸值 → 落回空列表
     if not isinstance(options, list):
@@ -528,15 +537,23 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan) -> di
                 break  # 最多一条
 
     # 6. flags 检测（暗线/见证者/知情者——供 director aftermath.flow 岔路与前端徽章）
+    # 场景声明在 flags_on_enter 的全名 flag（如 见证者_官道之辩/见证者_刺董败露）优先产出，
+    # 保证与 flags_on_enter 字符串一致（director 岔路用精确匹配）。
+    # 见证者/知情者：仅当场景 flags_on_enter 声明同前缀全名 flag 才产出（避免裸前缀噪声，
+    # 如"跟着"误触发暗线_流亡）；暗线_*：无场景锚定，保留裸前缀回退。
     FLAG_KW = {
-        "暗线_流亡": {"流亡", "同行", "跟着"},
+        "暗线_流亡": {"流亡", "同行", "一路东逃"},
         "暗线_黄金": {"混入", "黄金军内部", "信物"},
         "暗线_许家": {"许家", "推荐信", "厚报", "救下"},
         "见证者": {"目睹", "亲眼看见", "见证"},
         "知情者": {"知道真相", "识破", "察觉"},
     }
-    for flag, kws in FLAG_KW.items():
+    scene_flags = [f for f in (plan.flags_on_enter or []) if isinstance(f, str)]
+    for prefix, kws in FLAG_KW.items():
         if any(kw in narrative for kw in kws):
-            result["flags_add"].append(flag)
+            matched = next((f for f in scene_flags if f.startswith(prefix)), None)
+            flag = matched if matched else (prefix if prefix.startswith("暗线_") else None)
+            if flag and flag not in result["flags_add"]:
+                result["flags_add"].append(flag)
 
     return result

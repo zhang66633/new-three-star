@@ -94,8 +94,16 @@ async def apply_correction(state: dict, output: dict, scene_desc: str, tier: str
 
     if data.get("narrative"):
         output["narrative"] = data["narrative"]
-        if data.get("options"):
-            output["options"] = data["options"]
+        # 选项规范化（复用 writer 同款约束：type major/minor、tension int 钳位、dict 过滤、上限 3）
+        if isinstance(data.get("options"), list):
+            opts = [o for o in data["options"] if isinstance(o, dict)]
+            for opt in opts[:3]:
+                opt["type"] = "major" if opt.get("type") == "major" else "minor"
+                try:
+                    opt["tension"] = max(0, min(100, int(opt.get("tension", 0))))
+                except (TypeError, ValueError):
+                    opt["tension"] = 0
+            output["options"] = opts[:3]
 
     # 记录修正
     corrected = list(state.get("corrected", []))

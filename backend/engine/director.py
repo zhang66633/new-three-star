@@ -19,12 +19,33 @@ def load_registry() -> dict:
     """加载场景注册表（mtime 缓存：JSON 文件变了就重读，开发期免重启）"""
     global _REGISTRY, _REGISTRY_MTIME
     path = os.path.join(os.path.dirname(__file__), "scenes", "registry.json")
-    mtime = os.path.getmtime(path)
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        # 文件缺失：保留上次成功加载的缓存（从未加载则空 dict）
+        return _REGISTRY if _REGISTRY is not None else {}
     if _REGISTRY is None or mtime != _REGISTRY_MTIME:
-        with open(path, encoding="utf-8") as f:
-            _REGISTRY = json.load(f)
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+        except (OSError, json.JSONDecodeError) as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"registry.json 加载失败: {e}，保留旧缓存")
+            return _REGISTRY if _REGISTRY is not None else {}
+        _REGISTRY = data
         _REGISTRY_MTIME = mtime
+        _warn_dangling_flows(data)
     return _REGISTRY
+
+
+def _warn_dangling_flows(registry: dict) -> None:
+    """加载时校验 aftermath.flow 目标 id 都在 registry 内（防 flow 笔误致伪重开）"""
+    for sid, scene in registry.items():
+        flow = (scene.get("aftermath") or {}).get("flow")
+        if isinstance(flow, str) and flow and flow != "END" and flow not in registry:
+            logging.getLogger(__name__).warning(
+                f"场景 {sid} aftermath.flow -> {flow} 在 registry 中不存在（将导致伪重开）"
+            )
 
 
 class ScenePlan:
@@ -47,6 +68,7 @@ class ScenePlan:
         self.atmo = scene.get("atmo", "雨夜沉静")  # 氛围标签（匹配 AtmoBackground）
         self.music = scene.get("music", "")
         self.flags_on_enter = scene.get("flags_on_enter", [])  # 入场锚定 flag（关键节点必亲历）
+        self.aftermath = scene.get("aftermath", {})  # aftermath（flow/memory_add，供 remember 记忆接线）
         self.distance_map = distance_map
         self.next_pos = next_pos
 
@@ -69,6 +91,7 @@ class ScenePlan:
             "atmo": s.get("atmo", "雨夜沉静"),
             "music": s.get("music", ""),
             "flags_on_enter": s.get("flags_on_enter", []),
+            "aftermath": s.get("aftermath", {}),
         }
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
 
@@ -85,7 +108,15 @@ def choose_scene(state: GameState) -> ScenePlan:
     pos = state.get("skeleton_pos") or "P1_s1_rain"
     scene = registry.get(pos)
     if scene is None:
-        scene = registry["P1_s1_rain"]
+        if pos == "P1_s1_rain" or not pos:
+            # 新开局：P1_s1_rain 必须存在，否则无法起步
+            scene = registry.get("P1_s1_rain")
+        if scene is None:
+            # 未知/悬空 pos（flow 笔误或占位被删）：挂起当前场景，不回退 P1（防带记忆伪重开）
+            logging.getLogger(__name__).warning(
+                f"场景 {pos} 不存在（flow 目标悬空），挂起当前场景防伪重开"
+            )
+            return ScenePlan(_dead_end_scene(pos), {}, "")
 
     # 距离映射：从场景的锁定台词/选项中提取角色 → 默认"远观"
     distance_map = _infer_distance_map(scene, state)
@@ -93,7 +124,6 @@ def choose_scene(state: GameState) -> ScenePlan:
     next_pos = _resolve_next(scene, state)
     # 安全阀：防止 placeholder 场景自循环耗尽 LLM 额度
     if next_pos == pos:
-        import logging
         logger = logging.getLogger(__name__)
         turn = state.get("turn", 0)
         if turn > 15:
@@ -103,6 +133,16 @@ def choose_scene(state: GameState) -> ScenePlan:
             )
             next_pos = "END"
     return ScenePlan(scene, distance_map, next_pos)
+
+
+def _dead_end_scene(pos: str) -> dict:
+    """未知场景的占位 stub（挂起用，next_pos 空 → 不推进）"""
+    return {
+        "scene_id": pos, "chapter": "?", "chapter_label": "", "year": 0, "season": "",
+        "location": "", "atmo": "雨夜沉静", "title": "（场景缺失）",
+        "setting": f"场景 {pos} 尚未定义。", "world_normal": "", "player_pov": [],
+        "locked_lines": [], "options": [], "flags_on_enter": [],
+    }
 
 
 def _resolve_next(scene: dict, state: GameState) -> str:
@@ -115,8 +155,8 @@ def _resolve_next(scene: dict, state: GameState) -> str:
        - 特殊 key "tension_high" / "tension_mid" 按 tension 阈值匹配
     3. 空：停留在当前场景（死路保护见调用方）
 
-    安全阀：若解析结果 = 当前 scene_id（自循环），且 turn > 20，
-    记录 warning 但不阻断（由 graph 层的 turn 上限兜底）。
+    安全阀：若解析结果 = 当前 scene_id（自循环），且 turn > 15，
+    记录 warning 并置 END（graph.run_step 守卫不推进 skeleton_pos 防伪重开）。
     """
     aftermath = scene.get("aftermath", {})
     flow = aftermath.get("flow", "")
@@ -147,10 +187,7 @@ def _resolve_next(scene: dict, state: GameState) -> str:
         # ③ 兜底
         if "default" in flow:
             return flow["default"]
-        # 取第一个非特殊 key 的值
-        for k, v in flow.items():
-            if not k.startswith("tension_"):
-                return v
+        # 无 default 且无 flag/tension 命中：挂起当前场景（不误入第一个分支）
         return ""
 
     # ── 字符串分支（直接返回）──

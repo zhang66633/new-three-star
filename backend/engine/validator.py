@@ -102,9 +102,13 @@ def check_time_continuity(prev_era: dict, curr_era: dict) -> list[str]:
     """P0a: 时空连续（无 prev 则通过）"""
     if not prev_era or not curr_era:
         return []
-    prev_year = prev_era.get("year")
-    curr_year = curr_era.get("year")
-    if prev_year and curr_year and curr_year < prev_year:
+    # 强转 int 再比：前端回传 year 可能是字符串，字典序比较会误判（'189'<'184'、'199'<'200'）
+    try:
+        prev_year = int(prev_era.get("year"))
+        curr_year = int(curr_era.get("year"))
+    except (TypeError, ValueError):
+        return []  # 年份不可解析则跳过
+    if curr_year < prev_year:
         return [f"P0: 时间倒退（{prev_year}→{curr_year}），需显式跳跃标记"]
     return []
 
@@ -322,6 +326,38 @@ def check_emotion_chain(narrative: str) -> list[str]:
     return []
 
 
+def check_locked_lines(narrative: str, locked_lines: list) -> list[str]:
+    """软自检：锁定台词覆盖（关键台词被 LLM 省略时记录，不触发重写）"""
+    if not locked_lines:
+        return []
+
+    def _norm(s):
+        return re.sub(r"[，。！？、；：\s·…—'\"“”‘’]", "", s)
+
+    n = _norm(narrative)
+    missing = []
+    for line in locked_lines:
+        text = line.get("text", "")
+        if text and _norm(text) not in n:
+            missing.append(text[:16])
+    if missing:
+        return [f"P7: 锁定台词缺失 {len(missing)}/{len(locked_lines)}: {'、'.join(missing[:3])}"]
+    return []
+
+
+def check_no_pointing_out(narrative: str) -> list[str]:
+    """铁律2 硬校验：'点明不对劲'旁白（没人觉得不对/无人察觉等）。
+
+    全知旁白宣告世界集体无觉察，会剧透玩家"该察觉差异"——违反剧情骨架铁律2。
+    命中则硬失败触发重写（重写注入此原因，引导 LLM 删除）。
+    """
+    for p in (r"[没无](?:有)?人觉得不对", r"[没无](?:有)?人觉得不对劲", r"[没无](?:有)?人察觉"):
+        m = re.search(p, narrative)
+        if m:
+            return [f"P7: 禁止'点明不对劲'旁白『{m.group(0)}』——世界差异只经玩家内心呈现"]
+    return []
+
+
 def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str]]:
     """确定性层全检：返回 (硬失败原因, 软自检原因)。
 
@@ -346,9 +382,15 @@ def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str
         (state.get("meta") or {}).get("prev_era"),
         state.get("era", {}),
     )
+    # ── 硬：铁律2 '点明不对劲'旁白（没人觉得不对/无人察觉）──
+    hard += check_no_pointing_out(output.get("narrative", ""))
 
     # ── 软：质量自检（记录不重写）──
     soft += [r for r in opt_reasons if "无选项" not in r]
+    soft += check_locked_lines(
+        output.get("narrative", ""),
+        (state.get("meta") or {}).get("plan_summary", {}).get("locked_lines", []),
+    )
     soft += check_character_names(output.get("narrative", ""))
     soft += check_deslop(output.get("narrative", ""))
     soft += check_five_senses(output.get("narrative", ""))
