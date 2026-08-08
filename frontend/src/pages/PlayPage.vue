@@ -24,6 +24,28 @@
       </div>
     </transition>
 
+    <!-- 开场叙述（穿越 + 世界背景 + 规则，WebGL 多彩水波背景） -->
+    <transition name="intro-fade">
+      <div v-if="showIntro" class="intro-overlay">
+        <IntroBackground />
+        <div class="intro-veil"></div>
+        <div class="intro-content">
+          <button class="intro-back" @click="goBack">← 返回星图</button>
+          <div class="intro-title">新三国 · 星空</div>
+          <div class="intro-type" :class="{ done: introDone }">{{ introText }}</div>
+          <transition name="error-fade">
+            <div v-if="introDone" class="intro-rules">
+              <div class="rule-row"><span class="rule-mark"></span>目标 · 亲身经历名场面——刺董 / 捉放曹 / 屠族，站到历史正中央</div>
+              <div class="rule-row"><span class="rule-mark"></span>世界时钟 · 每章一条时间轴，你的行动消耗时间，名场面锚定时节</div>
+              <div class="rule-row"><span class="rule-mark"></span>准备期行动盘 · 投靠 / 乔装 / 买情报 / 赶路，攒就位条件</div>
+              <div class="rule-row"><span class="rule-mark"></span>错过关键名场面即失败 · 关键节点自动存档，可读档重打</div>
+            </div>
+          </transition>
+          <button v-if="introDone" class="intro-begin" @click="beginAdventure">开始历险</button>
+        </div>
+      </div>
+    </transition>
+
     <!-- 返回星图 -->
     <button class="back-btn" @click="goBack" aria-label="返回星图">←</button>
 
@@ -252,6 +274,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, inject } from 'vue'
+import IntroBackground from '../components/IntroBackground.vue'
 import { useRouter } from 'vue-router'
 import CinematicLoader from '../components/CinematicLoader.vue'
 import StreamText from '../components/StreamText.vue'
@@ -310,6 +333,9 @@ const showMemory = ref(false)
 const errorMessage = ref('')   // 请求失败的用户可见错误提示
 const failed = ref(false)      // 名场面目标机制：错过关键名场面 → 失败态
 const failMessage = ref('')    // 失败提示文案（读档重打）
+const showIntro = ref(true)    // 开场叙述页（穿越 + 世界背景 + 规则）
+const introText = ref('')      // 打字机已打出文本
+const introDone = ref(false)   // 打字机是否完成（显示规则 + 开始按钮）
 const stmList = computed<MemoryItem[]>(() => gameState.value?.memory?.stm ?? [])
 const ltmList = computed<MemoryItem[]>(() => gameState.value?.memory?.ltm ?? [])
 const pinItems = computed<MemoryItem[]>(() => {
@@ -372,9 +398,45 @@ const LOADING_STATUS = [
   '生死不明，便是死了……',
 ]
 
+// ── 开场叙述（打字机：穿越 + 世界背景）──
+const INTRO_LINES = [
+  '你记得自己睡前还在刷手机——高楼的灯、城市的路、一条新闻标题：“黄巾起义，波及八州”。',
+  '再睁眼，是雨夜，是泥沟，是粗麻衣。你到了一个三国——一个好像不太对劲的三国。',
+  '人们管那支起事的军队叫“黄金军”，不是“黄巾军”。史书在你脑子里是黄巾，眼前的人说的是黄金。',
+  '这世界是被一个蹩脚的天意生成的：时间会跳、NPC 会忘事、巧合会堆叠。',
+  '但你顾不上琢磨这些。你的目标只有一个——亲身站到每个名场面的正中央。',
+]
+let typeTimer = 0
+function playIntro() {
+  introDone.value = false
+  introText.value = ''
+  let li = 0
+  let ci = 0
+  const type = () => {
+    if (li >= INTRO_LINES.length) { introDone.value = true; return }
+    const line = INTRO_LINES[li]
+    if (ci < line.length) {
+      ci += 2
+      introText.value = INTRO_LINES.slice(0, li).join('\n') + '\n' + line.slice(0, ci)
+      typeTimer = window.setTimeout(type, 30)
+    } else {
+      li++
+      ci = 0
+      typeTimer = window.setTimeout(type, 350)
+    }
+  }
+  type()
+}
+
+function beginAdventure() {
+  window.clearTimeout(typeTimer)
+  showIntro.value = false
+  startGame()
+}
+
 // ── 初始化 ──
 onMounted(() => {
-  startGame()
+  playIntro()  // 先放开场叙述（穿越 + 世界背景 + 规则），点"开始历险"才进入游戏
   window.addEventListener('pointerdown', inkSplash, { passive: true })
 })
 
@@ -850,6 +912,117 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* ── 开场叙述页（WebGL 多彩水波背景 + 打字机穿越叙事 + 规则）── */
+.intro-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(2, 2, 3, 0.3), rgba(2, 2, 3, 0.86) 78%);
+}
+.intro-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background:
+    radial-gradient(ellipse at 50% 38%, rgba(202, 138, 4, 0.07), transparent 58%),
+    linear-gradient(180deg, rgba(2, 2, 3, 0.5), rgba(2, 2, 3, 0.78));
+  pointer-events: none;
+}
+.intro-content {
+  position: relative;
+  z-index: 2;
+  max-width: 720px;
+  width: 90%;
+  padding: 40px 32px;
+  text-align: center;
+}
+.intro-back {
+  position: absolute;
+  top: 28px;
+  left: 32px;
+  font-size: 0.85rem;
+  letter-spacing: 0.25em;
+  color: rgba(226, 232, 240, 0.55);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px 12px;
+  transition: color 0.3s;
+}
+.intro-back:hover { color: #f1f5f9; }
+.intro-title {
+  font-family: var(--font-display, serif);
+  font-size: 2.6rem;
+  font-weight: 700;
+  letter-spacing: 0.5em;
+  margin-right: -0.5em;
+  color: #f1f5f9;
+  text-shadow: 0 0 40px rgba(202, 138, 4, 0.35);
+  margin-bottom: 28px;
+}
+.intro-type {
+  font-family: var(--font-display, serif);
+  min-height: 230px;
+  font-size: 1.02rem;
+  line-height: 2.1;
+  letter-spacing: 0.1em;
+  color: rgba(226, 232, 240, 0.9);
+  white-space: pre-wrap;
+  text-align: left;
+  text-shadow: 0 0 18px rgba(0, 0, 0, 0.6);
+  border-left: 1px solid rgba(202, 138, 4, 0.4);
+  padding-left: 20px;
+}
+.intro-rules {
+  margin-top: 26px;
+  background: rgba(2, 2, 3, 0.55);
+  border: 1px solid rgba(202, 138, 4, 0.28);
+  border-radius: 12px;
+  padding: 18px 22px;
+  display: grid;
+  gap: 10px;
+  text-align: left;
+}
+.rule-row {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: rgba(226, 232, 240, 0.9);
+  letter-spacing: 0.04em;
+}
+.rule-mark {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: rgba(202, 138, 4, 0.85);
+  margin-right: 12px;
+  vertical-align: middle;
+}
+.intro-begin {
+  margin-top: 30px;
+  font-family: var(--font-display, serif);
+  font-size: 1.15rem;
+  letter-spacing: 0.4em;
+  text-indent: 0.4em;
+  padding: 14px 44px;
+  color: #f1f5f9;
+  background: linear-gradient(180deg, rgba(202, 138, 4, 0.18), rgba(202, 138, 4, 0.06));
+  border: 1px solid rgba(202, 138, 4, 0.55);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.intro-begin:hover {
+  background: linear-gradient(180deg, rgba(202, 138, 4, 0.32), rgba(202, 138, 4, 0.12));
+  box-shadow: 0 0 30px rgba(202, 138, 4, 0.3);
+  transform: translateY(-1px);
+}
+.intro-fade-enter-active { transition: opacity 0.8s; }
+.intro-fade-leave-active { transition: opacity 0.4s; }
+.intro-fade-enter-from, .intro-fade-leave-to { opacity: 0; }
+
 .play-page {
   width: 100%;
   height: 100%;
