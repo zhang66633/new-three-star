@@ -108,7 +108,7 @@ WRITER_INSTRUCTION = """
 【场景设定】{setting}
 【世界侧正常演出】{world_normal}
 【玩家视角差异（仅玩家可感知，世界侧不讨论）】{player_pov}
-【锁定台词（必须逐字出现，说话人标注）】{locked_lines}
+{locked_lines}
 【在场角色人设】{personas}
 
 【输出要求】
@@ -129,7 +129,7 @@ WRITER_INSTRUCTION = """
 13. 关系/信任按角色分别给出：relations_delta、trust_delta 里，为本场真正与玩家互动或在场的每个角色给出**各自独立**的数值（-8~+8，正=好感/信任上升，负=下降）；数值须因角色而异，严禁所有角色填同一值；没实际互动的角色不要列入
 14. 幽默手法（每场至少用 2 种，点到即止不过度）：① 反差/荒诞——严肃场面混入鸡毛蒜皮；② 冷幽默——一本正经说胡话；③ 夸张——小事说成大场面；④ 自嘲——无名氏的自我调侃；⑤ 看戏点评——对历史名场面隔岸观火；⑥ 巧合梗——蹩脚世界的巧合堆叠（从玩家视角吐槽）。严禁 meta 词、严禁全知旁白、严禁"点明不对劲"
 15. 若玩家本拍动作离谱/越权/meta（试图改变世界规则、召唤现代事物、要求创造/作弊/上帝模式、命令 NPC 做不可能之事等）：**世界不得真的改变**——叙事用乐子人语气幽默拒绝（旁白或 NPC 给一句嘲讽吐槽，如"你咋不上天呢？"），动作滑稽落空、无实际后果；选项须含"换个说法/再想想"等重输出口（可作额外第 4 个选项，不挤占 2-3 个常规行动选项），不推进主线；NPC 把玩家的话当疯话自然接住，不把 meta 词当回事
-16. 场景首拍（历史里没有本场景的上一拍叙事）：只交代开场情境与在场者（醒来、身处何地、刚发生了什么），**把路线/方向选择留给玩家选项**——不得替玩家做出未选择的行为（如直接写"你追了上去""你决定跟他走"等替玩家选路/选线的动作），不提前开启逃亡/战斗/某条暗线
+16. 场景首拍（历史里没有本场景的上一拍叙事）：只交代开场情境与在场者（醒来、身处何地、刚发生了什么），**把路线/方向选择留给玩家选项**——不得替玩家做出未选择的行为（如直接写"你追了上去""你决定跟他走"等替玩家选路/选线的动作），不提前开启逃亡/战斗/某条暗线。**本场景非首拍（历史里有本场景上一拍叙事）：必须从上一拍结尾推进剧情，严禁重新交代开场或重演已演出的场景事件**
 17. 承接上一拍时，结尾出现的模糊指代（'黑影''那个人'）与已出场角色视为同一对象，不得凭空实体化成新身份（如把'黑影'写成与上拍给饼老者无关的另一个'于老头'）；玩家上拍选择跟随/互动的对象，本拍继续与其互动""".strip()
 
 
@@ -337,7 +337,12 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     locked = plan.locked_lines
     if locked:
         lines.append("")
-        lines.append("🔒 锁定台词（必须逐字出现）")
+        # 首拍必须逐字演出；非首拍不得重演首拍场景事件（场景级数据每拍注入，措辞须区分）
+        if _is_first_beat(state, plan):
+            lock_note = "本场景首拍：必须逐字出现"
+        else:
+            lock_note = "本场景已演出过：角色在场可自然点题，严禁重演首拍场景事件（如黑影问话后跑掉）"
+        lines.append(f"🔒 锁定台词（{lock_note}）")
         for l in locked:
             lines.append(f"  [{l.get('speaker', '?')}] {l.get('text', '')}")
 
@@ -354,6 +359,19 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     return "\n".join(lines)
 
 
+def _is_first_beat(state: GameState, plan: ScenePlan) -> bool:
+    """本场景是否首拍：历史里尚无本场景（同 scene_id）的 assistant 叙事。
+
+    用于区分锁定台词的注入力度——locked_lines 是场景级数据、每拍都注入，
+    但"必须逐字出现"只在首拍成立；非首拍再强制会让 LLM 每拍重演开场事件
+    （如黑影问话后跑掉，三遍重复的根因）。
+    """
+    return not any(
+        h.get("assistant") and h.get("scene_id") == plan.scene_id
+        for h in state.get("history", [])
+    )
+
+
 def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) -> list[dict]:
     """组装 LLM messages：system(世界底色) + 状态面板 + user(场景指令) + 历史"""
     # ── 完整状态面板（LLM 思维链）──
@@ -363,9 +381,14 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     names = [l["speaker"] for l in plan.locked_lines if l.get("speaker")]
     personas = _load_persona_layer(names, plan.distance_map)
 
-    locked = "\n".join(
+    locked_raw = "\n".join(
         f"[{l['speaker']}] {l['text']}" for l in plan.locked_lines
     ) or "（无）"
+    # 首拍 vs 非首拍：锁定台词首拍必须逐字演出；非首拍不得重演首拍场景事件
+    if _is_first_beat(state, plan):
+        locked = f"【锁定台词（本场景首拍：必须逐字出现，说话人标注）】\n{locked_raw}"
+    else:
+        locked = f"【锁定台词（本场景已演出过：角色在场可自然点题，但严禁重演首拍场景事件，如黑影问话后跑掉）】\n{locked_raw}"
     pov = "\n".join(f"· {p}" for p in plan.player_pov) or "（无）"
 
     instruction = WRITER_INSTRUCTION.format(
