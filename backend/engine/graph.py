@@ -344,12 +344,30 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             # 1. 推进日期（按行动类型耗时；location 供赶路距离解析——当前地点）
             days = action_days(action, [], (result.get("era") or {}).get("location", ""))
             new_wd = advance_date(wd, days)
-            # 前往更晚场景：world_date 快进到目标场景最早年（吸收旅途/时代跳跃，如 184→189 洛阳）
+            # 前往更晚场景：world_date 快进到目标场景年代（吸收旅途/时代跳跃，如 184→189 洛阳）
             ps = (result.get("meta") or {}).get("plan_summary") or {}
             scene_year = int(ps.get("year") or 0)
             if scene_year > int(new_wd.get("year", 0)):
+                old_wd = dict(new_wd)
                 new_wd = dict(new_wd)
                 new_wd["year"] = scene_year
+                # 月份对齐场景季节（如秋→9 月）：防 189-02 仍判 P1 黄金乱起（世界常态不切换）/
+                # 季节与日期矛盾（显示"秋"却 2 月）——时代快进要真的进入那个时代
+                season_month = {"春": 3, "夏": 6, "秋": 9, "冬": 12}.get(ps.get("season") or "")
+                if season_month:
+                    new_wd["month"] = season_month
+                # 时代快进：补 (旧, 新] 期间的时间线事件（你错过的天下事）→ 简报，
+                # 世界真正"前进了"而不只是年份数字变了（黄金溃兵/董卓进京等都被吸收）
+                from .world import period_events
+                period = period_events(old_wd, new_wd)
+                if period:
+                    events = list(result.get("world_events") or state.get("world_events") or [])
+                    seen_ids = {e.get("event_id") for e in events}
+                    for ev in period:
+                        if ev.get("event_id") not in seen_ids:
+                            events.append(ev)
+                    result["world_events"] = events[-50:]
+                    result["new_briefing"] = True
             result["world_date"] = new_wd
             # 统一时钟：era.year 跟随 world_date（单调向前，回访不回退）
             if isinstance(result.get("era"), dict):
