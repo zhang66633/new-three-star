@@ -40,12 +40,9 @@ def advance_date(world_date: dict, days: float) -> dict:
         if m > _MONTHS:
             m = 1
             y += 1
-    while total < 1:
-        total += _DAYS_IN_MONTH
-        m -= 1
-        if m < 1:
-            m = _MONTHS
-            y -= 1
+    # 注：无倒退借位循环——days≥0 且 day≥1，total<1 永不合法出现；旧版借位循环会把
+    # 刚进位的半天小数（如 30.5→进位后 total=0.5）又借回上月，产生不可能日期（day 30.5）。
+    # 进位后 total ∈ (0, 30]，新月第 0.5 天表示"进新月后半天"。
     d["year"], d["month"], d["day"] = y, m, round(total, 1)
     return d
 
@@ -78,9 +75,7 @@ def action_days(action: str, plan_options: list = None, location: str = "") -> f
         return ACTION_COST["rest"]
     if any(k in a for k in ("打听", "问问", "交谈", "观察", "看看", "围观", "闲聊", "问问路")):
         return ACTION_COST["talk"]
-    if any(k in a for k in ("买", "卖", "买卖", "交易", "办事", "赶集")):
-        return ACTION_COST["errand"]
-    if any(k in a for k in ("赶路", "前往", "离开", "南下", "北上", "去往", "动身", "出发", "回到", "返回", "回")):
+    if any(k in a for k in ("赶路", "前往", "离开", "南下", "北上", "去往", "去", "动身", "出发", "回到", "返回", "回")):
         # 赶路耗时=距离（B-③ §1.2）：邻近约 1 天，隔站递增（2 站 2.5 / 3 站 4 / 4 站 5.5）
         from .worlddata import LOCATIONS
         names = list(LOCATIONS.keys())
@@ -101,6 +96,9 @@ def action_days(action: str, plan_options: list = None, location: str = "") -> f
         if any(k in a for k in ("跨州", "远行", "长途", "数日")):
             return 5.0
         return 1.0
+    # 买卖/办事（在赶路之后：含"前往X买/办事"的复合动作先按赶路距离计时，防距离经济被旁路）
+    if any(k in a for k in ("买", "卖", "买卖", "交易", "办事", "赶集")):
+        return ACTION_COST["errand"]
     return ACTION_COST["errand"]  # 默认 1 天
 
 

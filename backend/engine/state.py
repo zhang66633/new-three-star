@@ -96,6 +96,7 @@ class GameState(TypedDict):
     dead: Optional[bool]            # 死亡（三属性同时极端，alive=False）——前端读档最近快照
     # ── 引擎 ──
     turn: int
+    scene_turns: int              # 当前地点驻留轮次（供 world 周期事件判定；未声明会被 LangGraph 丢弃）
     retry_count: int              # 本轮重写次数
     history: list[dict]           # 对话历史（前端回传）
     scene_state: Optional[dict]   # 连续性子系统：结构化"上一拍状态"（见 continuity.py，取代窗口化历史反推）

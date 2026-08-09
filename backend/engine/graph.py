@@ -391,9 +391,11 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                 result["vitals_alarm"] = ""     # 已脱离濒死 → 清除标记
             result["player"] = player
             # 3. 生成世界事件（移动时 + 周期）
+            # 驻留计数先递增（位置变则重置为 1），再判定——否则 should_generate_events 读不到
+            # 本拍计数，periodic（每 4 拍）恒 False（A2 周期事件死代码修复）
+            pos_changed = result.get("skeleton_pos") != state.get("skeleton_pos")
+            result["scene_turns"] = 1 if pos_changed else int(state.get("scene_turns") or 1) + 1
             moved = should_generate_events(state, result)
-            # 驻留计数：移动则重置（新地点第 1 拍），否则递增——供周期事件判定
-            result["scene_turns"] = 1 if moved else int(result.get("scene_turns") or state.get("scene_turns") or 1) + 1
             if moved:
                 new_events = generate_events(state, new_wd, moved, location=(result.get("era") or {}).get("location", ""))
                 if new_events:
