@@ -786,3 +786,39 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
                 result["flags_add"].append(flag)
 
     return result
+
+
+async def synthesize_briefing(events: list, prev_date: dict = None, cur_date: dict = None) -> str:
+    """LLM 合成世界简报（A3，设计 §3.3）：结构化事件 → 一段可读简报。
+
+    含时间跨度 + 与玩家相关点，折棒乐子人口吻。失败（LLM 挂/输出异常）返回 ''
+    ——前端回退逐条事件列表。
+    """
+    from services.llm import stream_chat
+    from config import PARAMS_FORMAT, STOP_SEQUENCES
+    if not events:
+        return ""
+    ev_lines = "\n".join(
+        f"〔{e.get('date', '?')}〕{str(e.get('event', ''))[:80]}"
+        + ("　←与你有关" if e.get("related_to_player") == "strong" else "")
+        for e in events[-6:]
+    )
+    p, c = prev_date or {}, cur_date or {}
+    span = f"{p.get('year', '?')}年{p.get('month', '?')}月 → {c.get('year', '?')}年{c.get('month', '?')}月"
+    messages = [
+        {"role": "system", "content": (
+            "你是《新三国·星空》的旁白，用轻松幽默网文的折棒口吻讲世界动态。"
+            "把下面这段时间跨度 + 事件列表合成一段 60-120 字的简报，让玩家感到世界在自我转动。"
+            "写法：先说时间过去了多久（如'一晃数月'），再说期间发生了哪些事，最后带一句与局势/玩家相关的走向。"
+            "口语化短句、带一点看戏的轻快，但别用现代词、别点破这是游戏。只输出简报正文，不要标题、不要列表、不要 JSON。"
+        )},
+        {"role": "user", "content": f"时间跨度：{span}\n期间事件：\n{ev_lines}"},
+    ]
+    try:
+        draft = ""
+        async for chunk in stream_chat(messages, max_tokens=300, **PARAMS_FORMAT, stop=STOP_SEQUENCES):
+            draft += chunk
+        draft = draft.strip().strip('“”"\'。').strip()
+        return draft[:200]
+    except Exception:
+        return ""

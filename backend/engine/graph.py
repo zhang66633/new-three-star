@@ -425,7 +425,17 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
 
 
 async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict:
-    """跑一轮（三分离）：prepare → 图执行 → commit"""
+    """跑一轮（三分离）：prepare → 图执行 → commit → 简报合成"""
     state = _prepare(state_dict, action, tension)
     result = await get_graph().ainvoke(state)
-    return _commit(result, state, action)
+    result = _commit(result, state, action)
+    # A3 LLM 合成简报（§3.3）：本拍有世界动态 → 合成一段可读简报（含时间跨度+相关点）
+    # 失败静默返回 ''，前端回退逐条事件列表
+    if result.get("new_briefing"):
+        fresh = [e for e in (result.get("world_events") or []) if not e.get("seen")][-6:]
+        if fresh:
+            from .writer import synthesize_briefing
+            result["briefing"] = await synthesize_briefing(
+                fresh, state.get("world_date"), result.get("world_date")
+            )
+    return result

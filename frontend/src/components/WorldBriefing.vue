@@ -4,7 +4,8 @@
       <div class="briefing-panel" @click.stop>
         <div class="briefing-title">天 下 动 态</div>
         <div class="briefing-sub">你离开的这段时间，世间发生了这些……</div>
-        <div class="briefing-list">
+        <p v-if="briefing" class="briefing-syn">{{ briefing }}</p>
+        <div class="briefing-list" v-if="events.length">
           <div v-for="e in events" :key="e.event_id" class="briefing-item"
             :class="{ 'briefing-strong': e.related_to_player === 'strong' }">
             <span class="briefing-date">{{ e.date }}</span>
@@ -26,15 +27,16 @@ import type { WorldEvent } from '../types/play'
 
 const props = defineProps<{
   events: WorldEvent[]
+  briefing?: string
 }>()
 const emit = defineEmits<{ (e: 'read'): void }>()
 
 const visible = ref(false)
 
-// 有未读强相关事件时弹出
-watch(() => props.events, (evs) => {
-  const unread = (evs || []).filter(e => !e.seen && e.related_to_player === 'strong')
-  if (unread.length > 0) {
+// 有合成简报（A3）或未读强相关事件时弹出
+watch(() => [props.events, props.briefing] as const, () => {
+  const hasStrong = (props.events || []).some(e => !e.seen && e.related_to_player === 'strong')
+  if (props.briefing || hasStrong) {
     visible.value = true
   }
 }, { immediate: true, deep: true })
@@ -81,6 +83,17 @@ function close() {
   text-align: center;
   letter-spacing: 0.05em;
   margin-bottom: 18px;
+}
+.briefing-syn {
+  font-size: 0.95rem;
+  line-height: 1.8;
+  color: rgba(240, 220, 174, 0.92);
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 3px solid rgba(232, 200, 140, 0.45);
+  border-radius: 0 8px 8px 0;
+  padding: 12px 16px;
+  margin: 0 0 14px;
+  letter-spacing: 0.02em;
 }
 .briefing-list {
   display: grid;

@@ -98,6 +98,7 @@ export interface GameState {
   tension: number
   corrected: string[]
   foreshadowing: string[]
+  briefing?: string               // 本拍 LLM 合成世界简报（A3 §3.3）
   world_rumors: string[]
   world_events: WorldEvent[]       // 事实层：世界事件队列（自由沙盒）
   world_date: { year: number; month: number; day: number }   // 世界具体日期

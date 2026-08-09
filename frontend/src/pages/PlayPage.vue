@@ -48,8 +48,8 @@
     <!-- 返回星图 -->
     <button class="back-btn" @click="goBack" aria-label="返回星图">←</button>
 
-    <!-- 世界简报（自由沙盒：到达新地点/周期时弹出未读强相关事件） -->
-    <WorldBriefing :events="worldEvents" @read="markBriefingRead" />
+    <!-- 世界简报（自由沙盒：到达新地点/周期时弹出，LLM 合成段 + 逐条事件） -->
+    <WorldBriefing :events="worldEvents" :briefing="gameState?.briefing" @read="markBriefingRead" />
 
     <!-- 成就解锁提示（临时浮层） -->
     <AchievementToast :achievements="newAchToasts" />
