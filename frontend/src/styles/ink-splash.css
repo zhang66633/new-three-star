@@ -1,0 +1,63 @@
+/* 点击墨迹粒子样式（useInkSplash）：
+   粒子元素 append 到 document.body，scoped 会给类加 data-v 属性导致匹配不到 → 必须全局非 scoped */
+.click-wave {
+  position: fixed;
+  left: 0; top: 0;
+  pointer-events: none;
+  z-index: 99;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(var(--ws));
+  opacity: 0;
+  background: radial-gradient(
+    circle,
+    transparent 56%,
+    color-mix(in srgb, var(--s-edge, #a8d4ec) 45%, transparent) 66%, /* 波峰亮缘（薄而克制） */
+    color-mix(in srgb, var(--s-edge, #a8d4ec) 13%, transparent) 78%, /* 波后尾迹（更薄） */
+    transparent 90%
+  );
+  animation:
+    wave-grow var(--wdur, 0.9s) cubic-bezier(0.16, 1, 0.3, 1) var(--wdelay, 0ms) both,
+    wave-fade var(--wdur, 0.9s) cubic-bezier(0.3, 0, 0.55, 1) var(--wdelay, 0ms) both;
+}
+@keyframes wave-grow {
+  0%   { transform: translate(-50%, -50%) scale(var(--ws)); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes wave-fade {
+  0%   { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+/* 中央落点微光：小、快、轻，一闪即散 */
+.click-flash {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  z-index: 98;
+  pointer-events: none;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--s-flash, #e2f3ff) 90%, transparent) 0%,
+    color-mix(in srgb, var(--s-flash, #e2f3ff) 28%, transparent) 45%,
+    transparent 72%);
+  animation: flash-pop 0.4s ease-out both;
+}
+@keyframes flash-pop {
+  0%   { width: 5px; height: 5px; opacity: 0.9; }
+  100% { width: 24px; height: 24px; opacity: 0; }
+}
+
+/* 亮墨滴：径向渐变模拟受光的小液滴 + 微光晕；弧线飞行（先上抛后下落） */
+.click-drop {
+  position: fixed;
+  z-index: 100;
+  pointer-events: none;
+  border-radius: 50%;
+  box-shadow: 0 0 5px 0.5px color-mix(in srgb, var(--s-drop, #9cc8e2) 45%, transparent);
+  animation: drop-fly 0.65s cubic-bezier(0.16, 0.55, 0.45, 1) both;
+}
+@keyframes drop-fly {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  50%  { transform: translate(calc(var(--dx) * 0.5), calc(var(--dy) * 0.5 - var(--sag))) scale(0.75); opacity: 0.95; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + var(--sag) * 0.6)) scale(0.12); opacity: 0; }
+}

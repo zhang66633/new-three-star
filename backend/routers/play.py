@@ -65,22 +65,6 @@ async def _step_events(req: PlayRequest):
         yield _sse({"type": "err", "content": "世界短暂失序，请重试"})
         yield _sse({"type": "done"})
         return
-    # 名场面目标机制：本场景为名场面前置时，附带下一个名场面目标（前端目标面板展示）
-    fame_goal = None
-    try:
-        if pre_plan.next_pos:
-            from engine.director import is_fame_scene, load_registry
-            if is_fame_scene(pre_plan.next_pos):
-                fs = load_registry().get(pre_plan.next_pos) or {}
-                fame_goal = {
-                    "scene_id": pre_plan.next_pos,
-                    "title": fs.get("title", ""),
-                    "season": fs.get("fame_season", ""),
-                    "entry_conditions": fs.get("entry_conditions", []),
-                    "current_qualifications": (pre_state.get("scene_state") or {}).get("qualifications", []),
-                }
-    except Exception:
-        logger.exception("fame_goal 计算失败")
     yield _sse({
         "type": "scene",
         "scene": {
@@ -90,7 +74,6 @@ async def _step_events(req: PlayRequest):
             "location": pre_plan.location,
             "atmo": pre_plan.atmo,
             "music": pre_plan.music,
-            "fame_goal": fame_goal,
         },
     })
 
@@ -117,21 +100,6 @@ async def _step_events(req: PlayRequest):
             elif kind == "__result__":
                 result = payload
                 last = result.get("last_output") or {}
-                # 名场面目标机制：错过关键名场面 → 失败事件（前端提示 + 读档重打）
-                # 失败即终局：不再下发 narrative/state/options——失败态下玩家只能读档重打，
-                # 不能继续游玩"本应错过"的名场面（P6 审查 high finding：fail 可被绕过）。
-                if result.get("fame_missed"):
-                    yield _sse({"type": "fail", "content": "你错过了关键名场面（时节已过或未就位）——历史如水流过，未能亲历。读档回到上个名场面重打。"})
-                    yield _sse({"type": "done"})
-                    continue
-                # 名场面目标机制：进入关键名场面开始前自动存档（服务端持久化，覆盖式）
-                # try/except：存档失败只记日志，不中断本回合叙事输出（P6 审查 low finding）
-                if result.get("auto_save"):
-                    try:
-                        from db import save_game
-                        await save_game("last_fame", json.dumps(result, ensure_ascii=False), label="名场面")
-                    except Exception:
-                        logger.exception("自动存档失败（不影响本回合叙事）")
                 # 按最终校验后的 narrative 分块流式发送
                 narrative = last.get("narrative", "")
                 for i in range(0, len(narrative), 40):
@@ -177,19 +145,19 @@ async def play_step(req: PlayRequest):
 
 class SaveRequest(BaseModel):
     game_state: dict = Field(default_factory=dict)
-    save_id: str = Field(default="last_fame", max_length=64)
+    save_id: str = Field(default="autosave", max_length=64)
 
 
 @router.post("/play/save")
 async def play_save(req: SaveRequest):
-    """手动存档：当前 GameState 落库（关键名场面前由引擎自动存 last_fame）。"""
+    """手动存档：当前 GameState 落库（默认槽位 autosave）。"""
     from db import save_game
     await save_game(req.save_id, json.dumps(req.game_state, ensure_ascii=False), label="手动")
     return {"ok": True}
 
 
 class LoadRequest(BaseModel):
-    save_id: str = Field(default="last_fame", max_length=64)
+    save_id: str = Field(default="autosave", max_length=64)
 
 
 @router.post("/play/load")

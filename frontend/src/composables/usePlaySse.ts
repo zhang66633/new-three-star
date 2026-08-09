@@ -160,8 +160,8 @@ export function usePlaySse() {
     }
   }
 
-  /** 读档：加载服务端存档（关键名场面前自动存档 last_fame），失败返回 null */
-  async function loadGame(saveId = 'last_fame'): Promise<GameState | null> {
+  /** 读档：加载服务端存档（默认槽位 autosave），失败返回 null */
+  async function loadGame(saveId = 'autosave'): Promise<GameState | null> {
     try {
       const resp = await fetch(`${API_BASE}/api/play/load`, {
         method: 'POST',

@@ -94,7 +94,6 @@ class GameState(TypedDict):
     retry_count: int              # 本轮重写次数
     history: list[dict]           # 对话历史（前端回传）
     scene_state: Optional[dict]   # 连续性子系统：结构化"上一拍状态"（见 continuity.py，取代窗口化历史反推）
-    world_clock: Optional[dict]   # 遗留：旧名场面时钟 {chapter, season, turns_left}（自由沙盒重构中废弃）
     last_output: Optional[NarrativeOutput]
     last_trace: str               # 最近一次修正痕迹 id（''=无）
     meta: dict                    # 运行时信息（plan/距离映射等，不持久化）
@@ -142,11 +141,10 @@ def new_game_state() -> GameState:
         "world_events": [],           # 事实层：世界事件队列（离开时预生成，见自由沙盒重构设计）
         "world_date": {"year": 184, "month": 2, "day": 1},  # 世界具体日期（取代 turns_left 时节）
         "turn": 0,
-        "scene_turns": 1,          # 当前场景已驻留轮次（min_turns 探索预算用）
+        "scene_turns": 1,          # 当前地点驻留轮次（供 world 周期事件判定，见 world.py）
         "retry_count": 0,
         "history": [],
         "scene_state": None,      # None = 未初始化（旧存档/未接线），continuity 回退历史扫描
-        "world_clock": None,      # None = 未初始化，director 章节切换时写入 {chapter, season, turns_left}
         "last_output": None,
         "last_trace": "",
         "meta": {},

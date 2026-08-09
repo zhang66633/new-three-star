@@ -137,7 +137,7 @@ def after_beat(state, output, plan, player_choice: dict = None) -> dict:
     # 只写真实玩家选择（开局 action="" 或空文本不写）
     if player_choice and player_choice.get("text"):
         ss["player_choice"] = player_choice
-    # qualifications：玩家选中行动（含 prep_actions 准备期行动盘）的 grants 累积就位条件
+    # qualifications：玩家选中选项声明的 grants 累积（自由沙盒：称号/立场等累积用，保留字段）
     choice = player_choice or {}
     idx = choice.get("option_index")
     if isinstance(idx, int) and 0 <= idx < len(plan.options):
@@ -179,7 +179,7 @@ def render_continuity_block(state, plan) -> str:
 
     if isinstance(ss, dict) and ss.get("scene_id") == plan.scene_id:
         beat = int(ss.get("beat_index", 1))
-        lines.append(f"· 场景：{plan.chapter_label} · {plan.title} · 第 {beat}/{plan.min_turns} 拍（{'首拍，只开场' if first else '首拍已完成，续接推进'}）")
+        lines.append(f"· 场景：{plan.chapter_label} · {plan.title} · 第 {beat} 拍（{'首拍，只开场' if first else '首拍已完成，续接推进'}）")
         choice = ss.get("player_choice") or {}
         if choice.get("text"):
             eff = f" → 承诺后果：{choice['effect']}" if choice.get("effect") else ""
@@ -194,7 +194,7 @@ def render_continuity_block(state, plan) -> str:
         if events:
             lines.append("· 已演出事件：" + "；".join(events))
     else:
-        lines.append(f"· 场景：{plan.chapter_label} · {plan.title} · 第 1/{plan.min_turns} 拍（首拍，只开场）")
+        lines.append(f"· 场景：{plan.chapter_label} · {plan.title} · 第 1 拍（首拍，只开场）")
 
     note = locked_lines_note(state, plan)
     if note["must_perform"]:

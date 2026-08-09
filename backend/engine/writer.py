@@ -180,7 +180,7 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     lines.append(f"  篇章：{era.get('chapter', '?')}")
     lines.append(f"  位置：{era.get('location', plan.location)}")
     lines.append(f"  当前场景：{plan.chapter_label} · {plan.title}")
-    lines.append(f"  场景轮次：第 {state.get('scene_turns', 1)}/{plan.min_turns} 拍（探索拍可续：本轮可推进新互动，下轮再续另一处）")
+    lines.append(f"  本地点驻留轮次：第 {state.get('scene_turns', 1)} 拍（自由行动，可继续探索或启程离开）")
     lines.append(f"  场景设定：{plan.setting}")
     lines.append(f"  氛围基调：{plan.atmo}")
     if plan.world_normal:
@@ -388,19 +388,13 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     instruction += "\n\n" + render_continuity_block(state, plan)
 
     # 场景手调选项池注入（registry options：含 tension/effect，LLM 可选用或改写）
-    # 仅注入普通场景选项（plan.scene.options），行动盘（prep_actions）独立提示——
-    # 行动盘文本必须原样提供给玩家（grants 精确匹配），不交给 LLM 改写。
-    scene_opts = [o for o in plan.options if not o.get("grants")] or plan.scene.get("options", [])
+    scene_opts = plan.scene.get("options", []) or plan.options
     if scene_opts:
         pool = "\n".join(
             f"- {o.get('text', '')}（type={o.get('type', 'minor')} tension={o.get('tension', 0)}｜{o.get('effect', '')}）"
             for o in scene_opts[:3]
         )
         instruction += "\n\n【可选骨架选项（可原样采用或在此基础上改写，至少保留 2-3 个）】\n" + pool
-    # 准备期行动盘提示：LLM 不做、不写、不改写——由后端硬注入为玩家独立选项区
-    if plan.prep_actions:
-        board = "\n".join(f"- {p.get('text', '')}（消耗 {p.get('cost_turns', 1)} 次行动）" for p in plan.prep_actions)
-        instruction += "\n\n【准备期行动盘（玩家可选的独立行动区，勿在选项中重复生成，文本由后端原样提供）】\n" + board
 
     # 重写失败原因注入
     retry = getattr(plan, "meta_retry", None)

@@ -64,15 +64,12 @@ class ScenePlan:
         self.world_normal = scene.get("world_normal", "")
         self.player_pov = scene.get("player_pov", [])
         self.locked_lines = scene.get("locked_lines", [])
-        # 名场面目标机制：prep_actions（准备期行动盘）并入选项——玩家在名场面前从行动盘选，
-        # 行动消耗世界时间（cost_turns）并积累就位条件（grants）
-        self.prep_actions = scene.get("prep_actions", [])
-        self.options = scene.get("options", []) + self.prep_actions
+        # 自由沙盒：场景选项即普通选项（独立提示，LLM 可改写；无行动盘机制）
+        self.options = scene.get("options", [])
         self.atmo = scene.get("atmo", "雨夜沉静")  # 氛围标签（匹配 AtmoBackground）
         self.music = scene.get("music", "")
         self.flags_on_enter = scene.get("flags_on_enter", [])  # 入场锚定 flag（关键节点必亲历）
         self.aftermath = scene.get("aftermath", {})  # aftermath（flow/memory_add，供 remember 记忆接线）
-        self.min_turns = scene.get("min_turns", 1)  # 探索预算：本场景至少驻留轮数（0/1=每轮推进）
         self.distance_map = distance_map
         self.next_pos = next_pos
 
@@ -92,12 +89,10 @@ class ScenePlan:
             "player_pov": s.get("player_pov", []),
             "locked_lines": s.get("locked_lines", []),
             "options": s.get("options", []),
-            "prep_actions": s.get("prep_actions", []),
             "atmo": s.get("atmo", "雨夜沉静"),
             "music": s.get("music", ""),
             "flags_on_enter": s.get("flags_on_enter", []),
             "aftermath": s.get("aftermath", {}),
-            "min_turns": s.get("min_turns", 1),
         }
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
 
@@ -140,57 +135,6 @@ def choose_scene(state: GameState) -> ScenePlan:
             next_pos = "END"
     return ScenePlan(scene, distance_map, next_pos)
 
-
-# ═════════ 名场面门禁（世界时钟 · 目标机制）═════════
-
-_SEASON_ORDER = {"春": 0, "夏": 1, "秋": 2, "冬": 3}
-
-# 各章世界时钟初始（chapter → {season, turns_left}）；未登记章节回退春/3
-CHAPTER_CLOCK = {
-    "P1 黄金风起": {"season": "春", "turns_left": 3},
-    # P2 名场面刺董在秋；时钟起点设"夏"，比 fame_season 早一个时节，让 wait 分支真正可达——
-    # 玩家在夏未就位时驻留攒就位（wait 缓冲），秋才硬判就位/miss（P6 审查 low finding：wait 死代码）。
-    # turns_left=5：约两个时节的准备窗口（夏末 2 拍 + 秋 3 拍），拖沓才触发季节超时。
-    "P2 洛阳暗夜": {"season": "夏", "turns_left": 5},
-}
-
-
-def is_fame_scene(scene_id: str) -> bool:
-    """是否关键名场面场景（fame_moment=true）。"""
-    scene = load_registry().get(scene_id) or {}
-    return bool(scene.get("fame_moment"))
-
-
-def fame_should_block_advance(scene_id: str, state: dict) -> str:
-    """名场面推进门禁：返回 ''（放行）/ 'wait'（时节未到，驻留）/ 'miss'（错过）。
-
-    - fame_moment 场景且带 entry_conditions：世界时钟 season < fame_season → 'wait'
-      （名场面还没发生，玩家驻留攒就位）；season 已到但 qualifications 未满足 → 'miss'
-      （错过关键名场面 → 游戏失败）。
-    - 无 fame_moment / 无 entry_conditions（必达名场面）：放行 ''。
-    """
-    if not scene_id:
-        return ""
-    scene = load_registry().get(scene_id) or {}
-    if not scene.get("fame_moment"):
-        return ""
-    entry = scene.get("entry_conditions") or []
-    if not entry:
-        return ""  # 必达（无就位门禁）
-    wc = state.get("world_clock") or {}
-    season_now = wc.get("season")
-    if season_now and scene.get("fame_season"):
-        now = _SEASON_ORDER.get(season_now, 2)
-        target = _SEASON_ORDER.get(scene["fame_season"], 2)
-        if now < target:
-            return "wait"  # 时节未到：名场面还没发生，玩家驻留攒就位
-        if now > target:
-            return "miss"  # 时节已过：名场面已发生，玩家没赶上 → 错过
-    # 时节到（season == fame_season）→ 就位判定
-    quals = set((state.get("scene_state") or {}).get("qualifications") or [])
-    if all(c in quals for c in entry):
-        return ""
-    return "miss"
 
 
 def _dead_end_scene(pos: str) -> dict:

@@ -8,8 +8,6 @@ World（世界推进 · 自由沙盒）
 - 世界时间 = 具体日期 {year, month, day}，按行动类型耗时推进
 - 世界事件 = 事实层（world_events），玩家移动/周期时预生成，相关度分级衰减
 - 简报 = 玩家到达新地点/重进时，由事件队列合成
-
-本模块与旧 world_clock（turns_left 时节）并存——旧机制待移除，新机制先行。
 """
 import random
 
