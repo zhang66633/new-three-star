@@ -75,6 +75,7 @@ async def _step_events(req: PlayRequest):
             "chapter_label": pre_plan.chapter_label,
             "title": pre_plan.title,
             "location": pre_plan.location,
+            "year": pre_plan.year,   # 场景声明年代——前端按此判"跨时代"（同年移动轻过渡）
             "atmo": pre_plan.atmo,
             "music": pre_plan.music,
         },

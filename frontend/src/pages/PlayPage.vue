@@ -286,8 +286,8 @@ function hideLoader() {
   if (loaderTimer) { clearTimeout(loaderTimer); loaderTimer = null }
 }
 
-// ── 全屏分轻重：跨章节才全屏，同章移动用轻过渡铭牌 ──
-const lastChapterLabel = ref('')     // 当前章节（判断跨章）
+// ── 全屏分轻重：跨年代才全屏，同年移动用轻过渡铭牌 ──
+const lastSceneYear = ref(0)         // 当前场景声明年代（scene.year，判断跨年代）
 const liteBannerText = ref('')       // 轻过渡铭牌文本（顶部淡入）
 let liteBannerTimer: number | null = null
 function showLiteBanner(chapter: string, title: string, location = '') {
@@ -344,9 +344,9 @@ function resumeGame(st: GameState | null = resumeState.value) {
       streaming: false,
     })
   }
-  const ps = st.meta?.plan_summary as { scene_id?: string; chapter_label?: string } | undefined
+  const ps = st.meta?.plan_summary as { scene_id?: string; year?: number } | undefined
   lastSceneId.value = ps?.scene_id ?? st.skeleton_pos ?? ''
-  lastChapterLabel.value = ps?.chapter_label ?? st.era?.chapter ?? ''   // 恢复当前章节（防恢复后首拍误判跨章）
+  lastSceneYear.value = ps?.year ?? st.era?.year ?? 0   // 恢复当前场景年代（防恢复后首拍误判跨年代）
   phaseReport.value = (st.last_output?.phase_report as PhaseReport | null) ?? null
   currentAtmo.value = '雨夜沉静'   // atmo 标签未持久化，恢复用默认
   started.value = true
@@ -392,7 +392,7 @@ async function startGame() {
   currentStreamText.value = ''
   started.value = false
   lastSceneId.value = ''
-  lastChapterLabel.value = ''
+  lastSceneYear.value = 0
   newMemCount.value = 0
   prevRelations.value = {}
 
@@ -528,9 +528,10 @@ async function sendAction(action: string, tension: number) {
         loaderChapterLabel.value = ev.scene.chapter_label
         loaderStatus.value = LOADING_STATUS[Math.floor(Math.random() * LOADING_STATUS.length)]
         triggerInk()
-        // 全屏分轻重：跨章节才全屏（金色大标题 + 关羽之歌）；同章内移动/推进轻过渡（顶部铭牌，无全屏无关羽）
-        const crossChapter = !!ev.scene.chapter_label && ev.scene.chapter_label !== lastChapterLabel.value
-        lastChapterLabel.value = ev.scene.chapter_label
+        // 全屏分轻重：跨年代才全屏（scene.year 变化，金色大标题 + 关羽之歌）；
+        // 同年代内移动/推进轻过渡（顶部铭牌，无全屏无关羽）——场景标签含地点，不能按标签判定
+        const crossChapter = !!ev.scene.year && ev.scene.year !== lastSceneYear.value
+        lastSceneYear.value = ev.scene.year ?? lastSceneYear.value
         if (crossChapter) {
           showLoader(1800)
           playGuanyu()   // 关羽之歌：只在跨章节的大切换响
