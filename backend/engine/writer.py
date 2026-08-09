@@ -409,6 +409,16 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
         for fs in foreshadowing[-5:]:
             lines.append(f"  · {fs}")
 
+    # ── 暗线揭示（B-⑨）：玩家成为知情者后，hidden 真相驱动暗线追查 ──
+    # 玩家感到"世道哪哪不对劲"，可在内心盘算、可暗中追查（给探查/追问选项）。
+    # 注意：不引用 hidden 原文——validate 用 ≥6 字片段匹配防泄漏，复述真相会误报 LEAK 触发重写。
+    # 真相保持悬念（玩家也在拼图），由玩家追查逐步揭开（后续机制把 hidden 转 public）。
+    if any(f.startswith("知情者") for f in state.get("flags", [])):
+        lines.append("")
+        lines.append("🕯 你心里有未解开的疑点（最近的经历让你觉得世道哪哪都不对劲）。"
+                     "可在内心盘算、可暗中追查（给探查/追问选项）——但真相还没拼全："
+                     "叙事只演'你若有所思、隐隐觉得不对'，不要点破具体真相（保持悬念，你也正在拼图）")
+
     # ── 天意修正 ──
     corrected = state.get("corrected", [])
     if corrected:

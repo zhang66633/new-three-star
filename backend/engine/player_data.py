@@ -216,6 +216,18 @@ _ACHIEVEMENTS = {
         "desc": "声望达到 30",
         "check": lambda st: (st.get("player") or {}).get("reputation", 0) >= 30,
     },
+    # 名场面自由参与（§5.3）：不设门禁不判失败——到场则亲历（得成就），由 flags_on_enter
+    # 锚定的"见证者_*" flag 驱动（director 入场写入，不依赖 LLM 关键词碰运气）
+    "witness_scene": {
+        "name": "名场面亲历",
+        "desc": "亲历至少一处历史名场面",
+        "check": lambda st: any(f.startswith("见证者_") for f in st.get("flags", [])),
+    },
+    "witness_scene_3": {
+        "name": "江湖阅历",
+        "desc": "亲历 3 处名场面",
+        "check": lambda st: sum(1 for f in st.get("flags", []) if f.startswith("见证者_")) >= 3,
+    },
 }
 
 
