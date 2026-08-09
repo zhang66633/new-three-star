@@ -175,5 +175,5 @@ export function usePlaySse() {
     }
   }
 
-  return { playStep, isStreaming, error, loadGame }
+  return { playStep, isStreaming, loadGame }
 }

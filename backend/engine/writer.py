@@ -10,7 +10,6 @@ Writer（编剧层 · 唯一 LLM 生成调用）
 """
 import json
 import logging
-import os
 import re
 
 from .state import GameState
@@ -186,6 +185,30 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     if plan.world_normal:
         lines.append(f"  世界侧正常演出：{plan.world_normal}")
 
+    # ── 🌏 当前世界背景（自由沙盒：阶段常态 + 近期事件 + 本地点生态）──
+    try:
+        from .worlddata import world_context
+        wctx = world_context(state.get("world_date") or {}, era.get("location", ""))
+        if wctx.get("normal"):
+            n = wctx["normal"]
+            lines.append("")
+            lines.append("🌏 当前世界背景")
+            lines.append(f"  阶段：{wctx.get('phase_name', '')}（{n.get('time_range', '')}）")
+            if n.get("world", {}).get("summary"):
+                lines.append(f"  天下大势：{n['world']['summary']}")
+            # 本地点生态（最相关）
+            loc = wctx.get("location_normal")
+            if loc:
+                lines.append(f"  【{loc.get('name', '')}】{loc.get('status', '')}")
+                scenes = loc.get("daily_scenes") or []
+                if scenes:
+                    lines.append(f"  此地日常：{' ／ '.join(scenes[:4])}")
+            # 近期事件（事实层）
+            for e in wctx.get("recent_events", [])[-3:]:
+                lines.append(f"  近期〔{e.get('date', '')}〕{e.get('event', '')[:50]}")
+    except Exception:
+        pass  # 世界背景加载失败不影响叙事
+
     # ── 🧍 玩家状态 ──
     lines.append("")
     lines.append("🧍 玩家状态")
@@ -295,10 +318,6 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
             lines.append(f"  · {r}")
     else:
         lines.append("  （暂无流言）")
-    facts = era.get("world_facts", [])
-    if facts:
-        for f in facts[-3:]:
-            lines.append(f"  📋 {f}")
 
     # ── 🔗 关系网络 ──
     if relations:
@@ -468,24 +487,19 @@ def _strip_json_tail(text: str) -> str:
     return body
 
 
-async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None, on_chunk=None) -> dict:
-    """主入口：生成 NarrativeOutput（含后处理链）
-
-    on_chunk: 可选回调（text: str）→ 用于 SSE 流式透出
-    """
+async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -> dict:
+    """主入口：生成 NarrativeOutput（含后处理链）"""
     from services.llm import stream_chat
     from config import PARAMS_PLAY, STOP_SEQUENCES
     from services.deslop import deslop
 
     messages = build_messages(state, plan, memory_pack)
-    # 收集流式输出（Phase 4 经 on_chunk 透出 SSE）
+    # 引擎完整跑完后由 play.py post-hoc 分块，这里不接流式回调
     draft = ""
     async for chunk in stream_chat(
         messages, max_tokens=3200, **PARAMS_PLAY, stop=STOP_SEQUENCES
     ):
         draft += chunk
-        if on_chunk:
-            on_chunk(chunk)
 
     # LLM 全挂检测：错误占位字符串不得当叙事正文（转异常走路由 err 分支）
     if "[错误]" in draft and "LLM" in draft:

@@ -1,0 +1,58 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "历史事件时间线 · 分片 schema",
+  "description": "新三国自由沙盒·世界事件数据源（history_timeline_*.json）校验用",
+  "type": "object",
+  "required": ["events"],
+  "properties": {
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["event_id", "date", "event", "locations", "key_npcs", "player_interactions", "historical_outcome"],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "pattern": "^e_\\d{3}_\\d{2}_[a-z0-9_]+$"
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{3}-\\d{2}$",
+            "description": "可排序格式 年-月（两位月），如 184-02"
+          },
+          "event": { "type": "string", "minLength": 4 },
+          "locations": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" },
+            "description": "注册表地名（颍川/洛阳/中牟/成皋/许都/陈留/徐州/小沛/冀州/官渡/赤壁/汉中/荆州/益州/长安/宛城/麦城/成都/南郡/合肥）"
+          },
+          "key_npcs": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "KNOWN_NAMES 全名"
+          },
+          "player_interactions": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["type", "desc", "related_to_player"],
+              "properties": {
+                "type": { "enum": ["observe", "participate", "influence", "trade", "conflict"] },
+                "desc": { "type": "string", "minLength": 8, "description": "须含具体动作名词，不得空话" },
+                "related_to_player": { "enum": ["strong", "weak"] },
+                "achievement": { "type": ["string", "null"] },
+                "title": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "historical_outcome": { "type": "string", "minLength": 4 },
+          "new_three_quirks": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

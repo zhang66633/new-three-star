@@ -18,7 +18,6 @@ import logging
 logger = logging.getLogger(__name__)
 
 STM_CAP = 6
-PIN_CAP = 5
 RETRIEVE_LTM_TOP = 5
 
 COMPRESS_PROMPT = """把以下 {n} 条短期记忆压缩为 1 条长期记忆（120-150 字）。
@@ -61,25 +60,6 @@ def stm_append(state: dict, entry: str, scene_label: str = "", time_label: str =
         item["time"] = time_label
     stm.append(item)
     mem["stm"] = stm[-STM_CAP:]  # 超上限截断
-    state["memory"] = mem
-    return state
-
-
-def pin(state: dict, mem_id: str) -> dict:
-    """玩家钉选记忆（≤5 条）"""
-    mem = state.get("memory", {})
-    pins = list(mem.get("pins", []))
-    if mem_id in pins:
-        return state
-    pins.append(mem_id)
-    mem["pins"] = pins[-PIN_CAP:]
-    state["memory"] = mem
-    return state
-
-
-def unpin(state: dict, mem_id: str) -> dict:
-    mem = state.get("memory", {})
-    mem["pins"] = [p for p in mem.get("pins", []) if p != mem_id]
     state["memory"] = mem
     return state
 

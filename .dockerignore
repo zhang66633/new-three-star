@@ -14,7 +14,6 @@ venv/
 *.sqlite
 
 # RAG 索引（构建产物）
-backend/knowledge/rag_index.pkl
 
 # 前端依赖与构建缓存（frontend/dist 由 Dockerfile Stage-1 npm run build 在镜像内生成；
 # 工作区的 dist 是本地构建产物，忽略之，避免把旧构建带进镜像）

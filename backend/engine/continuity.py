@@ -50,20 +50,6 @@ def _is_first_beat(state, plan) -> bool:
     )
 
 
-def prev_tail(state, plan) -> str:
-    """上一拍结尾锚点。
-
-    优先读 scene_state.next_anchor（结构化，最后一句完整句，by after_beat 写回）；
-    缺失回退现有逻辑：历史里同场景最近的 assistant 尾部 200 字。
-    """
-    ss = state.get("scene_state") or {}
-    if isinstance(ss, dict) and ss.get("scene_id") == plan.scene_id and ss.get("next_anchor"):
-        return ss["next_anchor"]
-    for h in reversed(state.get("history", [])):
-        if h.get("assistant") and (not h.get("scene_id") or h.get("scene_id") == plan.scene_id):
-            return h["assistant"][-200:]
-    return ""
-
 
 def in_scene_names(state, plan) -> set:
     """在场角色单一来源（present 语义：锁定台词说话人 + distance_map + 关系>40）。

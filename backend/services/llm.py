@@ -3,10 +3,10 @@ import json
 import logging
 from typing import AsyncGenerator
 from config import (
-    DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_BETA_URL, DEEPSEEK_MODEL,
+    DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL,
     HY3_API_KEY, HY3_BASE_URL, HY3_MODEL,
-    MAX_TOKENS_VERDICT, MAX_TOKENS_WORLDVIEW,
-    PARAMS_NARRATIVE, PARAMS_FORMAT, PARAMS_OPTIONS,
+    MAX_TOKENS_VERDICT,
+    PARAMS_NARRATIVE,
 )
 
 logger = logging.getLogger(__name__)
@@ -18,20 +18,17 @@ async def stream_chat(
     temperature: float | None = None,
     top_p: float | None = None,
     stop: list[str] | None = None,
-    prefix: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream chat completion from DeepSeek, fallback to Hy3.
 
     v3.2 更新：
     - 移除 frequency_penalty/presence_penalty（V4 不支持）
     - temperature 提升至 1.3（官方创意写作推荐 1.5）
-    - 新增 prefix 参数：Chat Prefix Completion（强制首token）
     - 新增 stop 序列支持
     """
     try:
         async for chunk in _stream_openai_compatible(
             base_url=DEEPSEEK_BASE_URL,
-            beta_url=DEEPSEEK_BETA_URL,
             api_key=DEEPSEEK_API_KEY,
             model=DEEPSEEK_MODEL,
             messages=messages,
@@ -39,7 +36,6 @@ async def stream_chat(
             temperature=temperature,
             top_p=top_p,
             stop=stop,
-            prefix=prefix,
         ):
             yield chunk
     except Exception as e:
@@ -48,7 +44,6 @@ async def stream_chat(
             try:
                 async for chunk in _stream_openai_compatible(
                     base_url=HY3_BASE_URL,
-                    beta_url=HY3_BASE_URL,
                     api_key=HY3_API_KEY,
                     model=HY3_MODEL,
                     messages=messages,
@@ -67,7 +62,6 @@ async def stream_chat(
 
 async def _stream_openai_compatible(
     base_url: str,
-    beta_url: str,
     api_key: str,
     model: str,
     messages: list[dict],
@@ -75,30 +69,16 @@ async def _stream_openai_compatible(
     temperature: float | None = None,
     top_p: float | None = None,
     stop: list[str] | None = None,
-    prefix: str | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Call OpenAI-compatible API with streaming.
-
-    v3.2: 完整参数支持 + Chat Prefix Completion。
-    注意：prefix 需要 beta endpoint。
-    """
-    # Chat Prefix Completion：使用 beta endpoint，强制首token
-    use_beta = prefix is not None
-    url = f"{beta_url if use_beta else base_url}/chat/completions"
+    """Call OpenAI-compatible API with streaming."""
+    url = f"{base_url}/chat/completions"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
-    # 构建消息列表：prefix 模式下在 assistant 消息末尾追加 prefix
     payload_messages = list(messages)
-    if prefix:
-        payload_messages.append({
-            "role": "assistant",
-            "content": prefix,
-            "prefix": True,
-        })
 
     payload = {
         "model": model,

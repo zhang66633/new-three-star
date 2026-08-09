@@ -1,38 +1,13 @@
 import json
 import os
-import random
-from services.framework_picker import load_mechanisms, select_relevant_mechanisms
-from config import PROMPTS_DIR, KNOWLEDGE_DIR
+from services.framework_picker import load_mechanisms
+from config import PROMPTS_DIR
 
 
 def _load_prompt_template(name: str) -> str:
     path = os.path.join(PROMPTS_DIR, name)
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
-
-
-def _load_random_quotes(count: int = 5) -> str:
-    """Load random quotes from the quotes database for prompt flavor."""
-    path = os.path.join(KNOWLEDGE_DIR, "quotes.json")
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        all_quotes = []
-        for char, quotes in data.get("by_character", {}).items():
-            for q in quotes:
-                all_quotes.append(f"- {char}：\u201c{q}\u201d")
-        selected = random.sample(all_quotes, min(count, len(all_quotes)))
-        return "\n".join(selected)
-    except Exception:
-        return ""
-
-
-def _format_mechanisms(mechanisms: list[dict]) -> str:
-    lines = []
-    for m in mechanisms:
-        effects = "、".join(m.get("effects", []))
-        lines.append(f"- 【{m['name']}】{m['description']}（效果：{effects}）")
-    return "\n".join(lines)
 
 
 def _format_all_mechanisms() -> str:
@@ -44,24 +19,6 @@ def _format_all_mechanisms() -> str:
             effects = "、".join(m.get("effects", []))
             lines.append(f"- 【{m['name']}】{m['description']}（效果：{effects}）")
     return "\n".join(lines)
-
-
-def build_verdict_prompt(event: str, framework: dict, mechanisms: list[dict]) -> list[dict]:
-    """Build messages for verdict card generation."""
-    system_template = _load_prompt_template("verdict_system.txt")
-
-    system_content = system_template.format(
-        framework_name=framework["name"],
-        framework_metaphor=framework["core_metaphor"],
-        framework_points="\n".join(f"- {p}" for p in framework.get("key_points", [])[:5]),
-        relevant_mechanisms=_format_mechanisms(mechanisms),
-        reference_quotes=_load_random_quotes(5),
-    )
-
-    return [
-        {"role": "system", "content": system_content},
-        {"role": "user", "content": f"事件：{event}\n\n请出具判决书。"},
-    ]
 
 
 def build_worldview_prompt(event: str, framework: dict) -> list[dict]:

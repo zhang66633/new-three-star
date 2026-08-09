@@ -13,10 +13,16 @@ class PlayerState(TypedDict):
     alive: bool
     location: str            # 当前位置（颍川/洛阳/…）
     reputation: int          # 声望 0-100
-    personality: str         # 性格标签（如"冷静·多疑·仁厚"）— 人格铁律锁定
+    personality: str         # 性格标签（如"冷静·机敏·仁厚"）— 人格铁律锁定
     goal: str                # 当前阶段目标（如"在乱世中活下去"）
     inner_voice: str         # 最近内心独白（每轮更新）
     notes: list[str]         # 玩家视角的差异记录（"黄金"vs"黄巾"等）
+    # ── 自由沙盒：资产/属性/称号/成就（独立字段，见自由沙盒重构设计 §三）──
+    assets: list[str]        # 物品描述列表（如 ["破布衣","半块干粮","生锈短刀"]）
+    coins: int               # 金钱
+    stats: dict              # 属性 {stamina, hunger, wound} 0-100
+    titles: list[str]        # 动态称号（事件授予）
+    achievements: list[str]  # 已解锁成就 id
 
 
 class EraState(TypedDict):
@@ -24,7 +30,6 @@ class EraState(TypedDict):
     year: int                # 年份
     season: str              # 季节
     location: str            # 时代层面的位置
-    world_facts: list[str]   # 世界侧已发生的事件（玩家可见）
 
 
 class KnowledgeState(TypedDict):
@@ -77,17 +82,19 @@ class GameState(TypedDict):
     # ── 记忆（向量检索）──
     memory: MemoryState
     # ── 剧情 ──
-    skeleton_pos: str             # 当前骨架位置（场景 id）
+    skeleton_pos: str             # 当前骨架位置（场景/地点 id）
     tension: int                  # 历史干预度累计 0-100
     corrected: list[str]          # 已发生的修正记录
-    foreshadowing: list[str]      # P2 未解伏笔/承诺追踪（如"曹操欠你一个人情"）
-    world_rumors: list[str]       # §3.6 世界动态（流言/军报/势力变动）
+    foreshadowing: list[str]      # 未解伏笔/承诺追踪（如"曹操欠你一个人情"）
+    world_rumors: list[str]       # 传闻层（NPC 传的、未证实的话）
+    world_events: list[dict]      # 事实层：世界事件队列（离开时预生成，见自由沙盒重构设计 §二）
+    world_date: dict              # 世界具体日期 {year, month, day}（取代 turns_left 时节）
     # ── 引擎 ──
     turn: int
     retry_count: int              # 本轮重写次数
     history: list[dict]           # 对话历史（前端回传）
     scene_state: Optional[dict]   # 连续性子系统：结构化"上一拍状态"（见 continuity.py，取代窗口化历史反推）
-    world_clock: Optional[dict]   # 名场面世界时钟 {chapter, season, turns_left}（见 director.py 名场面门禁）
+    world_clock: Optional[dict]   # 遗留：旧名场面时钟 {chapter, season, turns_left}（自由沙盒重构中废弃）
     last_output: Optional[NarrativeOutput]
     last_trace: str               # 最近一次修正痕迹 id（''=无）
     meta: dict                    # 运行时信息（plan/距离映射等，不持久化）
@@ -105,13 +112,18 @@ def new_game_state() -> GameState:
             "goal": "在乱世中活下去，弄清自己为何在此",
             "inner_voice": "",
             "notes": [],
+            # 自由沙盒：开局资产/属性（延续"身无分文、衣衫褴褛"设定）
+            "assets": ["破布衣", "无鞋"],
+            "coins": 0,
+            "stats": {"stamina": 80, "hunger": 60, "wound": 0},
+            "titles": [],
+            "achievements": [],
         },
         "era": {
             "chapter": "P1 黄金风起",
             "year": 184,
             "season": "春",
             "location": "颍川·荒野",
-            "world_facts": ["黄金之乱方兴未艾"],
         },
         "relations": {},
         "trust": {},
@@ -127,6 +139,8 @@ def new_game_state() -> GameState:
         "corrected": [],
         "foreshadowing": [],
         "world_rumors": ["颍川传言：黄金军近日在附近出没", "朝廷发榜征兵"],
+        "world_events": [],           # 事实层：世界事件队列（离开时预生成，见自由沙盒重构设计）
+        "world_date": {"year": 184, "month": 2, "day": 1},  # 世界具体日期（取代 turns_left 时节）
         "turn": 0,
         "scene_turns": 1,          # 当前场景已驻留轮次（min_turns 探索预算用）
         "retry_count": 0,
@@ -201,6 +215,23 @@ def from_dict(data: dict) -> GameState:
                 except (TypeError, ValueError):
                     continue
             base[k] = clamped
+    # 自由沙盒：player 子字段保护（stats 钳位 0-100；list 字段钳位）
+    pl = base.get("player")
+    if isinstance(pl, dict):
+        st = pl.get("stats")
+        if isinstance(st, dict):
+            pl["stats"] = {
+                kk: max(0, min(100, int(vv)))
+                for kk, vv in list(st.items())[:_DICT_CAP]
+                if isinstance(vv, (int, float)) or str(vv).lstrip("-").isdigit()
+            }
+        for kk in ("assets", "titles", "achievements"):
+            if isinstance(pl.get(kk), list):
+                pl[kk] = [str(x)[:_STR_CAP] for x in pl[kk]][:_LIST_CAP]
+        try:
+            pl["coins"] = max(0, int(pl.get("coins", 0)))
+        except (TypeError, ValueError):
+            pl["coins"] = 0
     # knowledge.hidden 收紧（防 check_hidden_leak O(n²) DoS：每条 ≤200 字、≤50 条）
     kn = base.get("knowledge")
     if isinstance(kn, dict) and isinstance(kn.get("hidden"), list):

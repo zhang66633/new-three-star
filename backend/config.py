@@ -5,7 +5,6 @@ load_dotenv()
 
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-DEEPSEEK_BETA_URL = os.getenv("DEEPSEEK_BETA_URL", "https://api.deepseek.com/beta")  # Chat Prefix Completion
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
 HY3_API_KEY = os.getenv("HY3_API_KEY", "")
@@ -17,7 +16,6 @@ PROMPTS_DIR = os.path.join(os.path.dirname(__file__), "prompts")
 
 MAX_TOKENS_VERDICT = 800
 MAX_TOKENS_WORLDVIEW = 3000
-TEMPERATURE = 0.7  # 旧值，保留兼容。v3.2 使用 PARAMS_NARRATIVE
 
 # ============================================================================
 # v3.2 参数配置（基于 DeepSeek V4 官方推荐）
@@ -45,12 +43,6 @@ PARAMS_PLAY = {
 PARAMS_FORMAT = {
     "temperature": 0.3,
     "top_p": 0.9,
-}
-
-# 选项生成参数（中等温度+高top_p=多样但不离谱）
-PARAMS_OPTIONS = {
-    "temperature": 0.7,
-    "top_p": 0.95,
 }
 
 # 停止序列：防止模型在输出完成后继续写字

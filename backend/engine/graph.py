@@ -11,7 +11,7 @@ from typing import Literal
 
 from langgraph.graph import StateGraph, START, END
 
-from .state import GameState, new_game_state, from_dict, to_dict
+from .state import GameState, from_dict, to_dict
 from .director import choose_scene, ScenePlan, fame_should_block_advance, is_fame_scene, CHAPTER_CLOCK, _SEASON_ORDER
 from .writer import narrate
 from .validator import validate

@@ -26,6 +26,23 @@ async def init_db():
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
+        # 自由沙盒：玩家档案表（独立于世界档案，见自由沙盒重构设计 §五）
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS players (
+                id TEXT PRIMARY KEY,
+                world_id TEXT NOT NULL,        -- 绑定世界档案 id
+                player_json TEXT NOT NULL,     -- 玩家数据快照（资产/属性/关系/声誉/成就）
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # 自由沙盒：世界档案表（独立推进的世界状态）
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS world_states (
+                id TEXT PRIMARY KEY,
+                world_json TEXT NOT NULL,      -- 世界状态快照（日期/事件队列/NPC状态/位置）
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
         await db.commit()
 
 
@@ -73,3 +90,43 @@ async def get_game(save_id: str):
         cursor = await db.execute("SELECT state_json FROM saves WHERE id = ?", (save_id,))
         row = await cursor.fetchone()
         return dict(row)["state_json"] if row else None
+
+
+# ═════════ 自由沙盒：玩家档案 + 世界档案（见自由沙盒重构设计 §五）═════════
+
+async def save_player(pid: str, world_id: str, player_json: str):
+    """存档玩家档案（独立表，每回合快照覆盖）。"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO players (id, world_id, player_json, updated_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+            (pid, world_id, player_json),
+        )
+        await db.commit()
+
+
+async def get_player(pid: str):
+    """读玩家档案（None = 无此档）。"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT player_json, world_id FROM players WHERE id = ?", (pid,))
+        row = await cursor.fetchone()
+        return dict(row) if row else None
+
+
+async def save_world_state(wid: str, world_json: str):
+    """存档世界档案（独立表，每回合快照覆盖）。"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute(
+            "INSERT OR REPLACE INTO world_states (id, world_json, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)",
+            (wid, world_json),
+        )
+        await db.commit()
+
+
+async def get_world_state(wid: str):
+    """读世界档案（None = 无此档）。"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cursor = await db.execute("SELECT world_json FROM world_states WHERE id = ?", (wid,))
+        row = await cursor.fetchone()
+        return dict(row)["world_json"] if row else None

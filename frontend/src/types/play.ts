@@ -16,7 +16,6 @@ export interface EraState {
   year: number
   season: string
   location: string
-  world_facts: string[]
 }
 
 export interface KnowledgeState {

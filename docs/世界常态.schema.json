@@ -1,0 +1,71 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "世界常态设定 · 分片 schema",
+  "description": "新三国自由沙盒·世界常态（world_normal_*.json）校验用",
+  "type": "object",
+  "required": ["phase", "time_range", "world", "factions", "locations", "characters", "atmosphere"],
+  "properties": {
+    "phase": { "type": "string" },
+    "time_range": { "type": "string", "pattern": "^\\d{3}-\\d{2}~\\d{3}" },
+    "world": {
+      "type": "object",
+      "required": ["summary", "central_state"],
+      "properties": {
+        "summary": { "type": "string", "minLength": 4 },
+        "central_state": { "type": "string", "minLength": 4 }
+      }
+    },
+    "factions": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "goals"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string", "minLength": 4 },
+          "goals": { "type": "string", "minLength": 4 },
+          "player_relation_default": { "enum": ["strong", "weak"] }
+        }
+      }
+    },
+    "locations": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["name", "type", "status"],
+        "properties": {
+          "name": { "type": "string" },
+          "type": { "enum": ["rural", "city", "capital", "mountain", "river"] },
+          "status": { "type": "string", "minLength": 4 },
+          "daily_scenes": { "type": "array", "minItems": 3, "items": { "type": "string", "minLength": 4 } }
+        }
+      }
+    },
+    "characters": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "goal"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "type": "string", "minLength": 4 },
+          "goal": { "type": "string", "minLength": 4 },
+          "personality_notes": { "type": "string", "minLength": 4 },
+          "player_relation_default": { "enum": ["strong", "weak"] }
+        }
+      }
+    },
+    "atmosphere": {
+      "type": "object",
+      "required": ["tone", "everyday_life"],
+      "properties": {
+        "tone": { "enum": ["chaotic", "oppressive", "hopeful", "fatalistic", "epic"] },
+        "rumors": { "type": "array", "items": { "type": "string", "minLength": 4 } },
+        "everyday_life": { "type": "string", "minLength": 8 }
+      }
+    }
+  }
+}

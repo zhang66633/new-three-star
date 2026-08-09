@@ -47,11 +47,6 @@ _SAFE_FIXES = [
 ]
 
 
-def analyze(text: str) -> dict:
-    """统计各毒句式命中数（监控用，不改动文本）。"""
-    return {name: len(pat.findall(text)) for name, pat in TOXIC_PATTERNS.items()}
-
-
 def deslop(text: str) -> str:
     """去AI味确定性修复：只应用安全删除，返回清理后的文本。"""
     for pat, repl in _SAFE_FIXES:
