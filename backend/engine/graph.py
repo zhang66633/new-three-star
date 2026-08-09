@@ -12,7 +12,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, START, END
 
 from .state import GameState, from_dict, to_dict
-from .director import choose_scene, ScenePlan
+from .director import choose_scene, ScenePlan, _location_state
 from .writer import narrate
 from .validator import validate
 from .corrector import classify_tension, apply_correction
@@ -81,6 +81,7 @@ def director_node(state: GameState) -> dict:
         "era": era,
         "flags": flags,
         "skeleton_pos": plan.scene_id,
+        "location_state": _location_state(state),  # 地点面板状态（current/unlocked/next_station）
         "retry_count": 0,  # 每轮重置重写计数
         "turn": state.get("turn", 0) + 1,  # turn 在导演层自增（每真实回合一次，不被重写污染）
         # 连续性子系统：场景变化时初始化 scene_state（开局 scene_state=None 也触发首拍登记）

@@ -67,6 +67,13 @@ export interface NarrativeOutput {
   retry_reasons: string[]
 }
 
+// 地点导航状态（director 每拍写入，见 docs/自由沙盒重构设计.md §5.2）
+export interface LocationState {
+  current: string | null        // 当前所在地点
+  unlocked: string[]            // 已解锁地点（可往返）
+  next_station: string | null   // 下站（推进目标地点，未解锁）
+}
+
 // 世界事件（事实层，见 docs/自由沙盒重构设计.md §二）
 export interface WorldEvent {
   event_id: string
@@ -95,6 +102,7 @@ export interface GameState {
   new_achievements?: string[]      // 本轮新解锁成就 id（后端 check_achievements 产出，SSE state 快照携带）
   dead?: boolean                   // 死亡（三属性同时极端，alive=False）——前端读档最近快照
   vitals_alarm?: string            // 濒死标记（stamina/hunger/wound，下拍 writer 演后果；已脱离则为 ''）
+  location_state?: LocationState   // 地点面板状态（director 每拍写入）
   turn: number
   retry_count: number
   history: { user?: string; assistant?: string }[]

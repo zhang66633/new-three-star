@@ -100,13 +100,22 @@ class ScenePlan:
 def choose_scene(state: GameState) -> ScenePlan:
     """主入口：读 State → 选场景 → ScenePlan
 
-    导航逻辑：
-    1. 按 state.skeleton_pos 找场景
-    2. 若无（新开局）→ P1_s1_rain
-    3. 场景的 aftermath.flow 决定下一场景（状态驱动岔路入口，后续扩展 flags）
+    导航逻辑（自由沙盒 · 玩家驱动，见设计 §5.2）：
+    1. 玩家动作「前往X」→ 已解锁地点直达回访 / 未解锁沿 flow 推进一拍
+    2. 无地点动作 → 按 state.skeleton_pos 停留当前场景（自由驻留）
+    3. 场景 aftermath.flow 决定下一场景（状态驱动岔路，供未表达目的地时的推进）
     """
     registry = load_registry()
-    pos = state.get("skeleton_pos") or "P1_s1_rain"
+    # 地点导航：读本拍玩家动作，命中「前往X」→ 目标场景（直达/推进）
+    travel = None
+    last_action = ""
+    for h in reversed(state.get("history", [])):
+        if h.get("user"):
+            last_action = h["user"]
+            break
+    if last_action:
+        travel = resolve_travel(last_action, state)
+    pos = (travel[1] if travel else None) or state.get("skeleton_pos") or "P1_s1_rain"
     scene = registry.get(pos)
     if scene is None:
         if pos == "P1_s1_rain" or not pos:
@@ -121,10 +130,10 @@ def choose_scene(state: GameState) -> ScenePlan:
 
     # 距离映射：从场景的锁定台词/选项中提取角色 → 默认"远观"
     distance_map = _infer_distance_map(scene, state)
-    # 下一场景（状态驱动岔路）
-    next_pos = _resolve_next(scene, state)
+    # 玩家已表达目的地（直达/推进）→ 本拍驻留，不再沿 flow 继续推
+    next_pos = "" if travel else _resolve_next(scene, state)
     # 安全阀：防止 placeholder 场景自循环耗尽 LLM 额度
-    if next_pos == pos:
+    if not travel and next_pos == pos:
         logger = logging.getLogger(__name__)
         turn = state.get("turn", 0)
         if turn > 15:
@@ -135,6 +144,97 @@ def choose_scene(state: GameState) -> ScenePlan:
             next_pos = "END"
     return ScenePlan(scene, distance_map, next_pos)
 
+
+
+# ═════════ 地点导航（自由沙盒 · 见设计 §5.2）═════════
+
+def _visited_scenes(state: GameState) -> list:
+    """玩家访问过的场景 id（按历史顺序，最后访问在末尾）。
+
+    当前 skeleton_pos 视为已访问（所在即解锁，开局雨夜即解锁颍川）。
+    """
+    visited = [h.get("scene_id") for h in state.get("history", []) if h.get("scene_id")]
+    cur = state.get("skeleton_pos")
+    if cur and cur not in visited:
+        visited.append(cur)
+    return visited
+
+
+def _location_of(scene_id: str) -> str | None:
+    """场景 id → 所属地点名（反查 LOCATIONS）。"""
+    from .worlddata import LOCATIONS
+    for name, scenes in LOCATIONS.items():
+        if scene_id in scenes:
+            return name
+    return None
+
+
+def _walk_flow(state: GameState) -> list:
+    """当前场景沿 aftermath.flow 链的所有后续场景（有序、去重、防环）。"""
+    registry = load_registry()
+    cur = state.get("skeleton_pos") or "P1_s1_rain"
+    seen, out = set(), []
+    while cur in registry and cur not in seen:
+        seen.add(cur)
+        flow = (registry[cur].get("aftermath") or {}).get("flow")
+        if isinstance(flow, dict):
+            flow = flow.get("default") or ""
+        if not flow or flow == "END" or flow not in registry:
+            break
+        out.append(flow)
+        cur = flow
+    return out
+
+
+def resolve_travel(action: str, state: GameState):
+    """玩家「前往X」→ (mode, scene_id) 或 None。
+
+    - 已解锁地点 → 优先沿 flow 推进该地点内"未访问场景"（探索更深）；
+      地点内全访问 → ('goto', 最后访问场景) 回访
+    - 未解锁地点但在推进路径（flow 链可达）→ ('advance', 第一个未访问场景) 沿 flow 推进一拍
+    - 未知地点 / 非地点动作 → None（走正常场景流程）
+    """
+    from .worlddata import match_location, LOCATIONS
+    name = match_location(action)
+    if not name:
+        return None
+    visited = _visited_scenes(state)
+    scenes = LOCATIONS.get(name, [])
+    if any(s in visited for s in scenes):
+        # 已解锁：优先探索该地点内未访问场景（沿 flow 链，地点内更深处）
+        for sid in _walk_flow(state):
+            if sid not in visited and _location_of(sid) == name:
+                return ("advance", sid)
+        # 地点内无未访问 → 回访最后访问场景
+        for sid in reversed(visited):
+            if sid in scenes:
+                return ("goto", sid)
+    else:
+        # 未解锁：沿 flow 链推进到第一个未访问场景（前往该地点的路上）
+        for sid in _walk_flow(state):
+            if sid not in visited:
+                return ("advance", sid)
+    return None
+
+
+def _location_state(state: GameState) -> dict:
+    """地点面板状态：当前地点 / 已解锁地点（可往返）/ 下站（推进目标地点）。
+
+    下站 = 沿 flow 链第一个"未访问且地点未解锁"的场景的所属地点；
+    已解锁地点内未访问场景不算下站（同地点，玩家在场景内推进即可）。
+    """
+    visited = _visited_scenes(state)
+    from .worlddata import LOCATIONS
+    current = _location_of(state.get("skeleton_pos") or "")
+    unlocked = [name for name, scenes in LOCATIONS.items() if any(s in visited for s in scenes)]
+    next_station = None
+    for sid in _walk_flow(state):
+        if sid not in visited:
+            loc = _location_of(sid)
+            if loc and loc not in unlocked:
+                next_station = loc
+                break
+    return {"current": current, "unlocked": unlocked, "next_station": next_station}
 
 
 def _dead_end_scene(pos: str) -> dict:

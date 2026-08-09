@@ -122,6 +122,12 @@
 
       <!-- 玩家档案（右下可折叠抽屉：资产/金钱/状态/称号/成就） -->
       <PlayerPanel v-if="gameState?.player" :player="gameState.player" />
+
+      <!-- 地点导航（左下地图抽屉：已解锁往返 + 下站推进） -->
+      <LocationPanel
+        :location-state="gameState?.location_state ?? { current: null, unlocked: [], next_station: null }"
+        @travel="travelTo"
+      />
     </div>
   </div>
 </template>
@@ -145,6 +151,7 @@ import CharacterPanel from '../components/CharacterPanel.vue'
 import MemoryDrawer from '../components/MemoryDrawer.vue'
 import PlayerPanel from '../components/PlayerPanel.vue'
 import AchievementToast from '../components/AchievementToast.vue'
+import LocationPanel from '../components/LocationPanel.vue'
 import { usePlaySse } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
@@ -451,6 +458,11 @@ function submitFree() {
   const action = freeInput.value.trim()
   if (!action) return
   sendAction(action, 0)
+}
+
+/** 地点面板点选：前往目标地点（director 导航：已解锁回访 / 未解锁沿 flow 推进） */
+function travelTo(name: string) {
+  sendAction(`前往${name}`, 0)
 }
 
 async function sendAction(action: string, tension: number) {

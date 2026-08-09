@@ -38,6 +38,37 @@ def _ym(date_key: str) -> tuple:
         return (0, 0)
 
 
+# ═════════ 地点导航（自由沙盒 · 见设计 §5.2）═════════
+# 地点 → 涉及场景（对齐 registry.json 场景的 location 归属；顺序即解锁次序）
+# 回访目标 = 该地点"最后访问过"的场景（记忆中的场景，LLM 圆场时间冲突）
+LOCATIONS: dict[str, list[str]] = {
+    "颍川": ["P1_s1_rain", "P1_s2_gold"],
+    "洛阳": ["P1_s3_leap", "P2_s1_street", "P2_s2_ci"],
+    "中牟": ["P2_s3_escape"],
+    "成皋": ["P2_s4_slaughter"],
+    "陈留": ["P3_s1_alliance"],
+}
+
+
+def match_location(action: str) -> str | None:
+    """解析地点动作：「前往/赶路到/动身去/去/回 地点」→ 地点名（未知地点返回 None）。
+
+    只认 LOCATIONS 已知地点名；非地点动作（"去打听消息"等）返回 None。
+    解锁/推进判定在 director（有 registry flow），这里只管文本 → 地点名。
+    """
+    a = (action or "").strip()
+    if not a:
+        return None
+    for kw in ("前往", "赶路到", "动身去", "去", "回"):
+        if a.startswith(kw):
+            rest = a[len(kw):].strip()
+            for name in LOCATIONS:
+                if rest.startswith(name):
+                    return name
+            return None  # 不是已知地点
+    return None
+
+
 def _load_json(path: str, cache: dict, key: str) -> dict:
     """mtime 缓存加载（JSON 文件变了就重读，开发期免重启）"""
     try:
