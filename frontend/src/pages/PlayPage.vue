@@ -289,6 +289,8 @@ function hideLoader() {
 // ── 全屏分轻重：跨年代才全屏，同年移动用轻过渡铭牌 ──
 const lastSceneYear = ref(0)         // 当前场景声明年代（scene.year，判断跨年代）
 const liteBannerText = ref('')       // 轻过渡铭牌文本（顶部淡入）
+// 场景事件的世界日期/季节预告：scene 先于 state，时代快进时立即刷新 EraBanner（否则全屏宣告 189 但日期还停 184）
+const sceneDatePreview = ref<{ year: number; month: number; day: number; season?: string } | null>(null)
 let liteBannerTimer: number | null = null
 function showLiteBanner(chapter: string, title: string, location = '') {
   liteBannerText.value = [location || chapter, title].filter(Boolean).join(' · ')
@@ -347,6 +349,7 @@ function resumeGame(st: GameState | null = resumeState.value) {
   const ps = st.meta?.plan_summary as { scene_id?: string; year?: number } | undefined
   lastSceneId.value = ps?.scene_id ?? st.skeleton_pos ?? ''
   lastSceneYear.value = ps?.year ?? st.era?.year ?? 0   // 恢复当前场景年代（防恢复后首拍误判跨年代）
+  sceneDatePreview.value = null   // 恢复用存档真实 world_date，清场景预告
   phaseReport.value = (st.last_output?.phase_report as PhaseReport | null) ?? null
   currentAtmo.value = '雨夜沉静'   // atmo 标签未持久化，恢复用默认
   started.value = true
@@ -393,6 +396,7 @@ async function startGame() {
   started.value = false
   lastSceneId.value = ''
   lastSceneYear.value = 0
+  sceneDatePreview.value = null
   newMemCount.value = 0
   prevRelations.value = {}
 
@@ -402,6 +406,7 @@ async function startGame() {
       lastSceneId.value = ev.scene.scene_id
       loaderTitle.value = ev.scene.title
       loaderChapterLabel.value = ev.scene.chapter_label
+      sceneDatePreview.value = ev.scene.world_date ? { ...ev.scene.world_date, season: ev.scene.season } : null
       if (ev.scene.atmo) currentAtmo.value = ev.scene.atmo
       playGuanyu()   // 关羽之歌：进游戏即响（最经典的梗）
       hideLoader()
@@ -420,6 +425,7 @@ async function startGame() {
     },
     onState: (state) => {
       // ③ 状态到达 → 记忆 & 人物更新
+      sceneDatePreview.value = null   // 世界日期已由 state 权威值接管
       const prev = gameState.value
       gameState.value = state
       pushAchievements(state.new_achievements)   // 成就解锁提示
@@ -515,6 +521,8 @@ async function sendAction(action: string, tension: number) {
     },
     onScene: (ev) => {
       const scene = ev.scene as { music?: string; atmo?: string }
+      // 世界日期预告：scene 先于 state，时代快进时立即刷新 EraBanner（否则宣告 189 但显示 184）
+      sceneDatePreview.value = ev.scene.world_date ? { ...ev.scene.world_date, season: ev.scene.season } : null
       if (ev.scene.scene_id !== lastSceneId.value) {
         // 真场景切换：定格旧块 → 插分隔 → 更新铭牌 → 墨染 → 氛围
         freezeLastBlock(false)
@@ -552,6 +560,7 @@ async function sendAction(action: string, tension: number) {
       }
     },
     onState: (state) => {
+      sceneDatePreview.value = null   // 世界日期已由 state 权威值接管
       const prev = gameState.value
       gameState.value = state
       pushAchievements(state.new_achievements)   // 成就解锁提示
@@ -605,14 +614,18 @@ function triggerInk() {
 
 // ── 派生 ──
 const eraLabel = computed(() => {
+  const pv = sceneDatePreview.value
   const era = gameState.value?.era
-  return era ? `${era.year} 年 · ${era.season}` : '184 年 · 春'
+  const year = pv?.year ?? era?.year ?? 184
+  const season = pv?.season ?? era?.season ?? '春'
+  return `${year} 年 · ${season}`
 })
 const eraChapter = computed(() => gameState.value?.era?.chapter ?? 'P1 黄金风起')
 
 // ── 自由沙盒：世界日期显示（取代旧世界时钟时节标签）──
+// 场景预告优先（时代快进立即刷新），state 到达后回落到真实 world_date
 const worldDateLabel = computed(() => {
-  const wd = gameState.value?.world_date
+  const wd = sceneDatePreview.value ?? gameState.value?.world_date
   if (!wd) return ''
   const day = Number(wd.day)
   const dayText = Number.isInteger(day) ? `${day}日` : `初${day >= 15 ? '二' : '一'}`

@@ -68,6 +68,10 @@ async def _step_events(req: PlayRequest):
         yield _sse({"type": "err", "content": "世界短暂失序，请重试"})
         yield _sse({"type": "done"})
         return
+    # 世界日期预告：场景年代推进（如 184→189 时代快进）时，让前端立即刷新显示，
+    # 不等 state 事件（叙事流完才到）——否则全屏宣告"时代快进"但日期还停在旧年代。
+    prev_wd = dict(pre_state.get("world_date") or {"year": 184, "month": 2, "day": 1})
+    prev_wd["year"] = max(int(prev_wd.get("year", 0)), int(pre_plan.year or 0))
     yield _sse({
         "type": "scene",
         "scene": {
@@ -76,6 +80,8 @@ async def _step_events(req: PlayRequest):
             "title": pre_plan.title,
             "location": pre_plan.location,
             "year": pre_plan.year,   # 场景声明年代——前端按此判"跨时代"（同年移动轻过渡）
+            "season": pre_plan.season,  # 场景季节（如"秋"），前端 era 显示预告用
+            "world_date": prev_wd,   # 本拍世界日期预告（场景年代推进后），前端立即刷新
             "atmo": pre_plan.atmo,
             "music": pre_plan.music,
         },
