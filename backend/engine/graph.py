@@ -36,10 +36,10 @@ def director_node(state: GameState) -> dict:
     供前端 eraLabel、validator P0 时间连续性、writer 时空面板、remember 时间标签使用。
     """
     plan = choose_scene(state)
-    # 时代状态写回（P1_s3_leap 等场景推进年份/季节/地点）
+    # 时代状态写回（统一时钟：era.year = max(场景静态年, 世界年)，回访不回退）
     era = dict(state.get("era", {}))
-    if plan.year:
-        era["year"] = plan.year
+    wd_year = (state.get("world_date") or {}).get("year", 0)
+    era["year"] = max(int(plan.year or 0), int(wd_year or 0)) or 0
     if plan.season:
         era["season"] = plan.season
     if plan.location:
@@ -340,7 +340,16 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             # 1. 推进日期（按行动类型耗时）
             days = action_days(action, [], "")
             new_wd = advance_date(wd, days)
+            # 前往更晚场景：world_date 快进到目标场景最早年（吸收旅途/时代跳跃，如 184→189 洛阳）
+            ps = (result.get("meta") or {}).get("plan_summary") or {}
+            scene_year = int(ps.get("year") or 0)
+            if scene_year > int(new_wd.get("year", 0)):
+                new_wd = dict(new_wd)
+                new_wd["year"] = scene_year
             result["world_date"] = new_wd
+            # 统一时钟：era.year 跟随 world_date（单调向前，回访不回退）
+            if isinstance(result.get("era"), dict):
+                result["era"]["year"] = int(new_wd.get("year", 0))
             # 2. 应用玩家数据（LLM 声明的 player_updates + 行动恢复）
             result = apply_player_updates(result, result.get("last_output") or {})
             player = result.get("player") or {}

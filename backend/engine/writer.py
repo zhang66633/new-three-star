@@ -419,6 +419,12 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
 ② 世界侧一切正常地演自己的事：NPC 有自己要赶的路、要避的祸，不为玩家停留
 ③ 这是背景底色，点到即止，不抢场景主线（黑影互动等照常演出）"""
 
+    # 回访故地：世界时间已越过场景年 → 演"故地现状"而非重复当年开场（统一时钟的配套叙事）
+    _wd = state.get("world_date") or {}
+    if plan.year and _wd.get("year") and int(plan.year) < int(_wd.get("year")):
+        instruction += f"""
+【回访故地】你再次来到{plan.location or plan.chapter_label}——{plan.chapter_label}的场景设定是 {plan.year} 年的记忆，而如今已是 {_wd['year']} 年。世界时间向前，故地已变（战后/流民/重建/人事已非）。演故地现状与当下的互动，不重复当年的开场剧情（当年在此醒来的事已是过往，只可作记忆提及）"""
+
     # 场景手调选项池注入（registry options：含 tension/effect，LLM 可选用或改写）
     scene_opts = plan.scene.get("options", []) or plan.options
     if scene_opts:
