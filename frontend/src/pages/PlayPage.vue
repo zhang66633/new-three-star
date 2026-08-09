@@ -27,6 +27,9 @@
     <!-- 世界简报（自由沙盒：到达新地点/周期时弹出未读强相关事件） -->
     <WorldBriefing :events="worldEvents" @read="markBriefingRead" />
 
+    <!-- 成就解锁提示（临时浮层） -->
+    <AchievementToast :achievements="newAchToasts" />
+
     <!-- 加载动画（开局/场景切换） -->
     <CinematicLoader
       :show="loaderVisible"
@@ -92,6 +95,9 @@
         :reveal="loadPhase === 'memory'"
         @toggle-pin="togglePin"
       />
+
+      <!-- 玩家档案（右下可折叠抽屉：资产/金钱/状态/称号/成就） -->
+      <PlayerPanel v-if="gameState?.player" :player="gameState.player" />
     </div>
   </div>
 </template>
@@ -113,6 +119,8 @@ import NarrativeArea from '../components/NarrativeArea.vue'
 import ChoiceArea from '../components/ChoiceArea.vue'
 import CharacterPanel from '../components/CharacterPanel.vue'
 import MemoryDrawer from '../components/MemoryDrawer.vue'
+import PlayerPanel from '../components/PlayerPanel.vue'
+import AchievementToast from '../components/AchievementToast.vue'
 import { usePlaySse } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
@@ -149,6 +157,19 @@ const lastCorrected = computed(() => {
   const c = gameState.value?.corrected
   return c?.length ? c[c.length - 1] : ''
 })
+
+// ── 成就解锁提示（后端 _commit 产出 new_achievements → onState 检测，浮层展示）──
+const newAchToasts = ref<string[]>([])
+let achTimer: number | null = null
+function pushAchievements(ids: string[] | undefined) {
+  if (!ids?.length) return
+  const fresh = ids.filter(id => !newAchToasts.value.includes(id))
+  if (!fresh.length) return
+  newAchToasts.value.push(...fresh)
+  // 最后一批出现后 3.2s 清空（连续解锁可堆叠展示）
+  if (achTimer) clearTimeout(achTimer)
+  achTimer = window.setTimeout(() => { newAchToasts.value = []; achTimer = null }, 3200)
+}
 
 // ── 记忆派生 ──
 const stmList = computed<MemoryItem[]>(() => gameState.value?.memory?.stm ?? [])
@@ -221,6 +242,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', inkSplash)
   if (loaderTimer) { clearTimeout(loaderTimer); loaderTimer = null }
+  if (achTimer) { clearTimeout(achTimer); achTimer = null }
 })
 
 // ── 开局 ──
@@ -268,6 +290,7 @@ async function startGame() {
       // ③ 状态到达 → 记忆 & 人物更新
       const prev = gameState.value
       gameState.value = state
+      pushAchievements(state.new_achievements)   // 成就解锁提示
       // 计算新增记忆数
       const prevStm = prev?.memory?.stm?.length ?? 0
       const curStm = state?.memory?.stm?.length ?? 0
@@ -378,6 +401,7 @@ async function sendAction(action: string, tension: number) {
     onState: (state) => {
       const prev = gameState.value
       gameState.value = state
+      pushAchievements(state.new_achievements)   // 成就解锁提示
       const prevStm = prev?.memory?.stm?.length ?? 0
       const curStm = state?.memory?.stm?.length ?? 0
       newMemCount.value = Math.max(0, curStm - prevStm)

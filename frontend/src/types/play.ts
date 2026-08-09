@@ -92,6 +92,7 @@ export interface GameState {
   world_rumors: string[]
   world_events: WorldEvent[]       // 事实层：世界事件队列（自由沙盒）
   world_date: { year: number; month: number; day: number }   // 世界具体日期
+  new_achievements?: string[]      // 本轮新解锁成就 id（后端 check_achievements 产出，SSE state 快照携带）
   turn: number
   retry_count: number
   history: { user?: string; assistant?: string }[]
