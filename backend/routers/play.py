@@ -168,3 +168,38 @@ async def play_load(req: LoadRequest):
     if state_json is None:
         return {"ok": False, "content": "无此存档"}
     return {"ok": True, "state": json.loads(state_json)}
+
+
+class PlayerSaveRequest(BaseModel):
+    pid: str = Field(default="", max_length=64)
+    game_state: dict = Field(default_factory=dict)
+
+
+@router.post("/play/save_player")
+async def play_save_player(req: PlayerSaveRequest):
+    """自由沙盒自动快照：完整 GameState → players 表（每拍前端保存，覆盖式）。
+
+    玩家档案绑定 world_id='default'（当前单世界；未来多世界分离时按世界分档）。
+    player_json 字段存完整 GameState 快照（玩家侧 + 世界侧，恢复无损）。
+    """
+    if not req.pid:
+        return {"ok": False, "content": "缺少玩家标识"}
+    from db import save_player
+    await save_player(req.pid, "default", json.dumps(req.game_state, ensure_ascii=False))
+    return {"ok": True}
+
+
+class PlayerLoadRequest(BaseModel):
+    pid: str = Field(default="", max_length=64)
+
+
+@router.post("/play/load_player")
+async def play_load_player(req: PlayerLoadRequest):
+    """断点续玩：读玩家档案（完整 GameState 快照；无档返回 has_save=False）。"""
+    if not req.pid:
+        return {"ok": False, "has_save": False}
+    from db import get_player
+    row = await get_player(req.pid)
+    if row is None:
+        return {"ok": False, "has_save": False}
+    return {"ok": True, "has_save": True, "state": json.loads(row["player_json"])}

@@ -21,6 +21,19 @@
       <IntroOverlay v-if="showIntro" @begin="beginAdventure" @back="goBack" />
     </transition>
 
+    <!-- 断点续玩确认层（有存档时取代开场：继续历险 / 新开历险） -->
+    <transition name="resume-fade">
+      <div v-if="resumeDialog" class="resume-dialog">
+        <div class="resume-title">行者归位</div>
+        <div class="resume-sub">你曾在此世留下足迹，要接续这段历险吗？</div>
+        <div v-if="resumeDateLabel" class="resume-meta">{{ resumeDateLabel }}</div>
+        <div class="resume-actions">
+          <button class="resume-btn resume-continue" @click="resumeGame">继续历险</button>
+          <button class="resume-btn resume-new" @click="startNewAdventure">新开历险</button>
+        </div>
+      </div>
+    </transition>
+
     <!-- 返回星图 -->
     <button class="back-btn" @click="goBack" aria-label="返回星图">←</button>
 
@@ -124,6 +137,7 @@ import AchievementToast from '../components/AchievementToast.vue'
 import { usePlaySse } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
+import { clearPlayerId, loadPlayer, savePlayer } from '../composables/useSaveSystem'
 import type { GameState, OptionSpec, MemoryItem, PhaseReport } from '../types/play'
 
 const router = useRouter()
@@ -156,6 +170,17 @@ const correctedCount = computed(() => gameState.value?.corrected?.length ?? 0)
 const lastCorrected = computed(() => {
   const c = gameState.value?.corrected
   return c?.length ? c[c.length - 1] : ''
+})
+
+// ── 断点续玩：有存档时取代开场（继续历险 / 新开历险）──
+const resumeDialog = ref(false)
+const resumeState = ref<GameState | null>(null)
+const resumeDateLabel = computed(() => {
+  const wd = resumeState.value?.world_date
+  if (!wd) return ''
+  const day = Number(wd.day)
+  const dayText = Number.isInteger(day) ? `${day}日` : `初${day >= 15 ? '二' : '一'}`
+  return `上次进度 · ${wd.year}年${wd.month}月${dayText}`
 })
 
 // ── 成就解锁提示（后端 _commit 产出 new_achievements → onState 检测，浮层展示）──
@@ -238,6 +263,7 @@ function hideLoader() {
 // ── 生命周期 ──
 onMounted(() => {
   window.addEventListener('pointerdown', inkSplash, { passive: true })
+  checkResume()   // 检测存档：有档弹「继续/新开」，无档正常开场
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', inkSplash)
@@ -245,10 +271,60 @@ onBeforeUnmount(() => {
   if (achTimer) { clearTimeout(achTimer); achTimer = null }
 })
 
-// ── 开局 ──
+// ── 开局 / 断点续玩 ──
 function beginAdventure() {
   showIntro.value = false
   startGame()
+}
+
+/** 检测存档：有则弹「继续/新开」（不播开场旁白），无则正常开场 */
+async function checkResume() {
+  const { hasSave, state } = await loadPlayer()
+  if (hasSave && state) {
+    resumeState.value = state
+    resumeDialog.value = true
+    showIntro.value = false   // 有档：intro 不播，直接确认层
+  }
+  // 无档：showIntro 保持 true（IntroOverlay 挂载即播放开场）
+}
+
+/** 继续历险：恢复完整 GameState + 重建叙事上下文 → 直接进入游戏态（可立即行动） */
+function resumeGame() {
+  const st = resumeState.value
+  if (!st) return
+  resumeDialog.value = false
+  resumeState.value = null
+  gameState.value = st
+  resetBlocks()
+  options.value = st.last_output?.options ?? []
+  // 恢复最后一段叙事为场景块（续接阅读）
+  const narr = st.last_output?.narrative ?? ''
+  if (narr) {
+    const ps = st.meta?.plan_summary as { scene_id?: string; chapter_label?: string; title?: string } | undefined
+    narrativeBlocks.value.push({
+      text: narr,
+      isScene: true,
+      sceneTitle: ps?.chapter_label && ps?.title ? `${ps.chapter_label} · ${ps.title}` : '',
+      streaming: false,
+    })
+  }
+  const ps = st.meta?.plan_summary as { scene_id?: string } | undefined
+  lastSceneId.value = ps?.scene_id ?? st.skeleton_pos ?? ''
+  phaseReport.value = (st.last_output?.phase_report as PhaseReport | null) ?? null
+  currentAtmo.value = '雨夜沉静'   // atmo 标签未持久化，恢复用默认
+  started.value = true
+  showIntro.value = false
+  isStreaming.value = false
+  loadPhase.value = 'options'
+  savePlayer(gameState.value)   // 立即回写一次（保持存档）
+}
+
+/** 新开历险：换新玩家档（旧档保留在服务端），重新播开场 */
+function startNewAdventure() {
+  resumeDialog.value = false
+  resumeState.value = null
+  clearPlayerId()
+  showIntro.value = true   // 重挂 IntroOverlay → 播放开场旁白
 }
 
 async function startGame() {
@@ -323,6 +399,7 @@ async function startGame() {
     onDone: () => {
       finalizeBlock()
       hideLoader()
+      savePlayer(gameState.value)   // 每拍自动快照（断点续玩）
       // 兜底：若 phase 序列卡住则 2s 后强制到 options
       schedulePhase(() => {
         if (loadPhase.value !== 'options' && loadPhase.value !== 'streaming') {
@@ -424,6 +501,7 @@ async function sendAction(action: string, tension: number) {
     onDone: () => {
       finalizeBlock()
       hideLoader()
+      savePlayer(gameState.value)   // 每拍自动快照（断点续玩）
       schedulePhase(() => {
         if (loadPhase.value !== 'options' && loadPhase.value !== 'streaming') {
           loadPhase.value = 'options'
@@ -627,4 +705,76 @@ function retryAfterError() {
   60%  { clip-path: circle(100% at 50% 50%); }
   100% { clip-path: circle(0% at 50% 50%); }
 }
+
+/* 断点续玩确认层（有存档时取代开场） */
+.resume-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: rgba(4, 4, 6, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.resume-title {
+  font-family: "Noto Serif SC", "STKaiti", serif;
+  font-size: 1.6rem;
+  letter-spacing: 0.4em;
+  color: #e8c88c;
+  text-shadow: 0 0 30px rgba(232, 200, 140, 0.2);
+}
+.resume-sub {
+  font-size: 0.88rem;
+  letter-spacing: 0.08em;
+  color: rgba(226, 232, 240, 0.75);
+}
+.resume-meta {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  color: rgba(202, 138, 4, 0.7);
+  border: 1px solid rgba(202, 138, 4, 0.3);
+  border-radius: 999px;
+  padding: 4px 16px;
+  margin-top: 4px;
+}
+.resume-actions {
+  display: flex;
+  gap: 14px;
+  margin-top: 18px;
+}
+.resume-btn {
+  font-family: "Noto Serif SC", "STKaiti", serif;
+  font-size: 1rem;
+  letter-spacing: 0.2em;
+  padding: 12px 34px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.resume-continue {
+  color: #1a1815;
+  background: linear-gradient(180deg, #f0dcae, #d2b478);
+  border: 1px solid #e8c88c;
+  box-shadow: 0 6px 24px rgba(232, 200, 140, 0.25);
+}
+.resume-continue:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 32px rgba(232, 200, 140, 0.4);
+}
+.resume-new {
+  color: rgba(226, 232, 240, 0.75);
+  background: rgba(15, 15, 30, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+.resume-new:hover {
+  background: rgba(15, 15, 35, 0.8);
+  border-color: rgba(148, 163, 184, 0.5);
+}
+.resume-fade-enter-active { transition: opacity 0.5s ease; }
+.resume-fade-leave-active { transition: opacity 0.3s ease; }
+.resume-fade-enter-from, .resume-fade-leave-to { opacity: 0; }
 </style>
