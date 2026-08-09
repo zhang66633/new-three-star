@@ -388,7 +388,8 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             if isinstance(result.get("era"), dict):
                 result["era"]["year"] = int(new_wd.get("year", 0))
             # 2. 应用玩家数据（LLM 声明的 player_updates + 行动恢复）
-            result = apply_player_updates(result, result.get("last_output") or {})
+            # action 传入：恢复类动作的系统结算独家，剥离 LLM 重复声明的 stats_delta/coins_delta（审查⑨）
+            result = apply_player_updates(result, result.get("last_output") or {}, action)
             player = result.get("player") or {}
             player = apply_recovery(player, action, new_wd)
             # 濒死检测：单属性触底 → 写 vitals_alarm（下拍 writer 演后果）；

@@ -37,7 +37,7 @@ def get_stats(player: dict) -> dict:
     return {k: _clamp(st.get(k, _DEFAULT_STATS.get(k, 50))) for k in _DEFAULT_STATS}
 
 
-def apply_player_updates(state: dict, output: dict) -> dict:
+def apply_player_updates(state: dict, output: dict, action: str = "") -> dict:
     """解析 LLM 声明的 player_updates，应用到玩家数据。
 
     player_updates 结构（LLM 在 narrative 输出里声明）：
@@ -47,13 +47,30 @@ def apply_player_updates(state: dict, output: dict) -> dict:
         "coins_delta": 5,                  # 金钱变化（+-）
         "stats_delta": {"stamina": -10, "hunger": +15},  # 属性变化
         "title_add": "乱世见证者",         # 新称号
+        "reputation_delta": 5,             # 声望变化（+-，0-100 钳制）
       }
+    恢复类动作（休息/吃/治伤）的系统结算由 apply_recovery 独家负责（审查⑨）：
+    剥离 LLM 对同动作重复声明的 stats_delta/coins_delta，防恢复翻倍、治伤扣钱翻倍。
     返回更新后的 player（经 state 整体写入由调用方做）。
     """
     updates = (output or {}).get("state_updates", {}) or {}
-    pu = updates.get("player_updates") or {}
+    pu = dict(updates.get("player_updates") or {})
     if not isinstance(pu, dict):
         return state
+
+    # 审查⑨：恢复类动作的系统结算独家——剥离 LLM 对同动作重复声明的恢复/扣费
+    if action:
+        sd = pu.get("stats_delta")
+        if isinstance(sd, dict):
+            sd = dict(sd)
+            if any(k in action for k in ("休息", "睡", "歇", "休整")):
+                sd.pop("stamina", None)
+            if any(k in action for k in ("吃", "进食", "觅食", "买吃的")):
+                sd.pop("hunger", None)
+            if any(k in action for k in ("治伤", "疗伤", "看伤", "包扎", "敷药")):
+                sd.pop("wound", None)
+                pu["coins_delta"] = 0  # 治伤医药费由系统结算
+            pu["stats_delta"] = sd
 
     player = dict(state.get("player") or {})
 
@@ -70,6 +87,12 @@ def apply_player_updates(state: dict, output: dict) -> dict:
     # 金钱
     try:
         player["coins"] = max(0, int(player.get("coins", 0)) + int(pu.get("coins_delta", 0)))
+    except (TypeError, ValueError):
+        pass
+
+    # 声望（审查⑧：此前无任何写入路径，reputation_30 永不可达；现经 LLM 声明 reputation_delta 成长）
+    try:
+        player["reputation"] = _clamp(int(player.get("reputation", 0)) + int(pu.get("reputation_delta", 0)))
     except (TypeError, ValueError):
         pass
 
@@ -166,16 +189,19 @@ def apply_recovery(player: dict, action: str, world_date: dict) -> dict:
         m = re.search(r"(\d+)\s*天", a)
         days = max(1, min(int(m.group(1)), 30)) if m else 1
         stats["stamina"] = _clamp(stats["stamina"] + 40 * days)
-    # 进食 → 饥饿下降（有食物才有效）
+    # 进食 → 饥饿下降（审查⑩：有食物耗食物；无食物则"吃/买吃的"花 5 钱现场买食——对称治伤扣款，
+    # 消除"持有任意硬币即无限免费回饱"；"觅食"无食物=没找到，不恢复）
     elif any(k in a for k in ("吃", "进食", "觅食", "买吃的")):
         assets = player.get("assets", [])
         food = [x for x in assets if any(f in x for f in ("粮", "食", "饼", "干", "肉", "馒"))]
-        if food or player.get("coins", 0) > 0:
+        if food:
             stats["hunger"] = _clamp(stats["hunger"] - 30)
             # 消耗一份食物
-            if food:
-                assets.remove(food[0])
-                player["assets"] = assets
+            assets.remove(food[0])
+            player["assets"] = assets
+        elif any(k in a for k in ("吃", "进食", "买吃的")) and player.get("coins", 0) >= 5:
+            stats["hunger"] = _clamp(stats["hunger"] - 30)
+            player["coins"] = max(0, int(player.get("coins", 0)) - 5)  # 现场买食（对称治伤扣 5 钱）
     # 治伤 → 伤势下降（自由沙盒 §4.2 治伤耗财：扣医药费）
     elif any(k in a for k in ("治伤", "疗伤", "看伤", "包扎", "敷药")):
         stats["wound"] = _clamp(stats["wound"] - 40)
