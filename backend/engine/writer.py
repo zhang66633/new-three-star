@@ -175,7 +175,17 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     # ── 🌏 当前世界背景（自由沙盒：阶段常态 + 近期事件 + 本地点生态）──
     try:
         from .worlddata import world_context
-        wctx = world_context(state.get("world_date") or {}, era.get("location", ""))
+        # 时代快进场景（plan.year > world_date.year，如 184→189）：narrate 在 _commit 推进 world_date
+        # 之前运行，注入用旧 world_date（184）会按 P1 黄金乱起演黄巾——用 effective date（场景年代）
+        # 判阶段，让时代快进场景演对时代（洛阳董卓，而非继续黄巾）
+        _wd = dict(state.get("world_date") or {})
+        if plan.year and int(plan.year) > int(_wd.get("year", 0) or 0):
+            _wd["year"] = int(plan.year)
+            from .world import season_month
+            _sm = season_month(plan.season or "")
+            if _sm:
+                _wd["month"] = _sm
+        wctx = world_context(_wd, era.get("location", ""))
         if wctx.get("normal"):
             n = wctx["normal"]
             lines.append("")
