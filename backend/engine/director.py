@@ -6,6 +6,7 @@ Director（导演层 · 纯代码，零 LLM）
 输出：ScenePlan（含 distance_map 角色距离映射，供 Writer 分层注入人设）
 """
 import json
+import logging
 import os
 from typing import Optional
 
