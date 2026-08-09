@@ -373,7 +373,7 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             # 驻留计数：移动则重置（新地点第 1 拍），否则递增——供周期事件判定
             result["scene_turns"] = 1 if moved else int(result.get("scene_turns") or state.get("scene_turns") or 1) + 1
             if moved:
-                new_events = generate_events(state, new_wd, moved)
+                new_events = generate_events(state, new_wd, moved, location=(result.get("era") or {}).get("location", ""))
                 if new_events:
                     events = list(result.get("world_events") or state.get("world_events") or [])
                     seen_ids = {e.get("event_id") for e in events}
@@ -382,6 +382,23 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                             events.append(ev)
                     result["world_events"] = events[-50:]  # 只保留最近 50 条
                     result["new_briefing"] = True  # 前端标记有新简报
+            # 玩家行为写回世界：LLM 声明的 world_events_add → world_events 队列（strong，玩家引发）
+            we_add = (result.get("last_output") or {}).get("state_updates", {}).get("world_events_add") or []
+            if we_add:
+                events = list(result.get("world_events") or state.get("world_events") or [])
+                for ev in we_add[:2]:
+                    if not str(ev.get("event", "")).strip():
+                        continue
+                    events.append({
+                        "event_id": f"player_{len(events)}_{new_wd.get('year', 0)}_{new_wd.get('month', 1)}",
+                        "date": f"{new_wd.get('year', 0)}-{new_wd.get('month', 1):02d}",
+                        "event": str(ev.get("event", ""))[:80],
+                        "related_to_player": "strong",
+                        "seen": False,
+                        "source": "player",
+                    })
+                result["world_events"] = events[-50:]
+                result["new_briefing"] = True   # 玩家引发的事件 → 简报
             # 4. 检查成就
             new_ach = check_achievements(result)
             if new_ach:

@@ -104,13 +104,13 @@ def should_generate_events(state: dict, result: dict) -> bool:
     return moved or periodic
 
 
-def generate_events(state: dict, world_date: dict, moved: bool) -> list[dict]:
-    """生成世界事件（预生成，结果写死）。当前用时间线锚点 + 随机日常事件。
+def generate_events(state: dict, world_date: dict, moved: bool, location: str = "") -> list[dict]:
+    """生成世界事件（预生成，结果写死）。时间线锚点 + 本地点日常生态。
 
-    自由沙盒设计 §二.1：离开时预生成结构化事件。这里做轻量实现——
-    从 history_timeline 取当前日期附近的历史事件作为"世界正在发生的事"。
+    自由沙盒设计 §二.1：离开时预生成结构化事件。从 history_timeline 取
+    当前日期附近历史事件 + 按地点取世界常态的 daily_scenes 日常。
     """
-    from .worlddata import events_around, load_timeline
+    from .worlddata import events_around, load_normal, phase_of
     events = []
     # 1. 时间线锚点事件（历史大势）
     recent = events_around(world_date, days_before=1)
@@ -130,33 +130,27 @@ def generate_events(state: dict, world_date: dict, moved: bool) -> list[dict]:
             if any(n in rels for n in npcs):
                 ev["related_to_player"] = "strong"
             events.append(ev)
-    # 2. 周期日常事件（驻留时世界仍在动）
-    if not moved:
-        daily = _daily_event(state, world_date)
-        if daily:
-            events.append(daily)
+    # 2. 本地点日常生态（world_normal 该地点 daily_scenes 抽一条，去哪演哪的活世界）
+    if location:
+        idx = phase_of(world_date)
+        normal = load_normal(idx)
+        for loc in (normal.get("locations") or []):
+            ln = loc.get("name") or ""
+            if ln and (ln == location or (location and ln in location)):
+                scenes = loc.get("daily_scenes") or []
+                if scenes:
+                    s = random.choice(scenes)
+                    events.append({
+                        "event_id": f"loc_{idx}_{random.randint(1000, 9999)}",
+                        "date": f"{world_date.get('year', 0)}-{world_date.get('month', 1):02d}",
+                        "event": f"【{ln}】{str(s)[:56]}",
+                        "related_to_player": "weak",
+                        "seen": False,
+                        "source": "daily",
+                    })
+                break
     return events
 
-
-def _daily_event(state: dict, world_date: dict) -> dict:
-    """随机日常事件（世界"平时"在发生什么，LLM 即兴的底料）。"""
-    # 从常态设定抽一个本阶段传闻/日常作为事件
-    from .worlddata import world_context, load_normal, phase_of
-    idx = phase_of(world_date)
-    normal = load_normal(idx)
-    atm = normal.get("atmosphere") or {}
-    rumors = atm.get("rumors") or []
-    if rumors:
-        r = random.choice(rumors)
-        return {
-            "event_id": f"daily_{idx}_{random.randint(1000, 9999)}",
-            "date": f"{world_date.get('year', 184):03d}-{world_date.get('month', 1):02d}",
-            "event": f"民间传闻：{r}",
-            "related_to_player": "weak",
-            "seen": False,
-            "source": "daily",
-        }
-    return {}
 
 
 def compose_briefing(events: list[dict]) -> str:

@@ -119,9 +119,10 @@ WRITER_INSTRUCTION = """
 5b. 感官细节覆盖至少两类（视觉/听觉优先），点到即止；以动作、对话推进为主，不冗长不端架子
 6. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）
 7. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，不要 ```json，直接输出 JSON 对象），格式：
-{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}, "events": [{{"actor": "黑影", "action": "问话后跑掉", "result": "你决定先找地方避雨"}}], "player_updates": {{"assets_add": ["半块干粮"], "coins_delta": 5, "stats_delta": {{"stamina": -10, "hunger": 15}}, "title_add": null}}}}
+{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}, "events": [{{"actor": "黑影", "action": "问话后跑掉", "result": "你决定先找地方避雨"}}], "player_updates": {{"assets_add": ["半块干粮"], "coins_delta": 5, "stats_delta": {{"stamina": -10, "hunger": 15}}, "title_add": null}}, "world_events_add": [{{"event": "你在中牟救下的客商，转头拿你名字到处报恩", "location": "中牟"}}]}}
 其中 events 是本拍 1-3 条关键事件（每条 {{actor, action, result}} 客观陈述，如 {{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}；不写内心独白、不写风景环境；本拍无实质事件时可省略）
 player_updates 是本拍玩家数据变化（自由沙盒）：assets_add/remove（获得/失去物品）、coins_delta（金钱变化）、stats_delta（体力/饥饿/伤势变化）、title_add（新称号，无则 null）。玩家获得/失去物品、金钱增减、身体状态变化时填写，无事可省
+world_events_add 是本拍玩家行为留下的**持久世界痕迹**：救下的人以后会报恩/惹的仇家以后会寻仇/当众的壮举会成传闻/改变了某处小局势——凡行为有"以后还会发生/有人记得/会传开"的持久后果就填（1-2 条），受"历史大势不可推翻"约束——不得改动历史名场面/大势结局（如"曹操死了""董卓被刺"），只能写局部痕迹；无事可省
 8. 严禁全知旁白宣告世界侧的无觉察（如'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
 9. 选项 text/effect 严禁 meta 词与现代词出口给 NPC（如"穿越者""现代""剧本"）；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
 10. 若发生时空跳跃（跨年/大段路程），叙事须显式交代（如'数月后''几天路程'），不得无标记硬切
@@ -341,6 +342,15 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
             lines.append(f"  · {r}")
     else:
         lines.append("  （暂无流言）")
+
+    # ── 🗞 与你有关的天下事（玩家引发/参与的近期事件，回灌叙事）──
+    we_events = state.get("world_events") or []
+    mine = [e for e in we_events if e.get("related_to_player") == "strong" and not e.get("seen")][-3:]
+    if mine:
+        lines.append("")
+        lines.append("🗞 与你有关的天下事")
+        for e in mine:
+            lines.append(f"  · 〔{e.get('date', '')}〕{e.get('event', '')[:60]}")
 
     # ── 🔗 关系网络 ──
     if relations:
@@ -591,7 +601,7 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
     """
     result: dict = {"memory_add": [], "relations_delta": {}, "trust_delta": {},
                     "foreshadowing_add": [], "rumors_add": [], "flags_add": [],
-                    "player_updates": {}}
+                    "player_updates": {}, "world_events_add": []}
 
     # 0. 玩家数据更新：LLM 声明的 player_updates（资产/属性/称号）透传
     if isinstance(llm_data, dict):
@@ -599,6 +609,11 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
         if isinstance(pu, dict):
             result["player_updates"] = {k: v for k, v in pu.items() if k in
                 ("assets_add", "assets_remove", "coins_delta", "stats_delta", "title_add")}
+        # 世界写回：LLM 声明的 world_events_add（玩家行为对世界的局部影响，受历史大势约束）
+        we = llm_data.get("world_events_add")
+        if isinstance(we, list):
+            result["world_events_add"] = [e for e in we[:2]
+                if isinstance(e, dict) and str(e.get("event", "")).strip()]
 
     # 1. 记忆条目：LLM 输出的 events[]（结构化关键事件）优先——它知道"本拍发生了什么"；
     #    缺失/非 list 时退回事件句提取（兜底，避免记忆面板存环境不存事件）
