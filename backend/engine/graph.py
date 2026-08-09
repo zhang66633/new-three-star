@@ -333,7 +333,7 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
     # 推进世界日期 + 应用玩家数据（LLM 声明）+ 生成世界事件 + 检查成就。
     if action:
         from .world import advance_date, action_days, should_generate_events, generate_events
-        from .player_data import apply_player_updates, apply_recovery, check_achievements
+        from .player_data import apply_player_updates, apply_recovery, check_achievements, check_vitals, apply_vital_bounce
         try:
             wd = result.get("world_date") or state.get("world_date") or {"year": 184, "month": 2, "day": 1}
             # 1. 推进日期（按行动类型耗时）
@@ -344,6 +344,19 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             result = apply_player_updates(result, result.get("last_output") or {})
             player = result.get("player") or {}
             player = apply_recovery(player, action, new_wd)
+            # 濒死检测：单属性触底 → 写 vitals_alarm（下拍 writer 演后果）；
+            # 上拍已注入警告仍触底（LLM 未恢复）→ 兜底回弹防卡死；
+            # 三属性同时极端 → 死亡（alive=False，前端读档最近快照）。
+            vitals = check_vitals(player)
+            if vitals["dead"]:
+                player["alive"] = False
+                result["dead"] = True
+            elif vitals["alarm"]:
+                if state.get("vitals_alarm"):   # 上拍已注入过警告仍触底 → 兜底回弹
+                    player = apply_vital_bounce(player)
+                result["vitals_alarm"] = vitals["alarm"]
+            else:
+                result["vitals_alarm"] = ""     # 已脱离濒死 → 清除标记
             result["player"] = player
             # 3. 生成世界事件（移动时 + 周期）
             moved = should_generate_events(state, result)

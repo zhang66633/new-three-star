@@ -107,6 +107,51 @@ def check_attributes(player: dict, action: str = "") -> dict:
     return {"blocked": bool(reasons), "reasons": reasons}
 
 
+# 属性极端值（触底即濒死；三属性同时极端 = 死亡，见 check_vitals）
+_VITAL_EXTREME = {"stamina": 0, "hunger": 100, "wound": 100}
+# 濒死兜底恢复量（注入身体警告时顺带回升，防 LLM 不声明恢复导致无限濒死循环）
+_VITAL_BOUNCE = {"stamina": 25, "hunger": -25, "wound": -25}
+# 濒死 → 叙事提示（writer 注入用）
+_ALARM_MSG = {
+    "stamina": "你力竭倒地，气力全无",
+    "hunger": "你饿得眼前发黑，晕眩欲倒",
+    "wound": "你伤重垂危，血染衣襟",
+}
+
+
+def check_vitals(player: dict) -> dict:
+    """属性极端检测：单属性触底 → 濒死标记；三属性同时极端 → 死亡。
+
+    返回 {alarm: str|None, dead: bool}：
+      - alarm：stamina/hunger/wound 任一触底（本拍结束时）——下拍 writer 注入身体警告，
+        LLM 演出被救/被抢/自救的后果并声明恢复
+      - dead：三属性同时触底（绝望）——alive=False，前端读档最近快照
+    """
+    stats = get_stats(player)
+    alarm = None
+    if stats["stamina"] <= _VITAL_EXTREME["stamina"]:
+        alarm = "stamina"
+    elif stats["hunger"] >= _VITAL_EXTREME["hunger"]:
+        alarm = "hunger"
+    elif stats["wound"] >= _VITAL_EXTREME["wound"]:
+        alarm = "wound"
+    dead = (stats["stamina"] <= 0 and stats["hunger"] >= 100 and stats["wound"] >= 100)
+    return {"alarm": alarm, "dead": dead}
+
+
+def apply_vital_bounce(player: dict) -> dict:
+    """濒死兜底恢复：单属性触底时回弹一点（防无限濒死循环），供 _commit 注入警告时调用。"""
+    stats = get_stats(player)
+    if stats["stamina"] <= _VITAL_EXTREME["stamina"]:
+        stats["stamina"] = _clamp(stats["stamina"] + _VITAL_BOUNCE["stamina"])
+    if stats["hunger"] >= _VITAL_EXTREME["hunger"]:
+        stats["hunger"] = _clamp(stats["hunger"] + _VITAL_BOUNCE["hunger"])
+    if stats["wound"] >= _VITAL_EXTREME["wound"]:
+        stats["wound"] = _clamp(stats["wound"] + _VITAL_BOUNCE["wound"])
+    player["stats"] = stats
+    return player
+
+
 def apply_recovery(player: dict, action: str, world_date: dict) -> dict:
     """行动恢复属性：休息回体力、进食回饥饿（消耗物品）、治伤回伤势。
 

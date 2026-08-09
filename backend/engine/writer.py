@@ -218,6 +218,27 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     lines.append(f"  目标：{player.get('goal', '在乱世中活下去')}")
     lines.append(f"  声望：{player.get('reputation', 0)}/100")
     lines.append(f"  位置：{player.get('location', '?')}")
+    # 身体警告（濒死后果 / 行动受限）：属性触底必须演后果并脱险，低值限制行为
+    try:
+        from .player_data import check_vitals, check_attributes
+        stats = player.get("stats") or {}
+        if stats:
+            lines.append(f"  状态：体力 {stats.get('stamina', 0)} · 饥饿 {stats.get('hunger', 0)} · 伤势 {stats.get('wound', 0)}")
+        vitals = check_vitals(player)
+        if vitals["dead"]:
+            lines.append("  ⚠ 生命垂危：你已油尽灯枯，回天乏术")
+        elif vitals["alarm"]:
+            msg = {"stamina": "你力竭倒地，气力全无",
+                   "hunger": "你饿得眼前发黑，晕眩欲倒",
+                   "wound": "你伤重垂危，血染衣襟"}[vitals["alarm"]]
+            lines.append(f"  ⚠ 濒死警告：{msg}——本拍必须演出倒下/被救/被抢/自救的后果并脱险，"
+                         f"声明 stats_delta 恢复（对应属性回升）与代价（coins_delta/assets_remove 等）")
+        else:
+            cons = check_attributes(player)
+            if cons["reasons"]:
+                lines.append("  ⚠ 行动受限：" + "；".join(cons["reasons"]))
+    except Exception:
+        pass  # 身体状态检测失败不影响叙事
     inner = player.get('inner_voice', '')
     if inner:
         lines.append(f"  内心：「{inner}」")

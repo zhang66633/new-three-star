@@ -28,8 +28,19 @@
         <div class="resume-sub">你曾在此世留下足迹，要接续这段历险吗？</div>
         <div v-if="resumeDateLabel" class="resume-meta">{{ resumeDateLabel }}</div>
         <div class="resume-actions">
-          <button class="resume-btn resume-continue" @click="resumeGame">继续历险</button>
+          <button class="resume-btn resume-continue" @click="resumeGame()">继续历险</button>
           <button class="resume-btn resume-new" @click="startNewAdventure">新开历险</button>
+        </div>
+      </div>
+    </transition>
+
+    <!-- 死亡回档层（三属性同时极端 → 读档最近快照） -->
+    <transition name="resume-fade">
+      <div v-if="deadDialog" class="resume-dialog death-dialog">
+        <div class="resume-title">此身已逝</div>
+        <div class="resume-sub">油尽灯枯，魂归长夜——但你留下的足迹仍在世间。</div>
+        <div class="resume-actions">
+          <button class="resume-btn resume-continue" @click="reloadFromDeath">回到此前</button>
         </div>
       </div>
     </transition>
@@ -175,6 +186,8 @@ const lastCorrected = computed(() => {
 // ── 断点续玩：有存档时取代开场（继续历险 / 新开历险）──
 const resumeDialog = ref(false)
 const resumeState = ref<GameState | null>(null)
+// ── 死亡回档：三属性同时极端（alive=False）→ 弹层读档最近快照 ──
+const deadDialog = ref(false)
 const resumeDateLabel = computed(() => {
   const wd = resumeState.value?.world_date
   if (!wd) return ''
@@ -288,11 +301,11 @@ async function checkResume() {
   // 无档：showIntro 保持 true（IntroOverlay 挂载即播放开场）
 }
 
-/** 继续历险：恢复完整 GameState + 重建叙事上下文 → 直接进入游戏态（可立即行动） */
-function resumeGame() {
-  const st = resumeState.value
+/** 继续历险 / 死亡回档：恢复完整 GameState + 重建叙事上下文 → 直接进入游戏态（可立即行动） */
+function resumeGame(st: GameState | null = resumeState.value) {
   if (!st) return
   resumeDialog.value = false
+  deadDialog.value = false
   resumeState.value = null
   gameState.value = st
   resetBlocks()
@@ -325,6 +338,19 @@ function startNewAdventure() {
   resumeState.value = null
   clearPlayerId()
   showIntro.value = true   // 重挂 IntroOverlay → 播放开场旁白
+}
+
+/** 死亡回档：读最近快照（死亡拍未保存，保留死前档）恢复 */
+async function reloadFromDeath() {
+  const { state } = await loadPlayer()
+  if (state) {
+    resumeGame(state)
+  } else {
+    deadDialog.value = false
+    errorMessage.value = '存档缺失，只能重开历险。'
+    clearPlayerId()
+    showIntro.value = true
+  }
 }
 
 async function startGame() {
@@ -399,7 +425,7 @@ async function startGame() {
     onDone: () => {
       finalizeBlock()
       hideLoader()
-      savePlayer(gameState.value)   // 每拍自动快照（断点续玩）
+      savePlayer(gameState.value?.dead ? null : gameState.value)   // 每拍自动快照（死亡拍不保存，保留死前档）
       // 兜底：若 phase 序列卡住则 2s 后强制到 options
       schedulePhase(() => {
         if (loadPhase.value !== 'options' && loadPhase.value !== 'streaming') {
@@ -479,6 +505,7 @@ async function sendAction(action: string, tension: number) {
       const prev = gameState.value
       gameState.value = state
       pushAchievements(state.new_achievements)   // 成就解锁提示
+      if (state.dead) deadDialog.value = true    // 死亡 → 弹「此身已逝」
       const prevStm = prev?.memory?.stm?.length ?? 0
       const curStm = state?.memory?.stm?.length ?? 0
       newMemCount.value = Math.max(0, curStm - prevStm)
@@ -501,7 +528,7 @@ async function sendAction(action: string, tension: number) {
     onDone: () => {
       finalizeBlock()
       hideLoader()
-      savePlayer(gameState.value)   // 每拍自动快照（断点续玩）
+      savePlayer(gameState.value?.dead ? null : gameState.value)   // 每拍自动快照（死亡拍不保存，保留死前档）
       schedulePhase(() => {
         if (loadPhase.value !== 'options' && loadPhase.value !== 'streaming') {
           loadPhase.value = 'options'
@@ -777,4 +804,9 @@ function retryAfterError() {
 .resume-fade-enter-active { transition: opacity 0.5s ease; }
 .resume-fade-leave-active { transition: opacity 0.3s ease; }
 .resume-fade-enter-from, .resume-fade-leave-to { opacity: 0; }
+/* 死亡回档层：标题转墨赤（区别于继续确认层的鎏金） */
+.death-dialog .resume-title {
+  color: #c04030;
+  text-shadow: 0 0 30px rgba(192, 64, 48, 0.35);
+}
 </style>
