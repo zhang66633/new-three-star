@@ -89,6 +89,9 @@ class GameState(TypedDict):
     world_rumors: list[str]       # 传闻层（NPC 传的、未证实的话）
     world_events: list[dict]      # 事实层：世界事件队列（离开时预生成，见自由沙盒重构设计 §二）
     world_date: dict              # 世界具体日期 {year, month, day}（取代 turns_left 时节）
+    location_state: Optional[dict]  # 地点面板状态 {current, unlocked, next_station}（director 每拍写入）
+    vitals_alarm: Optional[str]     # 濒死标记（stamina/hunger/wound，下拍 writer 演后果；脱离=''）
+    dead: Optional[bool]            # 死亡（三属性同时极端，alive=False）——前端读档最近快照
     # ── 引擎 ──
     turn: int
     retry_count: int              # 本轮重写次数
@@ -140,6 +143,9 @@ def new_game_state() -> GameState:
         "world_rumors": ["颍川传言：黄金军近日在附近出没", "朝廷发榜征兵"],
         "world_events": [],           # 事实层：世界事件队列（离开时预生成，见自由沙盒重构设计）
         "world_date": {"year": 184, "month": 2, "day": 1},  # 世界具体日期（取代 turns_left 时节）
+        "location_state": None,       # 地点面板状态（director 每拍写入）
+        "vitals_alarm": "",           # 濒死标记（无濒死为空串）
+        "dead": False,                # 死亡标记（三属性极端）
         "turn": 0,
         "scene_turns": 1,          # 当前地点驻留轮次（供 world 周期事件判定，见 world.py）
         "retry_count": 0,
