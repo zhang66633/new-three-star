@@ -53,6 +53,21 @@ def director_node(state: GameState) -> dict:
         if f not in flags:
             flags.append(f)
 
+    # 主线推进接线（审查⑦）：无地点动作时沿 aftermath.flow 推进一拍（叙事选项推动主线，
+    # 不再要求玩家手动"前往X"）；但休息/等待等驻留空闲动作保持驻留（玩家可歇息恢复不被推走）；
+    # END 不应用（自循环守卫=暂停推进防伪重开）。next_pos 此前悬空从未写回 skeleton_pos。
+    from .world import is_idle_action
+    np = plan.next_pos
+    if np and np != "END":
+        last_a = ""
+        for h in reversed(state.get("history", [])):
+            if h.get("user"):
+                last_a = h["user"]
+                break
+        if last_a and is_idle_action(last_a):
+            np = ""  # 驻留空闲（休息/等待）：不推进
+    skeleton_pos = np if np else plan.scene_id
+
     return {
         "meta": {
             **state.get("meta", {}),
@@ -82,7 +97,7 @@ def director_node(state: GameState) -> dict:
         },
         "era": era,
         "flags": flags,
-        "skeleton_pos": plan.scene_id,
+        "skeleton_pos": skeleton_pos,
         "location_state": _location_state(state, plan.rumor_unlock),  # 地点面板状态（current/unlocked/next_station/rumored）
         **({"rumor_unlocked": list(state.get("rumor_unlocked") or []) + [plan.rumor_unlock]}
            if plan.rumor_unlock else {}),  # 传闻解锁：打听确认的消息落地（独立于 visited）

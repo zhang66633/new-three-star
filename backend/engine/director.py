@@ -216,7 +216,9 @@ def resolve_travel(action: str, state: GameState):
         return None
     visited = _visited_scenes(state)
     scenes = LOCATIONS.get(name, [])
-    if any(s in visited for s in scenes):
+    # 已解锁 = 实地到访过 或 传闻解锁（rumor_unlocked，UI 显示"可前往"——修复：此前只看
+    # visited，传闻解锁地点被当未解锁、目标地点名被忽略）
+    if any(s in visited for s in scenes) or name in (state.get("rumor_unlocked") or []):
         # 已解锁：优先探索该地点内未访问场景（沿 flow 链，地点内更深处）
         for sid in _walk_flow(state):
             if sid not in visited and _location_of(sid) == name:
