@@ -91,13 +91,21 @@ def _days_between(d1: dict, d2: dict) -> int:
 
 
 def should_generate_events(state: dict, result: dict) -> bool:
-    """判断本拍是否触发事件生成：移动了 或 驻留达到周期。
+    """判断本拍是否触发事件生成：长跨度移动 或 驻留周期。
 
-    移动：skeleton_pos/location 变化；周期：scene_turns 达阈值（每 4 拍）。
+    移动（§3.1 时间跨度门槛）：日期跨度达阈值（>7 天，跨地点/长行程）才生成；
+    同地点内短距离移动（邻近直达，几 天内）不生成世界事件。
+    周期：scene_turns 每 4 拍生成一次世界动态。
     """
     old_pos = state.get("skeleton_pos")
     new_pos = result.get("skeleton_pos", old_pos)
-    moved = new_pos != old_pos
+    moved = False
+    if new_pos != old_pos:
+        # 日期跨度门槛：短距离移动（<7 天）不生成（直达）
+        old_wd = state.get("world_date") or {}
+        new_wd = result.get("world_date") or old_wd
+        if _days_between(old_wd, new_wd) >= 7:
+            moved = True
     # 驻留周期：scene_turns 每 4 拍生成一次世界动态
     scene_turns = int(result.get("scene_turns", 1) or 1)
     periodic = scene_turns > 0 and scene_turns % 4 == 0
@@ -150,3 +158,37 @@ def generate_events(state: dict, world_date: dict, moved: bool, location: str = 
                     })
                 break
     return events
+
+
+def next_timeline_skip(world_date: dict) -> dict | None:
+    """历史压缩（§1.3）：若距下一时间线事件过远（>12 个月）→ 自动跳时。
+
+    返回 {"date": 目标日期, "event": 简报事件} 或 None（间隔小不跳）。
+    玩家驻留日常时世界大步向前，跳时以简报带过（"几年过去，谁干成了什么"）。
+    """
+    from .worlddata import load_timeline, _ym
+    y = int(world_date.get("year", 0) or 0)
+    m = int(world_date.get("month", 1) or 1)
+    nxt = None
+    for e in load_timeline():
+        ey, em = _ym(e.get("date", ""))
+        if (ey, em) > (y, m):
+            nxt = e
+            break
+    if not nxt:
+        return None
+    ny, nm = _ym(nxt.get("date", ""))
+    gap = (ny - y) * 12 + (nm - m)
+    if gap <= 12:
+        return None  # 间隔小（≤1 年），不跳时（保留当前事件密集期的体验）
+    return {
+        "date": {"year": ny, "month": nm, "day": 1},
+        "event": {
+            "event_id": f"timeskip_{ny}_{nm}",
+            "date": f"{ny:03d}-{nm:02d}",
+            "event": f"时间如水：一晃过去 {gap} 个月。{str(nxt.get('event', ''))[:60]}",
+            "related_to_player": "weak",
+            "seen": False,
+            "source": "timeskip",
+        },
+    }

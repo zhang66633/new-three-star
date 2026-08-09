@@ -382,6 +382,18 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                             events.append(ev)
                     result["world_events"] = events[-50:]  # 只保留最近 50 条
                     result["new_briefing"] = True  # 前端标记有新简报
+            # 历史压缩（§1.3）：距下一时间线事件过远 → 自动跳时到事件点 + 简报带过
+            from .world import next_timeline_skip
+            skip = next_timeline_skip(new_wd)
+            if skip:
+                new_wd = skip["date"]
+                result["world_date"] = new_wd
+                events = list(result.get("world_events") or state.get("world_events") or [])
+                events.append(skip["event"])
+                result["world_events"] = events[-50:]
+                result["new_briefing"] = True
+                if isinstance(result.get("era"), dict):
+                    result["era"]["year"] = int(new_wd.get("year", 0))
             # 玩家行为写回世界：LLM 声明的 world_events_add → world_events 队列（strong，玩家引发）
             we_add = (result.get("last_output") or {}).get("state_updates", {}).get("world_events_add") or []
             if we_add:
