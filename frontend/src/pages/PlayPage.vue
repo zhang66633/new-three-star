@@ -155,7 +155,7 @@ import LocationPanel from '../components/LocationPanel.vue'
 import { usePlaySse } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
-import { clearPlayerId, loadPlayer, savePlayer } from '../composables/useSaveSystem'
+import { clearPlayerId, deletePlayer, getPlayerId, loadPlayer, savePlayer } from '../composables/useSaveSystem'
 import type { GameState, OptionSpec, MemoryItem, PhaseReport } from '../types/play'
 
 const router = useRouter()
@@ -335,14 +335,17 @@ function resumeGame(st: GameState | null = resumeState.value) {
   started.value = true
   showIntro.value = false
   isStreaming.value = false
+  hideLoader()   // 恢复路径不经过 onScene，必须手动隐藏加载器（否则 CinematicLoader 一直盖着）
   loadPhase.value = 'options'
   savePlayer(gameState.value)   // 立即回写一次（保持存档）
 }
 
-/** 新开历险：换新玩家档（旧档保留在服务端），重新播开场 */
+/** 新开历险：删除旧档（放弃当前进度）→ 换新玩家档 → 重新播开场 */
 function startNewAdventure() {
   resumeDialog.value = false
   resumeState.value = null
+  const oldPid = getPlayerId()
+  if (oldPid) deletePlayer(oldPid)   // 新开=放弃旧档，防 players 表累积孤儿档
   clearPlayerId()
   showIntro.value = true   // 重挂 IntroOverlay → 播放开场旁白
 }

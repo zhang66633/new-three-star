@@ -203,3 +203,17 @@ async def play_load_player(req: PlayerLoadRequest):
     if row is None:
         return {"ok": False, "has_save": False}
     return {"ok": True, "has_save": True, "state": json.loads(row["player_json"])}
+
+
+class PlayerDeleteRequest(BaseModel):
+    pid: str = Field(default="", max_length=64)
+
+
+@router.post("/play/delete_player")
+async def play_delete_player(req: PlayerDeleteRequest):
+    """新开历险：删除旧玩家档案（放弃当前进度），防 players 表累积孤儿档。"""
+    if not req.pid:
+        return {"ok": False}
+    from db import delete_player
+    await delete_player(req.pid)
+    return {"ok": True}

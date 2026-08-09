@@ -130,3 +130,10 @@ async def get_world_state(wid: str):
         cursor = await db.execute("SELECT world_json FROM world_states WHERE id = ?", (wid,))
         row = await cursor.fetchone()
         return dict(row)["world_json"] if row else None
+
+
+async def delete_player(pid: str):
+    """删除玩家档案（新开历险时放弃旧档，防 players 表累积孤儿档）。"""
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM players WHERE id = ?", (pid,))
+        await db.commit()
