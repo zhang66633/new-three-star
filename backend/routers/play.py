@@ -72,6 +72,11 @@ async def _step_events(req: PlayRequest):
     # 不等 state 事件（叙事流完才到）——否则全屏宣告"时代快进"但日期还停在旧年代。
     prev_wd = dict(pre_state.get("world_date") or {"year": 184, "month": 2, "day": 1})
     prev_wd["year"] = max(int(prev_wd.get("year", 0)), int(pre_plan.year or 0))
+    # 审查⑬：与 graph 快进一致做季节→月份对齐——否则预告"189年·秋"却配"189年2月初一"自相矛盾
+    from engine.world import season_month
+    sm = season_month(pre_plan.season or "")
+    if sm:
+        prev_wd["month"] = sm
     yield _sse({
         "type": "scene",
         "scene": {

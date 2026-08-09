@@ -225,6 +225,12 @@ def period_events(prev_wd: dict, cur_wd: dict) -> list[dict]:
     return out
 
 
+def season_month(season: str) -> int | None:
+    """季节 → 代表月（春3/夏6/秋9/冬12）。时代快进/场景预告时对齐 world_date 月份，
+    防"189-02 仍判 P1"或"季节秋配 2 月"的矛盾。"""
+    return {"春": 3, "夏": 6, "秋": 9, "冬": 12}.get(season)
+
+
 def is_idle_action(action: str) -> bool:
     """判断玩家本拍是否"驻留空闲"（休息/等待/无所事事）→ 允许历史跳时。
 

@@ -375,9 +375,10 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                 new_wd["year"] = scene_year
                 # 月份对齐场景季节（如秋→9 月）：防 189-02 仍判 P1 黄金乱起（世界常态不切换）/
                 # 季节与日期矛盾（显示"秋"却 2 月）——时代快进要真的进入那个时代
-                season_month = {"春": 3, "夏": 6, "秋": 9, "冬": 12}.get(ps.get("season") or "")
-                if season_month:
-                    new_wd["month"] = season_month
+                from .world import season_month
+                sm = season_month(ps.get("season") or "")
+                if sm:
+                    new_wd["month"] = sm
                 # 时代快进：补 (旧, 新] 期间的时间线事件（你错过的天下事）→ 简报，
                 # 世界真正"前进了"而不只是年份数字变了（黄金溃兵/董卓进京等都被吸收）
                 from .world import period_events

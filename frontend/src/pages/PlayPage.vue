@@ -404,6 +404,7 @@ async function startGame() {
     onScene: (ev) => {
       // ① 场景就绪 → 切到思维链阶段（环境立即可见）
       lastSceneId.value = ev.scene.scene_id
+      lastSceneYear.value = ev.scene.year ?? 0   // 审查⑫：开局初始化（防首个同年切换误判跨年代全屏）
       loaderTitle.value = ev.scene.title
       loaderChapterLabel.value = ev.scene.chapter_label
       sceneDatePreview.value = ev.scene.world_date ? { ...ev.scene.world_date, season: ev.scene.season } : null
@@ -645,6 +646,9 @@ function showBriefing(ev: StreamEvent & { type: 'briefing' }) {
 function closeBriefing() {
   briefingVisible.value = false
   markBriefingRead()
+  // 审查⑪：已读 seen 随关闭动作落盘——onDone 快照先于用户读完简报执行，若不立即存，
+  // 读后即关/刷新会丢失 seen 标记、同批事件下次重播
+  savePlayer(gameState.value?.dead ? null : gameState.value)
 }
 function markBriefingRead() {
   // 简报已读：标记 seen（前端维护；后端下次快照持久化）
