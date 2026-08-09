@@ -13,6 +13,8 @@ PlayerData（玩家档案 · 自由沙盒）
 - 称号 = 事件授予，NPC 凭称号认出/议论
 - 成就 = 条件定义 + 行动后自动检查解锁
 """
+import re
+
 # 属性下限阈值（低于则行动受限）
 _ATTR_LOW = {
     "stamina": 20,   # 体力低于 20：不能赶远路
@@ -159,11 +161,13 @@ def apply_recovery(player: dict, action: str, world_date: dict) -> dict:
     """
     stats = get_stats(player)
     a = action or ""
-    # 休息 → 体力恢复
+    # 休息 → 体力恢复（B-④：休息N天按天恢复，默认 1 天）
     if any(k in a for k in ("休息", "睡", "歇", "休整")):
-        stats["stamina"] = _clamp(stats["stamina"] + 40)
+        m = re.search(r"(\d+)\s*天", a)
+        days = max(1, min(int(m.group(1)), 30)) if m else 1
+        stats["stamina"] = _clamp(stats["stamina"] + 40 * days)
     # 进食 → 饥饿下降（有食物才有效）
-    if any(k in a for k in ("吃", "进食", "觅食", "买吃的")):
+    elif any(k in a for k in ("吃", "进食", "觅食", "买吃的")):
         assets = player.get("assets", [])
         food = [x for x in assets if any(f in x for f in ("粮", "食", "饼", "干", "肉", "馒"))]
         if food or player.get("coins", 0) > 0:
@@ -173,10 +177,10 @@ def apply_recovery(player: dict, action: str, world_date: dict) -> dict:
                 assets.remove(food[0])
                 player["assets"] = assets
     # 治伤 → 伤势下降（自由沙盒 §4.2 治伤耗财：扣医药费）
-    if any(k in a for k in ("治伤", "疗伤", "看伤", "包扎", "敷药")):
+    elif any(k in a for k in ("治伤", "疗伤", "看伤", "包扎", "敷药")):
         stats["wound"] = _clamp(stats["wound"] - 40)
         player["coins"] = max(0, int(player.get("coins", 0)) - 5)
-    # 日常行动 → 饥饿缓慢上升、体力缓慢下降（世界时间流逝的代价）
+    # 其余行动 → 日常代价：饥饿缓慢上升、体力缓慢下降（世界时间流逝）
     else:
         stats["hunger"] = _clamp(stats["hunger"] + 5)
         stats["stamina"] = _clamp(stats["stamina"] - 3)

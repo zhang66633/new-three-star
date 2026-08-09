@@ -10,6 +10,7 @@ World（世界推进 · 自由沙盒）
 - 简报 = 玩家到达新地点/重进时，由事件队列合成
 """
 import random
+import re
 
 # 行动类型 → 耗时（天）。0.5=半天，1=一天，>1=多天（赶路按距离）
 ACTION_COST = {
@@ -70,16 +71,36 @@ def action_days(action: str, plan_options: list = None, location: str = "") -> f
         return 0.0  # 开局无行动
     a = action or ""
     if any(k in a for k in ("休息", "睡", "歇", "休整", "养伤", "躺")):
+        # 休息天数可自定义（B-④ §1.2）：「休息N天」→ N 天（1-30），默认 1 天
+        m = re.search(r"(\d+)\s*天", a)
+        if m:
+            return float(max(1, min(int(m.group(1)), 30)))
         return ACTION_COST["rest"]
     if any(k in a for k in ("打听", "问问", "交谈", "观察", "看看", "围观", "闲聊", "问问路")):
         return ACTION_COST["talk"]
     if any(k in a for k in ("买", "卖", "买卖", "交易", "办事", "赶集")):
         return ACTION_COST["errand"]
-    if any(k in a for k in ("赶路", "前往", "离开", "南下", "北上", "去往", "动身", "出发")):
-        # 赶路：跨州 vs 邻近
+    if any(k in a for k in ("赶路", "前往", "离开", "南下", "北上", "去往", "动身", "出发", "回到", "返回", "回")):
+        # 赶路耗时=距离（B-③ §1.2）：邻近约 1 天，隔站递增（2 站 2.5 / 3 站 4 / 4 站 5.5）
+        from .worlddata import LOCATIONS
+        names = list(LOCATIONS.keys())
+        # 目标地点 = 方向词（去/往/到/赴/奔/进/入/回/返）后紧跟的地点名
+        target = next((n for n in names if re.search(r"(?:去|往|到|赴|奔|进|入|回|返)" + n, a)), "")
+        # 起点 = 当前所在（era.location，如 "颍川·荒野" → "颍川"）
+        cur = next((n for n in names if n and (location or "") and n in location), None)
+        ti = names.index(target) if target in names else -1
+        ci = names.index(cur) if cur in names else -1
+        if ti >= 0 and ci >= 0:
+            dist = abs(ti - ci)
+            if dist == 0:
+                return 0.5                    # 同地移动（城内/近郊转）
+            if dist == 1:
+                return 1.0                    # 邻近地点：约 1 天
+            return 1.0 + 1.5 * (dist - 1)     # 隔站：2 站 2.5 / 3 站 4.0 / 4 站 5.5
+        # 无明确目标地点：跨州词 → 长途；否则默认 1 天（回访/城内移动，防"回头"误判）
         if any(k in a for k in ("跨州", "远行", "长途", "数日")):
             return 5.0
-        return 3.0
+        return 1.0
     return ACTION_COST["errand"]  # 默认 1 天
 
 

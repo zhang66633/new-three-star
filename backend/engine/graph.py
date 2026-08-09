@@ -341,8 +341,8 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
         from .player_data import apply_player_updates, apply_recovery, check_achievements, check_vitals, apply_vital_bounce
         try:
             wd = result.get("world_date") or state.get("world_date") or {"year": 184, "month": 2, "day": 1}
-            # 1. 推进日期（按行动类型耗时）
-            days = action_days(action, [], "")
+            # 1. 推进日期（按行动类型耗时；location 供赶路距离解析——当前地点）
+            days = action_days(action, [], (result.get("era") or {}).get("location", ""))
             new_wd = advance_date(wd, days)
             # 前往更晚场景：world_date 快进到目标场景最早年（吸收旅途/时代跳跃，如 184→189 洛阳）
             ps = (result.get("meta") or {}).get("plan_summary") or {}
