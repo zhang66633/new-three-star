@@ -18,9 +18,9 @@ import os
 
 _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "knowledge")
 
-# 阶段定义：按产出文件顺序（黄巾乱起 → 天下三分）
+# 阶段定义：按产出文件顺序（黄金乱起 → 天下三分）
 PHASES = [
-    {"idx": 1, "name": "黄巾乱起", "start": "184-02", "end": "188-12"},
+    {"idx": 1, "name": "黄金乱起", "start": "184-02", "end": "188-12"},
     {"idx": 2, "name": "董卓乱政", "start": "189-01", "end": "190-12"},
     {"idx": 3, "name": "群雄割据", "start": "191-01", "end": "199-12"},
     {"idx": 4, "name": "官渡定鼎", "start": "200-01", "end": "207-12"},

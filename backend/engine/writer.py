@@ -536,6 +536,8 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
     draft = deslop(draft)
     data = parse_output(draft)
     data["narrative"] = data.get("narrative", draft)
+    # 世界统一称呼兜底：数据层已统一世界侧为"黄金"（黄巾/黄天已清除），此处防 LLM 自身串味
+    data["narrative"] = data["narrative"].replace("黄巾", "黄金")
     options = data.get("options", [])
     # 容错：LLM 把 options 生成为对象/裸值 → 落回空列表
     if not isinstance(options, list):
