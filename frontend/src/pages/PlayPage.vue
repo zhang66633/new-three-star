@@ -385,6 +385,7 @@ async function startGame() {
       loaderTitle.value = ev.scene.title
       loaderChapterLabel.value = ev.scene.chapter_label
       if (ev.scene.atmo) currentAtmo.value = ev.scene.atmo
+      playGuanyu()   // 关羽之歌：进游戏即响（最经典的梗）
       hideLoader()
       started.value = true
       loadPhase.value = 'thinking'
@@ -506,7 +507,7 @@ async function sendAction(action: string, tension: number) {
         loadPhase.value = 'thinking'
         // 场景切换时重置流式累积，防止旧场景文本串入新场景块
         currentStreamText.value = ''
-        if (scene.music === 'guanyu') playGuanyu()
+        playGuanyu()   // 关羽之歌：最经典的梗，任何场景切换都响（播一段）
         if (scene.atmo) currentAtmo.value = scene.atmo
       } else {
         // 同场景：更新铭牌，思维链
