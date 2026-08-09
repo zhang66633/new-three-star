@@ -144,7 +144,9 @@ def world_context(world_date: dict, location: str = "") -> dict:
     recent = events_around(world_date, days_before=3)
     loc_normal = None
     for loc in (normal.get("locations") or []):
-        if loc.get("name") == location or (location and location in (loc.get("name") or "")):
+        ln = loc.get("name") or ""
+        # era.location 如 "颍川·荒野" → 匹配常态地点 "颍川"（name 作子串匹配）
+        if ln and (ln == location or (location and ln in location)):
             loc_normal = loc
             break
     return {
