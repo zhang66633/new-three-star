@@ -30,7 +30,6 @@ export function usePlaySse() {
       onPhase?: (report: StreamEvent & { type: 'phase' }) => void
       onDone: () => void
       onError?: (msg: string) => void
-      onFail?: (msg: string) => void
     },
   ): Promise<void> {
     isStreaming.value = true
@@ -102,9 +101,6 @@ export function usePlaySse() {
               case 'err':
                 handlers.onError?.(ev.content)
                 break
-              case 'fail':
-                handlers.onFail?.(ev.content)
-                break
             }
           } catch {
             // 非 JSON 行忽略
@@ -143,9 +139,6 @@ export function usePlaySse() {
               case 'err':
                 handlers.onError?.(ev.content)
                 break
-              case 'fail':
-                handlers.onFail?.(ev.content)
-                break
             }
           } catch { /* ignore */ }
         }
@@ -160,20 +153,5 @@ export function usePlaySse() {
     }
   }
 
-  /** 读档：加载服务端存档（默认槽位 autosave），失败返回 null */
-  async function loadGame(saveId = 'autosave'): Promise<GameState | null> {
-    try {
-      const resp = await fetch(`${API_BASE}/api/play/load`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ save_id: saveId }),
-      })
-      const data = await resp.json()
-      return data?.ok ? (data.state as GameState) : null
-    } catch {
-      return null
-    }
-  }
-
-  return { playStep, isStreaming, loadGame }
+  return { playStep, isStreaming }
 }

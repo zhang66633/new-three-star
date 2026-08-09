@@ -143,33 +143,6 @@ async def play_step(req: PlayRequest):
     )
 
 
-class SaveRequest(BaseModel):
-    game_state: dict = Field(default_factory=dict)
-    save_id: str = Field(default="autosave", max_length=64)
-
-
-@router.post("/play/save")
-async def play_save(req: SaveRequest):
-    """手动存档：当前 GameState 落库（默认槽位 autosave）。"""
-    from db import save_game
-    await save_game(req.save_id, json.dumps(req.game_state, ensure_ascii=False), label="手动")
-    return {"ok": True}
-
-
-class LoadRequest(BaseModel):
-    save_id: str = Field(default="autosave", max_length=64)
-
-
-@router.post("/play/load")
-async def play_load(req: LoadRequest):
-    """读档：返回存档的 GameState（失败/手动读档用）。"""
-    from db import get_game
-    state_json = await get_game(req.save_id)
-    if state_json is None:
-        return {"ok": False, "content": "无此存档"}
-    return {"ok": True, "state": json.loads(state_json)}
-
-
 class PlayerSaveRequest(BaseModel):
     pid: str = Field(default="", max_length=64)
     game_state: dict = Field(default_factory=dict)

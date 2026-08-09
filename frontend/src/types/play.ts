@@ -122,4 +122,3 @@ export type StreamEvent =
   | { type: 'phase'; report: PhaseReport }
   | { type: 'done' }
   | { type: 'err'; content: string }
-  | { type: 'fail'; content: string }

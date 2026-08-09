@@ -150,26 +150,3 @@ def generate_events(state: dict, world_date: dict, moved: bool, location: str = 
                     })
                 break
     return events
-
-
-
-def compose_briefing(events: list[dict]) -> str:
-    """世界事件队列 → 简报文本（LLM 可读/前端展示）。"""
-    if not events:
-        return ""
-    lines = ["—— 你离开的这段时间，天下发生了这些 ——"]
-    for e in events[:6]:
-        tag = "【与你有关】" if e.get("related_to_player") == "strong" else ""
-        lines.append(f"〔{e.get('date', '')}〕{tag}{e.get('event', '')}")
-    return "\n".join(lines)
-
-
-def mark_seen(events: list[dict]) -> list[dict]:
-    """简报已展示的事件标记 seen，避免重复弹。"""
-    out = []
-    for e in events:
-        e = dict(e)
-        if not e.get("seen"):
-            e["seen"] = True
-        out.append(e)
-    return out
