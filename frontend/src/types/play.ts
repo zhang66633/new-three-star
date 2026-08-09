@@ -9,6 +9,12 @@ export interface PlayerState {
   goal: string
   inner_voice: string
   notes: string[]
+  // 自由沙盒（见 docs/自由沙盒重构设计.md §三）
+  assets: string[]
+  coins: number
+  stats: { stamina: number; hunger: number; wound: number }
+  titles: string[]
+  achievements: string[]
 }
 
 export interface EraState {
@@ -65,6 +71,16 @@ export interface NarrativeOutput {
   retry_reasons: string[]
 }
 
+// 世界事件（事实层，见 docs/自由沙盒重构设计.md §二）
+export interface WorldEvent {
+  event_id: string
+  date: string
+  event: string
+  related_to_player: 'strong' | 'weak'
+  seen?: boolean
+  source?: 'timeline' | 'daily'
+}
+
 export interface GameState {
   player: PlayerState
   era: EraState
@@ -78,11 +94,13 @@ export interface GameState {
   corrected: string[]
   foreshadowing: string[]
   world_rumors: string[]
+  world_events: WorldEvent[]       // 事实层：世界事件队列（自由沙盒）
+  world_date: { year: number; month: number; day: number }   // 世界具体日期
   turn: number
   retry_count: number
   history: { user?: string; assistant?: string }[]
   scene_state: { scene_id?: string; qualifications?: string[] } | null
-  world_clock: { chapter: string; season: string; turns_left: number } | null
+  world_clock: { chapter: string; season: string; turns_left: number } | null  // 遗留：旧名场面时钟（待移除）
   last_output: NarrativeOutput | null
   last_trace: string
   meta: Record<string, unknown>

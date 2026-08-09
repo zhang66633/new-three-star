@@ -57,6 +57,9 @@
     <!-- 返回星图 -->
     <button class="back-btn" @click="goBack" aria-label="返回星图">←</button>
 
+    <!-- 世界简报（自由沙盒：到达新地点/周期时弹出未读强相关事件） -->
+    <WorldBriefing :events="worldEvents" @read="markBriefingRead" />
+
     <!-- 加载动画（开局/场景切换） -->
     <CinematicLoader
       :show="loaderVisible"
@@ -71,7 +74,8 @@
       <header class="era-banner">
         <span class="era-label">{{ eraLabel }}</span>
         <span class="era-chapter">{{ eraChapter }}</span>
-        <span v-if="worldClockLabel" class="era-clock" :title="'世界时钟 · 名场面时节行动预算'">{{ worldClockLabel }}</span>
+        <span v-if="worldDateLabel" class="era-clock" :title="'世界日期（自由沙盒）'">{{ worldDateLabel }}</span>
+        <span v-else-if="worldClockLabel" class="era-clock" :title="'世界时钟 · 名场面时节行动预算'">{{ worldClockLabel }}</span>
         <span class="era-goldline"></span>
         <!-- 8 PHASE 质量指示灯 -->
         <button
@@ -318,6 +322,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onBeforeUnmount, inject } from 'vue'
 import IntroBackground from '../components/IntroBackground.vue'
+import WorldBriefing from '../components/WorldBriefing.vue'
 import { useRouter } from 'vue-router'
 import CinematicLoader from '../components/CinematicLoader.vue'
 import StreamText from '../components/StreamText.vue'
@@ -870,6 +875,25 @@ const worldClockLabel = computed(() => {
   if (!wc) return ''
   return `${wc.season} · 剩 ${wc.turns_left} 回合`
 })
+
+// ── 自由沙盒：世界日期显示（取代旧世界时钟时节标签）──
+const worldDateLabel = computed(() => {
+  const wd = gameState.value?.world_date
+  if (!wd) return ''
+  const day = Number(wd.day)
+  const dayText = Number.isInteger(day) ? `${day}日` : `初${day >= 15 ? '二' : '一'}`
+  return `${wd.year}年${wd.month}月${dayText}`
+})
+
+// ── 自由沙盒：世界事件队列（简报用）──
+const worldEvents = computed(() => gameState.value?.world_events ?? [])
+function markBriefingRead() {
+  // 简报已读：标记 seen（前端维护；后端下次快照持久化）
+  const gs = gameState.value
+  if (!gs?.world_events) return
+  gs.world_events = gs.world_events.map(e => e.seen ? e : { ...e, seen: true })
+  gameState.value = { ...gs }
+}
 
 // 错过关键名场面 → 失败态 + 读档重打（服务端 last_fame 自动存档）
 // 失败即终局：隐藏选项区与自由输入，仅保留"读档重打"入口（配合后端 miss 不下发 options）

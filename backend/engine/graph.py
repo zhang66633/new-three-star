@@ -424,6 +424,41 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                 "is_prep": True,
             })
         result["last_output"]["options"] = opts
+    # ── 自由沙盒世界推进（每拍有玩家动作时）──
+    # 推进世界日期 + 应用玩家数据（LLM 声明）+ 生成世界事件 + 检查成就。
+    # 与旧 world_clock 并行运行（旧机制待重构移除）。
+    if action:
+        from .world import advance_date, action_days, should_generate_events, generate_events
+        from .player_data import apply_player_updates, apply_recovery, check_achievements
+        try:
+            wd = result.get("world_date") or state.get("world_date") or {"year": 184, "month": 2, "day": 1}
+            # 1. 推进日期（按行动类型耗时）
+            days = action_days(action, [], "")
+            new_wd = advance_date(wd, days)
+            result["world_date"] = new_wd
+            # 2. 应用玩家数据（LLM 声明的 player_updates + 行动恢复）
+            result = apply_player_updates(result, result.get("last_output") or {})
+            player = result.get("player") or {}
+            player = apply_recovery(player, action, new_wd)
+            result["player"] = player
+            # 3. 生成世界事件（移动时 + 周期）
+            moved = should_generate_events(state, result)
+            if moved:
+                new_events = generate_events(state, new_wd, moved)
+                if new_events:
+                    events = list(result.get("world_events") or state.get("world_events") or [])
+                    seen_ids = {e.get("event_id") for e in events}
+                    for ev in new_events:
+                        if ev.get("event_id") not in seen_ids:
+                            events.append(ev)
+                    result["world_events"] = events[-50:]  # 只保留最近 50 条
+                    result["new_briefing"] = True  # 前端标记有新简报
+            # 4. 检查成就
+            new_ach = check_achievements(result)
+            if new_ach:
+                result["new_achievements"] = new_ach
+        except Exception:
+            pass  # 世界推进失败不影响主叙事
     return to_dict(result)
 
 
