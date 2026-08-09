@@ -404,15 +404,25 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     messages = [{"role": "system", "content": WORLD_BASE}]
     # 状态面板作为第二个 system message
     messages.append({"role": "system", "content": context_panel})
-    # 历史（最近 6 条 ≈ 3 轮）：user 全透传（玩家动作序列）；assistant 只透传本场景拍——
-    # 跨场景旧拍由连续性块的"场景过渡"（transition_note）承载，不把旧场景散文当本场景对话
+    # 历史（最近 6 条 ≈ 3 轮）：按"轮"配对（user + 其触发的同拍 assistant），只透传本场景的轮。
+    # 玩家动作属于它触发那拍的场景——跨场景旧动作若全透传，LLM 会把它当成新场景当前动作重复演出
+    # （如旧场景"我想飞"在切场景后又被演一遍）。跨场景上下文由连续性块 transition_note 承载。
+    pending_user = None          # 待归属的玩家动作（等待同拍 assistant 决定归属场景）
+    current_scene = plan.scene_id
     for h in state.get("history", [])[-6:]:
         if h.get("user"):
-            messages.append({"role": "user", "content": h["user"]})
+            pending_user = h["user"]
         elif h.get("assistant"):
-            if h.get("scene_id") and h.get("scene_id") != plan.scene_id:
-                continue
-            messages.append({"role": "assistant", "content": h["assistant"]})
+            sid = h.get("scene_id") or current_scene
+            same_scene = (sid == current_scene)
+            if same_scene and pending_user:
+                messages.append({"role": "user", "content": pending_user})
+            pending_user = None
+            if same_scene:
+                messages.append({"role": "assistant", "content": h["assistant"]})
+    # 尾部残留 user（本轮动作尚未有 assistant 回拍，如开局后首次动作前）也透传，保证动作不丢
+    if pending_user:
+        messages.append({"role": "user", "content": pending_user})
     messages.append({"role": "user", "content": instruction})
     return messages
 
