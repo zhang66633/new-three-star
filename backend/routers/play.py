@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# 世界档案字段（自由沙盒 §五）：世界侧独立推进的状态，save_player 时拆写 world_states 表
+_WORLD_STATE_KEYS = ("world_date", "world_events", "location_state", "rumor_unlocked")
+
 
 class PlayRequest(BaseModel):
     action: str = Field(default="", max_length=500)  # 防超大 action 消耗 token
@@ -152,13 +155,17 @@ class PlayerSaveRequest(BaseModel):
 async def play_save_player(req: PlayerSaveRequest):
     """自由沙盒自动快照：完整 GameState → players 表（每拍前端保存，覆盖式）。
 
-    玩家档案绑定 world_id='default'（当前单世界；未来多世界分离时按世界分档）。
-    player_json 字段存完整 GameState 快照（玩家侧 + 世界侧，恢复无损）。
+    自由沙盒 §五：玩家档案独立于世界档案——这里把世界侧字段拆写 world_states 表，
+    加载时 load_player 合并（world_states 权威覆盖世界字段）。
     """
     if not req.pid:
         return {"ok": False, "content": "缺少玩家标识"}
-    from db import save_player
-    await save_player(req.pid, "default", json.dumps(req.game_state, ensure_ascii=False))
+    from db import save_player, save_world_state
+    gs = req.game_state or {}
+    # 世界档案 = 世界侧独立推进的状态（日期/事件队列/位置/传闻解锁），不随玩家档案走
+    world_json = {k: gs.get(k) for k in _WORLD_STATE_KEYS if k in gs}
+    await save_world_state(req.pid, json.dumps(world_json, ensure_ascii=False))
+    await save_player(req.pid, "default", json.dumps(gs, ensure_ascii=False))
     return {"ok": True}
 
 
@@ -168,14 +175,25 @@ class PlayerLoadRequest(BaseModel):
 
 @router.post("/play/load_player")
 async def play_load_player(req: PlayerLoadRequest):
-    """断点续玩：读玩家档案（完整 GameState 快照；无档返回 has_save=False）。"""
+    """断点续玩：读玩家档案 + 合并世界档案（world_states 权威覆盖世界字段；无档返回 has_save=False）。
+
+    玩家档案为主快照，世界档案独立持久化（日期/事件/位置随世界走），加载时世界侧以
+    world_states 为准——即使玩家档案的世界字段被旧逻辑污染，也以独立世界档案覆盖。
+    """
     if not req.pid:
         return {"ok": False, "has_save": False}
-    from db import get_player
+    from db import get_player, get_world_state
     row = await get_player(req.pid)
     if row is None:
         return {"ok": False, "has_save": False}
-    return {"ok": True, "has_save": True, "state": json.loads(row["player_json"])}
+    state = json.loads(row["player_json"])
+    wj = await get_world_state(req.pid)
+    if wj:
+        world = json.loads(wj)
+        for k in _WORLD_STATE_KEYS:
+            if k in world:
+                state[k] = world[k]
+    return {"ok": True, "has_save": True, "state": state}
 
 
 class PlayerDeleteRequest(BaseModel):
