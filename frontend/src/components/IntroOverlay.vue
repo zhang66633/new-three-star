@@ -6,7 +6,7 @@
     <div class="intro-content">
       <button class="intro-back" @click="emit('back')">← 返回星图</button>
       <!-- 标题：固定位置，静悬于画面中央，不随段落移动 -->
-      <div class="intro-title">新三国 · 星空</div>
+      <div class="intro-title">新三国 · 星图</div>
       <!-- 穿越旁白：一段一段渐渐浮现（宇宙漂浮感） -->
       <div class="intro-lines">
         <transition-group name="intro-line">
