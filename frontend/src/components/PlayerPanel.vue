@@ -22,12 +22,15 @@
         <span class="pp-val pp-rep">{{ player.reputation }}/100</span>
       </div>
 
-      <!-- 状态三栏：体力 / 饥饿 / 伤势（0-100） -->
-      <div class="pp-stats">
-        <div v-for="s in STAT_KEYS" :key="s.key" class="pp-stat">
-          <span class="pp-stat-name">{{ s.label }}</span>
-          <div class="pp-bar"><div class="pp-fill" :class="s.cls" :style="{ width: statVal(s.key) + '%' }"></div></div>
-          <span class="pp-stat-num">{{ statVal(s.key) }}</span>
+      <!-- 属性三栏：体力 / 饥饿 / 伤势（0-100） -->
+      <div class="pp-row pp-attr-row">
+        <span class="pp-label">属性</span>
+        <div class="pp-stats">
+          <div v-for="s in STAT_KEYS" :key="s.key" class="pp-stat">
+            <span class="pp-stat-name">{{ s.label }}</span>
+            <div class="pp-bar"><div class="pp-fill" :class="s.cls" :style="{ width: statVal(s.key) + '%' }"></div></div>
+            <span class="pp-stat-num">{{ statVal(s.key) }}</span>
+          </div>
         </div>
       </div>
 
@@ -178,8 +181,9 @@ function statVal(key: string): number {
 .pp-coins { color: #e8c88c; font-weight: 500; }
 .pp-rep { color: rgba(74, 158, 160, 0.9); }
 
-/* 状态三栏 */
-.pp-stats { display: flex; flex-direction: column; gap: 4px; }
+/* 属性三栏（带「属性」标签，对齐资产/成就分区） */
+.pp-attr-row { align-items: flex-start; }
+.pp-stats { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
 .pp-stat {
   display: flex;
   align-items: center;
