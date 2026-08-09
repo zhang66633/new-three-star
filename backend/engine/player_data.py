@@ -172,9 +172,10 @@ def apply_recovery(player: dict, action: str, world_date: dict) -> dict:
             if food:
                 assets.remove(food[0])
                 player["assets"] = assets
-    # 治伤 → 伤势下降
+    # 治伤 → 伤势下降（自由沙盒 §4.2 治伤耗财：扣医药费）
     if any(k in a for k in ("治伤", "疗伤", "看伤", "包扎", "敷药")):
         stats["wound"] = _clamp(stats["wound"] - 40)
+        player["coins"] = max(0, int(player.get("coins", 0)) - 5)
     # 日常行动 → 饥饿缓慢上升、体力缓慢下降（世界时间流逝的代价）
     else:
         stats["hunger"] = _clamp(stats["hunger"] + 5)

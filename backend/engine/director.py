@@ -198,6 +198,14 @@ def resolve_travel(action: str, state: GameState):
     name = match_location(action)
     if not name:
         return None
+    # 行动受限（自由沙盒 §4.2）：体力 <20 不能赶远路——不切场景，writer 已注入
+    # "行动受限"提示，LLM 演"体力透支赶不了路"（玩家休息恢复后再去）
+    try:
+        stamina = int((state.get("player") or {}).get("stats", {}).get("stamina", 100))
+    except (TypeError, ValueError):
+        stamina = 100
+    if stamina < 20:
+        return None
     visited = _visited_scenes(state)
     scenes = LOCATIONS.get(name, [])
     if any(s in visited for s in scenes):

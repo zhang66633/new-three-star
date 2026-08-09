@@ -221,6 +221,10 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
     lines.append(f"  目标：{player.get('goal', '在乱世中活下去')}")
     lines.append(f"  声望：{player.get('reputation', 0)}/100")
     lines.append(f"  位置：{player.get('location', '?')}")
+    # 称号：重大事件授予（自由沙盒 §4.4）——NPC 可能凭称号认出/议论你
+    titles = player.get("titles", [])
+    if titles:
+        lines.append(f"  称号：{'、'.join(titles)}——NPC 可能据此认出你或议论你（叙事体现，凭称号给互动）")
     # 身体警告（濒死后果 / 行动受限）：属性触底必须演后果并脱险，低值限制行为
     try:
         from .player_data import check_vitals, check_attributes
