@@ -182,6 +182,13 @@ async def corrector_node(state: GameState) -> dict:
     ps = state.get("meta", {}).get("plan_summary", {})
     scene_desc = f"{ps.get('chapter_label', '')} · {ps.get('title', '')}"
     output = await apply_correction(state, output, scene_desc, tier)
+    # 修正文本不再过 8-PHASE（审查⑭）：补确定性硬门（hidden 泄漏/点明不对劲/无选项），
+    # 硬失败回退到修正前已过校验的 last_output（修正意图仍在 corrected 留痕，但不用破损文本）
+    from .validator import deterministic_checks
+    hard, _ = deterministic_checks(state, output)
+    if hard:
+        logger.warning("corrector 修正未过确定性硬门，回退原文本: %s", hard[:2])
+        output = dict(state.get("last_output") or {})
     # 修正记录回写（LangGraph 只认节点返回值，apply_correction 对 state 的原地修改不生效）
     corrected = list(state.get("corrected", []))
     trace_id = state.get("last_trace", "")
@@ -474,7 +481,8 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             if new_ach:
                 result["new_achievements"] = new_ach
         except Exception:
-            pass  # 世界推进失败不影响主叙事
+            # 世界推进失败不影响主叙事，但必须留痕（审查②）：否则半更新状态静默返回、排障无从下手
+            logger.exception("世界推进失败（半更新可能已返回）：action=%r world_date=%s", action, result.get("world_date"))
     return to_dict(result)
 
 
