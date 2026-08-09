@@ -123,10 +123,11 @@
       <!-- 玩家档案（右下可折叠抽屉：资产/金钱/状态/称号/成就） -->
       <PlayerPanel v-if="gameState?.player" :player="gameState.player" />
 
-      <!-- 地点导航（左下地图抽屉：已解锁往返 + 下站推进） -->
+      <!-- 地点导航（左下地图抽屉：已解锁往返 + 下站推进 + 传闻打听解锁） -->
       <LocationPanel
-        :location-state="gameState?.location_state ?? { current: null, unlocked: [], next_station: null }"
+        :location-state="gameState?.location_state ?? { current: null, unlocked: [], next_station: null, rumored: [] }"
         @travel="travelTo"
+        @ask="askRumor"
       />
     </div>
   </div>
@@ -467,6 +468,11 @@ function submitFree() {
 /** 地点面板点选：前往目标地点（director 导航：已解锁回访 / 未解锁沿 flow 推进） */
 function travelTo(name: string) {
   sendAction(`前往${name}`, 0)
+}
+
+/** 地点面板传闻行点选：打听该地传闻（director 确认消息 → 解锁可前往） */
+function askRumor(name: string) {
+  sendAction(`打听${name}`, 0)
 }
 
 async function sendAction(action: string, tension: number) {

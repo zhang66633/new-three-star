@@ -15,17 +15,21 @@
           :key="loc"
           class="lp-row"
           :class="rowClass(loc)"
-          @click="rowClass(loc) === 'lp-unknown' ? undefined : emit('travel', loc)"
+          @click="onRowClick(loc)"
         >
-          <span class="lp-name">{{ loc }}</span>
+          <div class="lp-main">
+            <span class="lp-name">{{ loc }}</span>
+            <span v-if="rumorHint(loc)" class="lp-hint-text">{{ rumorHint(loc) }}</span>
+          </div>
           <span class="lp-tag" v-if="isCurrent(loc)">在处</span>
           <span class="lp-tag lp-next" v-else-if="isNext(loc)">下站 →</span>
-          <span class="lp-tag lp-go" v-else-if="isUnlocked(loc)">可往返</span>
+          <span class="lp-tag lp-go" v-else-if="isUnlocked(loc)">可前往</span>
+          <span class="lp-tag lp-rumor" v-else-if="isRumored(loc)">传闻 · 打听可去</span>
           <span class="lp-tag lp-lock" v-else>未知</span>
         </div>
       </div>
 
-      <div class="lp-hint">点选地点赶路 · 或直接输入「前往X」</div>
+      <div class="lp-hint">点选地点赶路 · 传闻点选打听解锁 · 或直接输入「前往X」</div>
     </div>
   </transition>
 </template>
@@ -39,7 +43,10 @@ import { ref, computed } from 'vue'
 import type { LocationState } from '../types/play'
 
 const props = defineProps<{ locationState: LocationState }>()
-const emit = defineEmits<{ (e: 'travel', name: string): void }>()
+const emit = defineEmits<{
+  (e: 'travel', name: string): void
+  (e: 'ask', name: string): void
+}>()
 
 const open = ref(false)
 
@@ -47,6 +54,11 @@ const open = ref(false)
 const LOCATION_ORDER = ['颍川', '洛阳', '中牟', '成皋', '陈留']
 
 const unlockedSet = computed(() => new Set(props.locationState?.unlocked ?? []))
+const rumoredMap = computed(() => {
+  const m: Record<string, string> = {}
+  for (const r of props.locationState?.rumored ?? []) m[r.name] = r.hint
+  return m
+})
 
 function isCurrent(loc: string) {
   return props.locationState?.current === loc
@@ -57,11 +69,24 @@ function isNext(loc: string) {
 function isUnlocked(loc: string) {
   return unlockedSet.value.has(loc)
 }
+function isRumored(loc: string) {
+  return loc in rumoredMap.value
+}
+function rumorHint(loc: string): string {
+  return rumoredMap.value[loc] ?? ''
+}
 function rowClass(loc: string): string {
   if (isCurrent(loc)) return 'lp-current'
   if (isNext(loc)) return 'lp-next'
   if (isUnlocked(loc)) return 'lp-unlocked'
+  if (isRumored(loc)) return 'lp-rumor'
   return 'lp-unknown'
+}
+/** 行点击：在处/未知不可点；传闻行 → 打听（解锁后可前往）；其余 → 前往 */
+function onRowClick(loc: string) {
+  if (isCurrent(loc) || rowClass(loc) === 'lp-unknown') return
+  if (isRumored(loc)) emit('ask', loc)
+  else emit('travel', loc)
 }
 </script>
 
@@ -162,10 +187,39 @@ function rowClass(loc: string): string {
   background: rgba(202, 138, 4, 0.16);
   transform: translateX(2px);
 }
+.lp-row.lp-rumor {
+  color: rgba(202, 168, 100, 0.78);
+  border-color: rgba(202, 168, 100, 0.22);
+  background: rgba(202, 168, 100, 0.05);
+  border-left: 2px solid rgba(202, 168, 100, 0.35);
+  cursor: pointer;
+}
+.lp-row.lp-rumor:hover {
+  background: rgba(202, 138, 4, 0.12);
+  border-color: rgba(202, 138, 4, 0.45);
+  transform: translateX(2px);
+}
 .lp-row.lp-unknown {
   color: rgba(148, 163, 184, 0.35);
   cursor: default;
   opacity: 0.6;
+}
+.lp-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.lp-hint-text {
+  font-size: 0.58rem;
+  color: rgba(148, 163, 184, 0.45);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 .lp-tag {
   font-size: 0.6rem;
@@ -174,6 +228,7 @@ function rowClass(loc: string): string {
 }
 .lp-next .lp-tag { color: #e8c88c; }
 .lp-go { color: rgba(74, 158, 160, 0.8); }
+.lp-rumor .lp-tag.lp-rumor { color: rgba(202, 168, 100, 0.85); }
 .lp-lock { color: rgba(148, 163, 184, 0.4); }
 .lp-hint {
   margin-top: 10px;

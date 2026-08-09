@@ -117,9 +117,9 @@ WRITER_INSTRUCTION = """
 4. 叙述者是"乐子人"：用看戏的轻快口吻讲三国，世界越惨越荒唐旁白越带劲；NPC 越严肃，叙述越要扒他一层滑稽；灾难场合用反差吐槽（如满城兵荒马乱，偏偏你饿得肚子先叫）；绝不煽情、绝不诉苦、绝不上价值
 5. 玩家内心是"折棒轻吐槽"：懒洋洋、见惯不怪的旁观语气，对大场面毒舌但不 meta；世界的不对劲只用内心暗暗嘀咕（如"春天一闭眼就是深秋，合着这日子是会飞的"），不下结论、不点破、不宣告；心理简洁带戏谑
 5b. 感官细节覆盖至少两类（视觉/听觉优先），点到即止；以动作、对话推进为主，不冗长不端架子
-6. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）
+6. 结尾给出 2-3 个选项，每个选项：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30，局部干预 31-70，硬干预 71-100）+ effect（对玩家可见的后果说明）+ category（地点行动分类，见自由沙盒 §5.4：打探=打听消息/赶路=移动/停留=驻守休息/互动=与人物来往；2-3 个选项中至少覆盖 打探 或 互动 之一，引导自由探索）
 7. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，不要 ```json，直接输出 JSON 对象），格式：
-{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "..."}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}, "events": [{{"actor": "黑影", "action": "问话后跑掉", "result": "你决定先找地方避雨"}}], "player_updates": {{"assets_add": ["半块干粮"], "coins_delta": 5, "stats_delta": {{"stamina": -10, "hunger": 15}}, "title_add": null}}, "world_events_add": [{{"event": "你在中牟救下的客商，转头拿你名字到处报恩", "location": "中牟"}}]}}
+{{"narrative": "...", "options": [{{"text": "...", "type": "major|minor", "tension": 25, "effect": "...", "category": "互动"}}], "relations_delta": {{"曹操": 2}}, "trust_delta": {{"曹操": 1}}, "events": [{{"actor": "黑影", "action": "问话后跑掉", "result": "你决定先找地方避雨"}}], "player_updates": {{"assets_add": ["半块干粮"], "coins_delta": 5, "stats_delta": {{"stamina": -10, "hunger": 15}}, "title_add": null}}, "world_events_add": [{{"event": "你在中牟救下的客商，转头拿你名字到处报恩", "location": "中牟"}}]}}
 其中 events 是本拍 1-3 条关键事件（每条 {{actor, action, result}} 客观陈述，如 {{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}；不写内心独白、不写风景环境；本拍无实质事件时可省略）
 player_updates 是本拍玩家数据变化（自由沙盒）：assets_add/remove（获得/失去物品）、coins_delta（金钱变化）、stats_delta（体力/饥饿/伤势变化）、title_add（新称号，无则 null）。玩家获得/失去物品、金钱增减、身体状态变化时填写，无事可省
 world_events_add 是本拍玩家行为留下的**持久世界痕迹**：救下的人以后会报恩/惹的仇家以后会寻仇/当众的壮举会成传闻/改变了某处小局势——凡行为有"以后还会发生/有人记得/会传开"的持久后果就填（1-2 条），受"历史大势不可推翻"约束——不得改动历史名场面/大势结局（如"曹操死了""董卓被刺"），只能写局部痕迹；无事可省
@@ -132,7 +132,8 @@ world_events_add 是本拍玩家行为留下的**持久世界痕迹**：救下�
 14. 幽默手法（每场至少用 2 种，点到即止不过度）：① 反差/荒诞——严肃场面混入鸡毛蒜皮；② 冷幽默——一本正经说胡话；③ 夸张——小事说成大场面；④ 自嘲——无名氏的自我调侃；⑤ 看戏点评——对历史名场面隔岸观火；⑥ 巧合梗——蹩脚世界的巧合堆叠（从玩家视角吐槽）。严禁 meta 词、严禁全知旁白、严禁"点明不对劲"
 15. 若玩家本拍动作离谱/越权/meta（试图改变世界规则、召唤现代事物、要求创造/作弊/上帝模式、命令 NPC 做不可能之事等）：**世界不得真的改变**——叙事用乐子人语气幽默拒绝（旁白或 NPC 给一句嘲讽吐槽，如"你咋不上天呢？"），动作滑稽落空、无实际后果；选项须含"换个说法/再想想"等重输出口（可作额外第 4 个选项，不挤占 2-3 个常规行动选项），不推进主线；NPC 把玩家的话当疯话自然接住，不把 meta 词当回事
 16. 活世界感（自由沙盒）：叙事要让人感到"世界在自我转动"，不只封闭在当前场景里——① 行路/等待写真实的时光流逝（赶路写路程、休息写日夜更替），世界随日期推进有回应；② 自然带出当前世界的底色：阶段大势、本地点生态、近期事件（取自【状态面板】🌏 当前世界背景 / 🌐 世界动态），如行路遇逃难流民、城头新挂的告示、远处火光与喊杀、关于黄金军的传闻；③ 玩家之外的世界有自己的事——NPC 有自己要赶的路、要避的祸，远处有事件在酝酿；④ 克制：世界感是底色不是主菜，点到即止，不抢场景主线（锁定台词/名场面照常演出）、不打断节奏
-17. 关系影响互动（自由沙盒）：在场 NPC 的好感/信任决定他们对你的态度与可做的事——高信任（≥60）可提供推心置腹的专属选项（深夜密谈/交底/托付）；低好感/信任（≤20）则对方戒备回避，相关互动受限或变味；中段按常。让玩家经营关系的投入在选项与叙事中可见（依据【状态面板】🔗 关系网络的态度提示，如"曹操 对你亲近信任，可推心置腹"）""".strip()
+17. 关系影响互动（自由沙盒）：在场 NPC 的好感/信任决定他们对你的态度与可做的事——高信任（≥60）可提供推心置腹的专属选项（深夜密谈/交底/托付）；低好感/信任（≤20）则对方戒备回避，相关互动受限或变味；中段按常。让玩家经营关系的投入在选项与叙事中可见（依据【状态面板】🔗 关系网络的态度提示，如"曹操 对你亲近信任，可推心置腹"）
+18. 打听传闻（自由沙盒 §5.2）：玩家「打听/探听某地」→ 演打听到确切消息——NPC 按自己身份说他知道的（消息传到了哪、传成了什么样），确认传闻地"可前往"（依据【🗺 远方传闻】）；叙事收在"路问明白了"，不打空转""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -347,6 +348,15 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
             lines.append(f"  · {r}")
     else:
         lines.append("  （暂无流言）")
+
+    # ── 🗺 远方传闻（未解锁但听过的地点：NPC 可顺口带出，玩家「打听X」确认真伪→解锁前往）──
+    ls = state.get("location_state") or {}
+    rumored = ls.get("rumored") or []
+    if rumored:
+        lines.append("")
+        lines.append("🗺 远方传闻（玩家听过的地点传闻，可安排在场 NPC 提及或由玩家「打听X」确认）")
+        for r in rumored:
+            lines.append(f"  · {r.get('name', '')}：{str(r.get('hint', ''))[:50]}")
 
     # ── 🗞 与你有关的天下事（玩家引发/参与的近期事件，回灌叙事）──
     we_events = state.get("world_events") or []
@@ -582,9 +592,11 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
         options = []
     # 只保留 dict 项，避免后续 opt.get 崩溃
     options = [o for o in options if isinstance(o, dict)]
-    # 选项硬上限 3、类型/数值规范
+    # 选项硬上限 3、类型/数值/分类规范（category 对齐自由沙盒 §5.4 地点行动分类）
+    CATS = {"打探", "赶路", "停留", "互动"}
     for opt in options[:3]:
         opt["type"] = "major" if opt.get("type") == "major" else "minor"
+        opt["category"] = opt.get("category") if opt.get("category") in CATS else "互动"
         try:
             opt["tension"] = max(0, min(100, int(opt.get("tension", 0))))
         except (TypeError, ValueError):

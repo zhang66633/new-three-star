@@ -56,6 +56,7 @@ export interface OptionSpec {
   type: 'major' | 'minor'
   tension: number
   effect: string
+  category?: '打探' | '赶路' | '停留' | '互动'   // 地点行动分类（自由沙盒 §5.4，writer 归一化）
 }
 
 export interface NarrativeOutput {
@@ -70,8 +71,9 @@ export interface NarrativeOutput {
 // 地点导航状态（director 每拍写入，见 docs/自由沙盒重构设计.md §5.2）
 export interface LocationState {
   current: string | null        // 当前所在地点
-  unlocked: string[]            // 已解锁地点（可往返）
+  unlocked: string[]            // 已解锁地点（去过 ∪ 传闻解锁，可往返/可赶路）
   next_station: string | null   // 下站（推进目标地点，未解锁）
+  rumored: { name: string; hint: string }[]   // 传闻地点（未解锁但听过传闻，可「打听X」解锁）
 }
 
 // 世界事件（事实层，见 docs/自由沙盒重构设计.md §二）

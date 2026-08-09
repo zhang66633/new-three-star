@@ -9,6 +9,7 @@
         :class="tensionClass(opt.tension)"
         @click="emit('choose', opt)"
       >
+        <span v-if="opt.category" class="choice-cat" :class="`cat-${opt.category}`">{{ opt.category }}</span>
         <span class="choice-text">{{ opt.text }}</span>
         <span v-if="opt.effect" class="choice-effect">{{ opt.effect }}</span>
       </button>
@@ -100,6 +101,20 @@ function submit() {
   transition-duration: 0.08s;
 }
 .choice-text { flex: 1; font-size: 0.9rem; line-height: 1.4; }
+/* 地点行动分类徽章（自由沙盒 §5.4：打探/赶路/停留/互动） */
+.choice-cat {
+  flex-shrink: 0;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid;
+  margin-top: 2px;
+}
+.cat-打探 { color: rgba(74, 158, 160, 0.9); border-color: rgba(74, 158, 160, 0.35); background: rgba(74, 158, 160, 0.08); }
+.cat-赶路 { color: rgba(232, 168, 56, 0.9); border-color: rgba(232, 168, 56, 0.35); background: rgba(232, 168, 56, 0.08); }
+.cat-停留 { color: rgba(148, 163, 184, 0.8); border-color: rgba(148, 163, 184, 0.3); background: rgba(148, 163, 184, 0.06); }
+.cat-互动 { color: rgba(190, 130, 190, 0.85); border-color: rgba(190, 130, 190, 0.3); background: rgba(190, 130, 190, 0.07); }
 .choice-effect {
   font-size: 0.7rem;
   color: rgba(202, 168, 100, 0.78);   /* 暖金 — 后果说明，暗底清晰可读 */

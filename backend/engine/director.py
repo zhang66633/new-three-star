@@ -72,6 +72,7 @@ class ScenePlan:
         self.aftermath = scene.get("aftermath", {})  # aftermath（flow/memory_add，供 remember 记忆接线）
         self.distance_map = distance_map
         self.next_pos = next_pos
+        self.rumor_unlock = None  # 本拍打听解锁的地点（命中「打听X」传闻 → 地点名）
 
     @classmethod
     def from_summary(cls, s: dict) -> "ScenePlan":
@@ -115,6 +116,10 @@ def choose_scene(state: GameState) -> ScenePlan:
             break
     if last_action:
         travel = resolve_travel(last_action, state)
+    # 传闻解锁：玩家「打听X」命中传闻中的地点 → 本拍驻留演"确认消息"（不赶路），解锁该地
+    rumor_unlock = resolve_rumor(last_action, state) if last_action else None
+    if rumor_unlock:
+        travel = None  # 打听 = 原地确认，不移动
     pos = (travel[1] if travel else None) or state.get("skeleton_pos") or "P1_s1_rain"
     scene = registry.get(pos)
     if scene is None:
@@ -131,7 +136,8 @@ def choose_scene(state: GameState) -> ScenePlan:
     # 距离映射：从场景的锁定台词/选项中提取角色 → 默认"远观"
     distance_map = _infer_distance_map(scene, state)
     # 玩家已表达目的地（直达/推进）→ 本拍驻留，不再沿 flow 继续推
-    next_pos = "" if travel else _resolve_next(scene, state)
+    # 打听传闻 = 原地确认消息（解锁地点，不赶路不推进）
+    next_pos = "" if (travel or rumor_unlock) else _resolve_next(scene, state)
     # 安全阀：防止 placeholder 场景自循环耗尽 LLM 额度
     if not travel and next_pos == pos:
         logger = logging.getLogger(__name__)
@@ -142,7 +148,9 @@ def choose_scene(state: GameState) -> ScenePlan:
                 f"可能缺少后续场景。使用 END 终止。"
             )
             next_pos = "END"
-    return ScenePlan(scene, distance_map, next_pos)
+    plan = ScenePlan(scene, distance_map, next_pos)
+    plan.rumor_unlock = rumor_unlock
+    return plan
 
 
 
@@ -225,16 +233,30 @@ def resolve_travel(action: str, state: GameState):
     return None
 
 
-def _location_state(state: GameState) -> dict:
-    """地点面板状态：当前地点 / 已解锁地点（可往返）/ 下站（推进目标地点）。
+def _location_state(state: GameState, rumor_unlock: str = None) -> dict:
+    """地点面板状态：当前地点 / 已解锁（可往返）/ 下站（推进目标）/ 传闻地点（打听解锁）。
 
-    下站 = 沿 flow 链第一个"未访问且地点未解锁"的场景的所属地点；
-    已解锁地点内未访问场景不算下站（同地点，玩家在场景内推进即可）。
+    - unlocked = 去过（visited）∪ 传闻解锁（rumor_unlocked，独立于 visited 的持久字段）
+    - rumored = 已解锁地点的传闻指向中，尚未解锁的地点（带 hint，前端显示"传闻"态）
+    - next_station = 沿 flow 链第一个"未访问且地点未解锁"的场景所属地点
+    rumor_unlock: 本拍新增的打听解锁地点（并入 rumor_unlocked 参与计算）。
     """
     visited = _visited_scenes(state)
-    from .worlddata import LOCATIONS
-    current = _location_of(state.get("skeleton_pos") or "")
+    from .worlddata import LOCATIONS, LOCATION_RUMORS
+    # 已去过 + 传闻解锁 → 可往返/可赶路
+    base = list(state.get("rumor_unlocked") or [])
+    if rumor_unlock and rumor_unlock not in base:
+        base.append(rumor_unlock)
     unlocked = [name for name, scenes in LOCATIONS.items() if any(s in visited for s in scenes)]
+    unlocked += [n for n in base if n not in unlocked]
+    # 已解锁地点的传闻 → 点亮传闻地点（未解锁、去重）
+    rumored = []
+    for name in unlocked:
+        for r in LOCATION_RUMORS.get(name, []):
+            t = r.get("target", "")
+            if t and t not in unlocked and all(x["name"] != t for x in rumored):
+                rumored.append({"name": t, "hint": r.get("hint", "")})
+    current = _location_of(state.get("skeleton_pos") or "")
     next_station = None
     for sid in _walk_flow(state):
         if sid not in visited:
@@ -242,7 +264,23 @@ def _location_state(state: GameState) -> dict:
             if loc and loc not in unlocked:
                 next_station = loc
                 break
-    return {"current": current, "unlocked": unlocked, "next_station": next_station}
+    return {"current": current, "unlocked": unlocked, "next_station": next_station, "rumored": rumored}
+
+
+def resolve_rumor(action: str, state: GameState) -> str | None:
+    """「打听X地/探听X」→ 若 X 在传闻中（未解锁但听过传闻）→ 返回 X（解锁），否则 None。
+
+    传闻解锁（自由沙盒 §5.2）：玩家打听到确切消息 → 该地升级为可赶路（rumor_unlocked）。
+    不影响本拍移动（打听=驻留演"确认消息"，不赶路）。
+    """
+    a = (action or "").strip()
+    if not a or not any(k in a for k in ("打听", "探听", "打探", "问问")):
+        return None
+    ls = _location_state(state)
+    for r in ls.get("rumored", []):
+        if r["name"] in a:
+            return r["name"]
+    return None
 
 
 def _dead_end_scene(pos: str) -> dict:
