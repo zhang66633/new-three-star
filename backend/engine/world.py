@@ -160,6 +160,19 @@ def generate_events(state: dict, world_date: dict, moved: bool, location: str = 
     return events
 
 
+def is_idle_action(action: str) -> bool:
+    """判断玩家本拍是否"驻留空闲"（休息/等待/无所事事）→ 允许历史跳时。
+
+    A1 历史压缩门控：主动行动（对话/打听/赶路/买卖等）不跳时，避免打断进行中的互动；
+    只有持续休息/等待才让世界大步向前（"玩家歇着，天下照转"）。
+    """
+    a = (action or "").strip()
+    if not a:
+        return False  # 开局首拍无行动，不跳
+    IDLE_KW = ("休息", "睡", "歇", "休整", "养伤", "躺", "等待", "等等", "无所事事", "发呆", "闲逛")
+    return any(k in a for k in IDLE_KW)
+
+
 def next_timeline_skip(world_date: dict) -> dict | None:
     """历史压缩（§1.3）：若距下一时间线事件过远（>12 个月）→ 自动跳时。
 

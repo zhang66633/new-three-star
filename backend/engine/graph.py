@@ -386,9 +386,10 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                             events.append(ev)
                     result["world_events"] = events[-50:]  # 只保留最近 50 条
                     result["new_briefing"] = True  # 前端标记有新简报
-            # 历史压缩（§1.3）：距下一时间线事件过远 → 自动跳时到事件点 + 简报带过
-            from .world import next_timeline_skip
-            skip = next_timeline_skip(new_wd)
+            # 历史压缩（§1.3）：玩家驻留空闲（休息/等待）且距下一时间线事件过远 → 跳时
+            # 门控：主动行动（对话/打听/赶路/买卖）不跳时，避免打断进行中的互动
+            from .world import next_timeline_skip, is_idle_action
+            skip = next_timeline_skip(new_wd) if is_idle_action(action) else None
             if skip:
                 new_wd = skip["date"]
                 result["world_date"] = new_wd

@@ -54,13 +54,18 @@
     <!-- 成就解锁提示（临时浮层） -->
     <AchievementToast :achievements="newAchToasts" />
 
-    <!-- 加载动画（开局/场景切换） -->
+    <!-- 加载动画（开局/跨章节场景切换） -->
     <CinematicLoader
       :show="loaderVisible"
       :title="loaderTitle"
       :chapter-label="loaderChapterLabel"
       :status-text="loaderStatus"
     />
+
+    <!-- 轻过渡铭牌（同章内移动/推进：顶部淡入，无全屏） -->
+    <transition name="lite-fade">
+      <div v-if="liteBannerText" class="lite-banner">{{ liteBannerText }}</div>
+    </transition>
 
     <!-- 主界面（started 后常显；加载器为 fixed 遮罩盖在其上，不隐藏主界面） -->
     <div class="play-main" v-show="started">
@@ -281,6 +286,16 @@ function hideLoader() {
   if (loaderTimer) { clearTimeout(loaderTimer); loaderTimer = null }
 }
 
+// ── 全屏分轻重：跨章节才全屏，同章移动用轻过渡铭牌 ──
+const lastChapterLabel = ref('')     // 当前章节（判断跨章）
+const liteBannerText = ref('')       // 轻过渡铭牌文本（顶部淡入）
+let liteBannerTimer: number | null = null
+function showLiteBanner(chapter: string, title: string, location = '') {
+  liteBannerText.value = [location || chapter, title].filter(Boolean).join(' · ')
+  if (liteBannerTimer) clearTimeout(liteBannerTimer)
+  liteBannerTimer = window.setTimeout(() => { liteBannerText.value = '' }, 2400)
+}
+
 // ── 生命周期 ──
 onMounted(() => {
   window.addEventListener('pointerdown', inkSplash, { passive: true })
@@ -329,8 +344,9 @@ function resumeGame(st: GameState | null = resumeState.value) {
       streaming: false,
     })
   }
-  const ps = st.meta?.plan_summary as { scene_id?: string } | undefined
+  const ps = st.meta?.plan_summary as { scene_id?: string; chapter_label?: string } | undefined
   lastSceneId.value = ps?.scene_id ?? st.skeleton_pos ?? ''
+  lastChapterLabel.value = ps?.chapter_label ?? st.era?.chapter ?? ''   // 恢复当前章节（防恢复后首拍误判跨章）
   phaseReport.value = (st.last_output?.phase_report as PhaseReport | null) ?? null
   currentAtmo.value = '雨夜沉静'   // atmo 标签未持久化，恢复用默认
   started.value = true
@@ -376,6 +392,7 @@ async function startGame() {
   currentStreamText.value = ''
   started.value = false
   lastSceneId.value = ''
+  lastChapterLabel.value = ''
   newMemCount.value = 0
   prevRelations.value = {}
 
@@ -509,11 +526,19 @@ async function sendAction(action: string, tension: number) {
         loaderChapterLabel.value = ev.scene.chapter_label
         loaderStatus.value = LOADING_STATUS[Math.floor(Math.random() * LOADING_STATUS.length)]
         triggerInk()
-        showLoader(1800)
+        // 全屏分轻重：跨章节才全屏（金色大标题 + 关羽之歌）；同章内移动/推进轻过渡（顶部铭牌，无全屏无关羽）
+        const crossChapter = !!ev.scene.chapter_label && ev.scene.chapter_label !== lastChapterLabel.value
+        lastChapterLabel.value = ev.scene.chapter_label
+        if (crossChapter) {
+          showLoader(1800)
+          playGuanyu()   // 关羽之歌：只在跨章节的大切换响
+        } else {
+          hideLoader()
+          showLiteBanner(ev.scene.chapter_label, ev.scene.title, ev.scene.location)
+        }
         loadPhase.value = 'thinking'
         // 场景切换时重置流式累积，防止旧场景文本串入新场景块
         currentStreamText.value = ''
-        playGuanyu()   // 关羽之歌：最经典的梗，任何场景切换都响（播一段）
         if (scene.atmo) currentAtmo.value = scene.atmo
       } else {
         // 同场景：更新铭牌，思维链
@@ -654,6 +679,32 @@ function retryAfterError() {
   display: flex;
   flex-direction: column;
 }
+
+/* 轻过渡铭牌（同章内移动/推进，顶部淡入淡出） */
+.lite-banner {
+  position: fixed;
+  top: 9%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 90;
+  background: rgba(10, 10, 18, 0.82);
+  border: 1px solid rgba(202, 138, 4, 0.28);
+  border-radius: 999px;
+  padding: 8px 22px;
+  color: rgba(240, 220, 174, 0.92);
+  font-size: 0.82rem;
+  letter-spacing: 0.18em;
+  font-family: "Noto Serif SC", "STKaiti", serif;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.lite-fade-enter-active { transition: opacity 0.35s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1); }
+.lite-fade-leave-active { transition: opacity 0.5s ease; }
+.lite-fade-enter-from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+.lite-fade-leave-to { opacity: 0; }
 
 /* 错误提示横幅 */
 .error-banner {
