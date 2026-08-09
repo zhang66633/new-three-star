@@ -160,6 +160,52 @@ def generate_events(state: dict, world_date: dict, moved: bool, location: str = 
     return events
 
 
+def freshen_events(events: list, world_date: dict, max_age_months: int = 6) -> list:
+    """事件相关度衰减（B-①，§3.1）：strong（与你有关）事件随日期推移淡出。
+
+    距今 >6 月 → 降为 weak，不再持续刷"与你有关"高亮（旧事已成过往，新事才相关）。
+    返回新列表（不改原事件）。
+    """
+    from .worlddata import _ym
+    y = int(world_date.get("year", 0) or 0)
+    m = int(world_date.get("month", 1) or 1)
+    out = []
+    for e in events or []:
+        e = dict(e)
+        if e.get("related_to_player") == "strong" and e.get("date"):
+            ey, em = _ym(str(e.get("date")))
+            if (ey, em) != (0, 0):
+                age = (y - ey) * 12 + (m - em)
+                if age > max_age_months:
+                    e["related_to_player"] = "weak"
+                    e["decayed"] = True
+        out.append(e)
+    return out
+
+
+def period_events(prev_wd: dict, cur_wd: dict) -> list[dict]:
+    """离开期间简报（B-⑩）：休息/赶路跨越大段时间 → 取 (prev, cur] 期间的时间线事件。
+
+    生成 weak 事件（世界照常转，与你关系弱），source='period'——玩家醒来/落地后简报天下事。
+    """
+    from .worlddata import load_timeline, _ym
+    py, pm = int(prev_wd.get("year", 0) or 0), int(prev_wd.get("month", 1) or 1)
+    cy, cm = int(cur_wd.get("year", 0) or 0), int(cur_wd.get("month", 1) or 1)
+    out = []
+    for e in load_timeline():
+        ey, em = _ym(e.get("date", ""))
+        if (py, pm) < (ey, em) <= (cy, cm):
+            out.append({
+                "event_id": e.get("event_id", f"period_{ey}_{em}"),
+                "date": e.get("date", ""),
+                "event": str(e.get("event", ""))[:80],
+                "related_to_player": "weak",
+                "seen": False,
+                "source": "period",
+            })
+    return out
+
+
 def is_idle_action(action: str) -> bool:
     """判断玩家本拍是否"驻留空闲"（休息/等待/无所事事）→ 允许历史跳时。
 

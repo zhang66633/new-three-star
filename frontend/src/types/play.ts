@@ -83,7 +83,13 @@ export interface WorldEvent {
   event: string
   related_to_player: 'strong' | 'weak'
   seen?: boolean
-  source?: 'timeline' | 'daily'
+  source?: 'timeline' | 'daily' | 'period' | 'player' | 'timeskip'
+}
+
+// 世界简报事件（B-⑧：先出简报，后进场景叙事；SSE 在 chunk 前发送）
+export interface BriefingEvent {
+  briefing: string          // LLM 合成简报（A3），可空
+  events: WorldEvent[]      // 本拍新事件（含 weak，前端折叠展示 B-⑦）
 }
 
 export interface GameState {
@@ -120,6 +126,7 @@ export type StreamEvent =
   | { type: 'scene'; scene: { scene_id: string; chapter_label: string; title: string; location: string; music?: string; atmo?: string } }
   | { type: 'chunk'; content: string }
   | { type: 'player'; content: string }
+  | { type: 'briefing'; briefing: string; events: WorldEvent[] }
   | { type: 'state'; state: GameState }
   | { type: 'options'; options: OptionSpec[] }
   | { type: 'phase'; report: PhaseReport }

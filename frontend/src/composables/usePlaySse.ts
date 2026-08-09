@@ -25,6 +25,7 @@ export function usePlaySse() {
       onChunk: (text: string) => void
       onScene?: (scene: StreamEvent & { type: 'scene' }) => void
       onPlayer?: (text: string) => void
+      onBriefing?: (ev: StreamEvent & { type: 'briefing' }) => void
       onState: (state: GameState) => void
       onOptions: (options: OptionSpec[]) => void
       onPhase?: (report: StreamEvent & { type: 'phase' }) => void
@@ -86,6 +87,9 @@ export function usePlaySse() {
               case 'player':
                 handlers.onPlayer?.(ev.content)
                 break
+              case 'briefing':
+                handlers.onBriefing?.(ev as StreamEvent & { type: 'briefing' })
+                break
               case 'state':
                 handlers.onState(ev.state)
                 break
@@ -123,6 +127,9 @@ export function usePlaySse() {
                 break
               case 'player':
                 handlers.onPlayer?.(ev.content)
+                break
+              case 'briefing':
+                handlers.onBriefing?.(ev as StreamEvent & { type: 'briefing' })
                 break
               case 'state':
                 handlers.onState(ev.state)

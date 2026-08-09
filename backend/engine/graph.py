@@ -399,6 +399,19 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                 result["new_briefing"] = True
                 if isinstance(result.get("era"), dict):
                     result["era"]["year"] = int(new_wd.get("year", 0))
+            # 离开期间简报（B-⑩）：休息/赶路跨越大段时间（≥3 天）且未生成事件/未跳时
+            # → 补 (推进前, 当前] 期间的时间线事件，玩家醒来/落地后简报"期间天下事"
+            if days >= 3 and not moved and not skip:
+                from .world import period_events
+                period = period_events(wd, new_wd)
+                if period:
+                    events = list(result.get("world_events") or state.get("world_events") or [])
+                    seen_ids = {e.get("event_id") for e in events}
+                    for ev in period:
+                        if ev.get("event_id") not in seen_ids:
+                            events.append(ev)
+                    result["world_events"] = events[-50:]
+                    result["new_briefing"] = True
             # 玩家行为写回世界：LLM 声明的 world_events_add → world_events 队列（strong，玩家引发）
             we_add = (result.get("last_output") or {}).get("state_updates", {}).get("world_events_add") or []
             if we_add:
@@ -416,6 +429,10 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                     })
                 result["world_events"] = events[-50:]
                 result["new_briefing"] = True   # 玩家引发的事件 → 简报
+            # 事件相关度衰减（B-①）：strong（与你有关）事件随日期推移淡出（>6 月降 weak）
+            if result.get("world_events"):
+                from .world import freshen_events
+                result["world_events"] = freshen_events(result["world_events"], new_wd)
             # 4. 检查成就
             new_ach = check_achievements(result)
             if new_ach:

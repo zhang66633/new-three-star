@@ -48,8 +48,8 @@
     <!-- 返回星图 -->
     <button class="back-btn" @click="goBack" aria-label="返回星图">←</button>
 
-    <!-- 世界简报（自由沙盒：到达新地点/周期时弹出，LLM 合成段 + 逐条事件） -->
-    <WorldBriefing :events="worldEvents" :briefing="gameState?.briefing" @read="markBriefingRead" />
+    <!-- 世界简报（自由沙盒：先出简报后进场景叙事；SSE briefing 事件驱动，受控弹出） -->
+    <WorldBriefing :visible="briefingVisible" :events="briefingEvents" :briefing="briefingText" @read="closeBriefing" />
 
     <!-- 成就解锁提示（临时浮层） -->
     <AchievementToast :achievements="newAchToasts" />
@@ -162,7 +162,7 @@ import { usePlaySse } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
 import { clearPlayerId, deletePlayer, getPlayerId, loadPlayer, savePlayer } from '../composables/useSaveSystem'
-import type { GameState, OptionSpec, MemoryItem, PhaseReport } from '../types/play'
+import type { GameState, OptionSpec, MemoryItem, PhaseReport, WorldEvent, StreamEvent } from '../types/play'
 
 const router = useRouter()
 const { playStep, isStreaming } = usePlaySse()
@@ -408,6 +408,7 @@ async function startGame() {
       started.value = true
       loadPhase.value = 'thinking'
     },
+    onBriefing: (ev) => showBriefing(ev),
     onChunk: (text) => {
       if (!currentStreamText.value) {
         // ② 首 chunk → 思维链结束，剧情开始
@@ -502,6 +503,7 @@ async function sendAction(action: string, tension: number) {
   newMemCount.value = 0
 
   await playStep(action, gameState.value ?? ({} as GameState), tension, {
+    onBriefing: (ev) => showBriefing(ev),
     onChunk: (text) => {
       if (!currentStreamText.value) {
         hideLoader()
@@ -616,8 +618,20 @@ const worldDateLabel = computed(() => {
   return `${wd.year}年${wd.month}月${dayText}`
 })
 
-// ── 自由沙盒：世界事件队列（简报用）──
-const worldEvents = computed(() => gameState.value?.world_events ?? [])
+// ── 自由沙盒：世界简报（SSE briefing 事件驱动，受控弹窗）──
+const briefingVisible = ref(false)
+const briefingText = ref('')
+const briefingEvents = ref<WorldEvent[]>([])
+/** 收到 SSE briefing 事件（先于 chunk 到达）→ 先弹简报，叙事在底下流式继续 */
+function showBriefing(ev: StreamEvent & { type: 'briefing' }) {
+  briefingText.value = ev.briefing ?? ''
+  briefingEvents.value = ev.events ?? []
+  briefingVisible.value = true
+}
+function closeBriefing() {
+  briefingVisible.value = false
+  markBriefingRead()
+}
 function markBriefingRead() {
   // 简报已读：标记 seen（前端维护；后端下次快照持久化）
   const gs = gameState.value

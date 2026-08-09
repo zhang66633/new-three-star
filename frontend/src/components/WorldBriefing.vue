@@ -5,11 +5,21 @@
         <div class="briefing-title">天 下 动 态</div>
         <div class="briefing-sub">你离开的这段时间，世间发生了这些……</div>
         <p v-if="briefing" class="briefing-syn">{{ briefing }}</p>
-        <div class="briefing-list" v-if="events.length">
-          <div v-for="e in events" :key="e.event_id" class="briefing-item"
-            :class="{ 'briefing-strong': e.related_to_player === 'strong' }">
+        <!-- 强相关事件：与你有关，高亮 -->
+        <div class="briefing-list" v-if="strongEvents.length">
+          <div v-for="e in strongEvents" :key="e.event_id" class="briefing-item briefing-strong">
             <span class="briefing-date">{{ e.date }}</span>
-            <span v-if="e.related_to_player === 'strong'" class="briefing-tag">与你有关</span>
+            <span class="briefing-tag">与你有关</span>
+            <span class="briefing-text">{{ e.event }}</span>
+          </div>
+        </div>
+        <!-- 弱相关事件：折叠区（B-⑦：不再丢弃，默认收起） -->
+        <button v-if="weakEvents.length" class="briefing-more" @click="showWeak = !showWeak">
+          {{ showWeak ? '收起其他 ·' : `查看其他 ${weakEvents.length} 条 ·` }}
+        </button>
+        <div v-if="showWeak" class="briefing-list briefing-weak">
+          <div v-for="e in weakEvents" :key="e.event_id" class="briefing-item">
+            <span class="briefing-date">{{ e.date }}</span>
             <span class="briefing-text">{{ e.event }}</span>
           </div>
         </div>
@@ -20,29 +30,27 @@
 </template>
 
 <script setup lang="ts">
-// WorldBriefing —— 世界简报面板（自由沙盒：玩家到达新地点/周期时弹出未读事件）
-// 展示 world_events 中未读的强相关事件，其余弱相关折叠。
-import { ref, watch } from 'vue'
+// WorldBriefing —— 世界简报面板（自由沙盒：先出简报，后进场景叙事 B-⑧）
+// 受控组件：visible 由父（PlayPage 收到 SSE briefing 事件）控制；weak 折叠展示（B-⑦）。
+import { ref, computed, watch } from 'vue'
 import type { WorldEvent } from '../types/play'
 
 const props = defineProps<{
+  visible: boolean
   events: WorldEvent[]
   briefing?: string
 }>()
 const emit = defineEmits<{ (e: 'read'): void }>()
 
-const visible = ref(false)
+const showWeak = ref(false)
 
-// 有合成简报（A3）或未读强相关事件时弹出
-watch(() => [props.events, props.briefing] as const, () => {
-  const hasStrong = (props.events || []).some(e => !e.seen && e.related_to_player === 'strong')
-  if (props.briefing || hasStrong) {
-    visible.value = true
-  }
-}, { immediate: true, deep: true })
+// 每次弹出时重置折叠态
+watch(() => props.visible, (v) => { if (v) showWeak.value = false })
+
+const strongEvents = computed(() => (props.events || []).filter(e => e.related_to_player === 'strong'))
+const weakEvents = computed(() => (props.events || []).filter(e => e.related_to_player === 'weak'))
 
 function close() {
-  visible.value = false
   emit('read')  // 通知父组件标记已读
 }
 </script>
@@ -131,6 +139,27 @@ function close() {
   margin-top: 1px;
 }
 .briefing-text { flex: 1; }
+.briefing-more {
+  display: block;
+  margin: 12px auto 0;
+  background: none;
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  color: rgba(148, 163, 184, 0.6);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  border-radius: 8px;
+  padding: 5px 16px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.briefing-more:hover {
+  color: rgba(202, 168, 100, 0.85);
+  border-color: rgba(202, 138, 4, 0.4);
+}
+.briefing-weak {
+  margin-top: 10px;
+  opacity: 0.85;
+}
 .briefing-close {
   display: block;
   margin: 20px auto 0;

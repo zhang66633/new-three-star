@@ -103,6 +103,15 @@ async def _step_events(req: PlayRequest):
             elif kind == "__result__":
                 result = payload
                 last = result.get("last_output") or {}
+                # 先出简报，后进场景叙事（B-⑧ §3.3）：本拍有世界动态 → 简报事件在 chunk 前
+                if result.get("new_briefing"):
+                    fresh = [e for e in (result.get("world_events") or []) if not e.get("seen")][-6:]
+                    if fresh:
+                        yield _sse({
+                            "type": "briefing",
+                            "briefing": result.get("briefing", ""),
+                            "events": fresh,  # 含 weak（前端折叠展示，B-⑦）
+                        })
                 # 按最终校验后的 narrative 分块流式发送
                 narrative = last.get("narrative", "")
                 for i in range(0, len(narrative), 40):
