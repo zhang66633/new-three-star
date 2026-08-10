@@ -336,16 +336,17 @@ function resumeGame(st: GameState | null = resumeState.value) {
   gameState.value = st
   resetBlocks()
   options.value = st.last_output?.options ?? []
-  // 恢复最后一段叙事为场景块（续接阅读）
+  // 恢复最后一段叙事（续接阅读）：标题分隔块 + 末段叙事文本块（reveal 打字机揭示一次）。
+  // 注：此前的恢复块是 isScene:true——NarrativeArea 对 isScene 块只渲染标题分隔线、不渲染 text，
+  // 导致续玩时末段叙事文本被静默丢弃；此处拆成两块，文本块设 reveal:true 触发揭示（接线死代码）。
   const narr = st.last_output?.narrative ?? ''
   if (narr) {
     const ps = st.meta?.plan_summary as { scene_id?: string; chapter_label?: string; title?: string } | undefined
-    narrativeBlocks.value.push({
-      text: narr,
-      isScene: true,
-      sceneTitle: ps?.chapter_label && ps?.title ? `${ps.chapter_label} · ${ps.title}` : '',
-      streaming: false,
-    })
+    const title = ps?.chapter_label && ps?.title ? `${ps.chapter_label} · ${ps.title}` : ''
+    if (title) {
+      narrativeBlocks.value.push({ text: '', isScene: true, sceneTitle: title })
+    }
+    narrativeBlocks.value.push({ text: narr, streaming: false, reveal: true })
   }
   const ps = st.meta?.plan_summary as { scene_id?: string; year?: number } | undefined
   lastSceneId.value = ps?.scene_id ?? st.skeleton_pos ?? ''
