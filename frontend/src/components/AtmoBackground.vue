@@ -42,7 +42,7 @@ const currentSrc = ref('')
 const nextSrc = ref('')
 const transitioning = ref(false)
 let fadeTimer: number | null = null
-let pendingTag = ''   // 在途切换目标：防 A→B→A 快速连续触发时停在 B
+let reqSeq = 0   // 单调递增请求序号：crossfade 期间连续切换时「最新请求为准」
 
 // atmo 标签 → 图片文件名
 function resolveImage(tag: string): string | null {
@@ -66,32 +66,28 @@ async function switchTo(tag: string) {
   const src = resolveImage(tag)
   if (!src || src === currentSrc.value) return
 
+  const mySeq = ++reqSeq   // 本请求序号（作废更旧的在途请求）
+
   // 预加载新图
   await preload(src)
 
-  // 若切换期间已再次触发（A→B→A），以最新请求为准
-  if (pendingTag && pendingTag !== tag) {
-    const latest = resolveImage(pendingTag)
-    if (latest && latest !== src) {
-      return // 已有更新的目标在途，本次稍旧请求作废
-    }
-  }
-  pendingTag = tag
+  // 预加载期间已触发更新的切换（A→B→A / A→B→C）→ 本次作废，以最新为准
+  if (mySeq !== reqSeq) return
+
+  // 清除旧定时器（旧图切换作废，防止旧回调落地覆盖新图）
+  if (fadeTimer) clearTimeout(fadeTimer)
 
   // 设置新图，触发 crossfade
   nextSrc.value = src
   transitioning.value = true
 
-  // 清除旧定时器
-  if (fadeTimer) clearTimeout(fadeTimer)
-
-  // crossfade 完成后：新图变当前，清理旧图
+  // crossfade 完成后：新图变当前，清理旧图（触发时再校验仍是最新请求）
   fadeTimer = window.setTimeout(() => {
+    if (mySeq !== reqSeq) return   // 已有更新的在途 → 本次不落地
     currentSrc.value = src
     nextSrc.value = ''
     transitioning.value = false
     fadeTimer = null
-    pendingTag = ''
   }, CROSSFADE_MS)
 }
 

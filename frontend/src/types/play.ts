@@ -74,6 +74,7 @@ export interface LocationState {
   unlocked: string[]            // 已解锁地点（去过 ∪ 传闻解锁，可往返/可赶路）
   next_station: string | null   // 下站（推进目标地点，未解锁）
   rumored: { name: string; hint: string }[]   // 传闻地点（未解锁但听过传闻，可「打听X」解锁）
+  locations?: string[]          // 全量地点顺序（后端动态下发；旧存档缺失时前端回退本地兜底）
 }
 
 // 世界事件（事实层，见 docs/自由沙盒重构设计.md §二）

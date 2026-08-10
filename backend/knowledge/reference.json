@@ -44,34 +44,20 @@
     },
     {
       "number": 7,
-      "id": "jojo",
-      "name": "JoJo",
-      "core_metaphor": "天堂制造二巡+替身",
-      "suitable_scenes": ["命运", "觉悟", "能力对决"]
-    },
-    {
-      "number": 8,
-      "id": "warhammer",
-      "name": "战锤",
-      "core_metaphor": "亚空间/网道/绿皮",
-      "suitable_scenes": ["战争", "混沌", "腐化"]
-    },
-    {
-      "number": 9,
       "id": "zhangjiao",
       "name": "张角意志",
       "core_metaphor": "两股天意争夺",
       "suitable_scenes": ["阴谋", "对抗", "扭曲"]
     },
     {
-      "number": 10,
+      "number": 8,
       "id": "trpg",
       "name": "克苏鲁TRPG",
       "core_metaphor": "调查员+古神+SAN值",
       "suitable_scenes": ["探索", "疯狂", "真相"]
     },
     {
-      "number": 11,
+      "number": 9,
       "id": "elo",
       "name": "ELO/游戏平衡",
       "core_metaphor": "强制50%胜率",

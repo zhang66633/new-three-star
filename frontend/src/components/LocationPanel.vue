@@ -54,8 +54,12 @@ const emit = defineEmits<{
 
 const open = ref(false)
 
-// 剧情顺序展示（对齐后端 LOCATIONS 键序）
-const LOCATION_ORDER = ['颍川', '洛阳', '中牟', '成皋', '陈留']
+// 剧情顺序展示：优先后端动态下发的全量地点列表（防前端硬编码与 LOCATIONS 失步）；
+// 旧存档缺失 locations 字段时回退本地 P1 兜底列表
+const LOCATION_ORDER = computed(() => {
+  const dynamic = props.locationState?.locations
+  return dynamic && dynamic.length ? dynamic : ['颍川', '洛阳', '中牟', '成皋', '陈留']
+})
 
 const unlockedSet = computed(() => new Set(props.locationState?.unlocked ?? []))
 const rumoredMap = computed(() => {

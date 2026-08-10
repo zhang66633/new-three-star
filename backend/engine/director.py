@@ -472,7 +472,14 @@ def _location_state(state: GameState, rumor_unlock: str = None) -> dict:
             break
     if next_station is None and rumored:
         next_station = rumored[0]["name"]
-    return {"current": current, "unlocked": unlocked, "next_station": next_station, "rumored": rumored}
+    return {
+        "current": current,
+        "unlocked": unlocked,
+        "next_station": next_station,
+        "rumored": rumored,
+        # 全量地点顺序（天下舆图渲染用）：前端不再硬编码 5 个 P1 地点，防与后端 LOCATIONS 失步
+        "locations": list(LOCATIONS.keys()),
+    }
 
 
 def resolve_rumor(action: str, state: GameState) -> str | None:
