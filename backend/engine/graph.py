@@ -283,6 +283,10 @@ async def remember_node(state: GameState) -> dict:
         "foreshadowing": foreshadowing,
         "world_rumors": rumors,
         "flags": flags,
+        # 角色软状态（LLM 声明 doing/goal/attitude/tags/notes）合并发生在 deepcopy 的 st 上，
+        # 必须并入 ret 才会被 LangGraph 写回（否则每拍静默丢弃，态度面板永远停在种子值）。
+        # 引擎事实（update_char_facts）在 _commit 里对 result 原地更新，此处只回带软状态合并结果。
+        "character_states": st.get("character_states", {}),
     }
     # 6. 连续性子系统：每拍写回 scene_state（next_anchor/performed_lines/player_choice）
     ps = state.get("meta", {}).get("plan_summary")

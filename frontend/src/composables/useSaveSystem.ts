@@ -6,11 +6,21 @@ import type { GameState } from '../types/play'
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 const PLAYER_ID_KEY = 'sg3d_player_id'
 
+/** 生成玩家 id：crypto.randomUUID 在非安全上下文（HTTP 非 localhost）不可用，降级时间戳+随机串 */
+function genUuid(): string {
+  try {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID()
+    }
+  } catch { /* 非安全上下文：crypto.randomUUID 抛错，走降级 */ }
+  return 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10)
+}
+
 /** 取当前玩家 id；无则生成并持久化（首次进游戏） */
 export function getOrCreatePlayerId(): string {
   let pid = localStorage.getItem(PLAYER_ID_KEY)
   if (!pid) {
-    pid = crypto.randomUUID()
+    pid = genUuid()
     localStorage.setItem(PLAYER_ID_KEY, pid)
   }
   return pid

@@ -14,7 +14,10 @@
 FACT_FIELDS = {"location", "alive", "dies_on", "last_seen", "seen_at", "known"}
 
 # LLM 软状态字段（LLM 可写）：软状态由 writer 声明维护
-SOFT_FIELDS = {"doing", "goal", "attitude", "tags", "notes"}
+# 统一键：LLM 协议 emit doing → 落地 activity（前端 CharacterState/CharacterPanel、writer 注入、
+# from_dict 钳制都读 activity，勿双轨）。引擎事实层 update_char_facts 也写 activity（在场事件摘要），
+# 语义一致：activity = 角色"正在做什么"。
+SOFT_FIELDS = {"activity", "goal", "attitude", "tags", "notes"}
 
 
 def _load_seeds() -> dict:
@@ -140,6 +143,7 @@ def merge_character_soft_state(state: dict, updates: dict) -> None:
 
     updates = {角色名: {"doing", "goal", "attitude_delta", "tags_add", "notes_add"}}
     - 只覆盖 SOFT_FIELDS；FACT_FIELDS（location/alive/dies_on/last_seen/seen_at/known）LLM 不可写
+    - LLM 协议字段是 doing，落地统一键 activity（前端/注入读 activity）
     - attitude_delta 钳位 0-100
     - tags/notes 去重上限（tags ≤4 / notes ≤3）
     """
@@ -152,7 +156,7 @@ def merge_character_soft_state(state: dict, updates: dict) -> None:
             continue
         st = ensure_character(state, name)
         if "doing" in up and isinstance(up["doing"], str):
-            st["doing"] = up["doing"][:40]
+            st["activity"] = up["doing"][:40]  # doing → activity（统一键，勿双轨）
         if "goal" in up and isinstance(up["goal"], str):
             st["goal"] = up["goal"][:40]
         d = up.get("attitude_delta")

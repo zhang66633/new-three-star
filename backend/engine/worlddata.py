@@ -180,19 +180,19 @@ LOCATION_RUMORS: dict[str, list[dict]] = {
 def match_location(action: str) -> str | None:
     """解析地点动作：「前往/赶路到/动身去/去/回 地点」→ 地点名（未知地点返回 None）。
 
+    句内匹配（与 world.action_days 同款）："我想去洛阳"这类自由输入也能命中，
+    保证赶路耗时与目标地点判定一致（此前前缀式把句内地点判为"不移动"，扣了赶路时间却原地不动）。
     只认 LOCATIONS 已知地点名；非地点动作（"去打听消息"等）返回 None。
     解锁/推进判定在 director（有 registry flow），这里只管文本 → 地点名。
     """
+    import re
     a = (action or "").strip()
     if not a:
         return None
-    for kw in ("前往", "赶路到", "动身去", "去", "回"):
-        if a.startswith(kw):
-            rest = a[len(kw):].strip()
-            for name in LOCATIONS:
-                if rest.startswith(name):
-                    return name
-            return None  # 不是已知地点
+    # 方向词 + 地点名句内匹配（去/往/到/赴/奔/进/入/回/返，与 world.action_days 同款；按 LOCATIONS 顺序首中）
+    for name in LOCATIONS:
+        if re.search(r"(?:去|往|到|赴|奔|进|入|回|返)" + re.escape(name), a):
+            return name
     return None
 
 

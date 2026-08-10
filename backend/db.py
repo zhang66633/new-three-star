@@ -1,7 +1,8 @@
 import aiosqlite
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "worlds.db")
+# 可经 NEW_THREE_DB 环境变量覆盖（docker-compose 挂持久卷到 /data，防容器重建清空存档）
+DB_PATH = os.getenv("NEW_THREE_DB", os.path.join(os.path.dirname(__file__), "worlds.db"))
 
 
 async def init_db():

@@ -179,7 +179,9 @@ async def play_save_player(req: PlayerSaveRequest):
     if not req.pid:
         return {"ok": False, "content": "缺少玩家标识"}
     from db import save_player, save_world_state
-    gs = req.game_state or {}
+    from engine.state import from_dict
+    # 复用 play/step 同款 from_dict 白名单 + 长度钳制：防绕过钳制撑大 DB 行（与零鉴权组合是部署暴露面）
+    gs = from_dict(req.game_state or {})
     # 世界档案 = 世界侧独立推进的状态（日期/事件队列/位置/传闻解锁），不随玩家档案走
     world_json = {k: gs.get(k) for k in _WORLD_STATE_KEYS if k in gs}
     await save_world_state(req.pid, json.dumps(world_json, ensure_ascii=False))

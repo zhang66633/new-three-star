@@ -119,7 +119,11 @@ class NodeDiveRequest(BaseModel):
 async def node_dive(req: NodeDiveRequest):
     """AI deep dive with B站解读风格."""
     fw_id = req.framework_id or req.framework
-    framework = load_framework(fw_id)
+    try:
+        framework = load_framework(fw_id)
+    except ValueError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Framework not found: {fw_id}")
 
     system_prompt = f"""你是一个B站新三国解读UP主，正在给观众讲解「{framework['name']}」世界观下的一个证据。
 

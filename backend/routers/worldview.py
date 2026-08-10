@@ -23,7 +23,11 @@ class CustomRequest(BaseModel):
 @router.post("/worldview/expand")
 async def expand_worldview(req: ExpandRequest):
     """Expand a verdict into full worldview document."""
-    framework = load_framework(req.framework)
+    try:
+        framework = load_framework(req.framework)
+    except ValueError:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail=f"Framework not found: {req.framework}")
     messages = build_worldview_prompt(req.event, framework)
 
     async def generate():

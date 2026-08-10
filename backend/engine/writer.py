@@ -920,6 +920,10 @@ async def synthesize_briefing(events: list, prev_date: dict = None, cur_date: di
         draft = ""
         async for chunk in stream_chat(messages, max_tokens=300, **PARAMS_FORMAT, stop=STOP_SEQUENCES):
             draft += chunk
+        # LLM 全挂检测（与 narrate 同款）：双 provider 失败时 stream_chat yield 错误占位字符串而非抛异常，
+        # 必须拦下返回 ''（docstring 契约：前端回退逐条事件列表），否则占位文案会原样呈现给玩家
+        if "[错误]" in draft and "LLM" in draft:
+            return ""
         draft = draft.strip().strip('“”"\'。').strip()
         return draft[:200]
     except Exception:

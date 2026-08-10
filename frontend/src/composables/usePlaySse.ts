@@ -9,6 +9,16 @@ const API_BASE = import.meta.env.VITE_API_BASE || ''
 export function usePlaySse() {
   const isStreaming = ref(false)
   const error = ref('')
+  let abortCtrl: AbortController | null = null   // 当前回合的 AbortController（新回合/卸载时中止旧连接）
+
+  /** 中止当前回合的 SSE 连接（组件卸载或新回合接管时调用），中止时跳过 onError/onDone 副作用 */
+  function abort() {
+    if (abortCtrl) {
+      abortCtrl.abort()
+      abortCtrl = null
+    }
+    isStreaming.value = false
+  }
 
   /**
    * 发一轮请求，通过回调消费事件
@@ -33,6 +43,10 @@ export function usePlaySse() {
       onError?: (msg: string) => void
     },
   ): Promise<void> {
+    // 新回合接管：中止仍在飞的上一连接（防旧回合回调交错覆盖新状态）
+    if (abortCtrl) abortCtrl.abort()
+    const ctrl = new AbortController()
+    abortCtrl = ctrl
     isStreaming.value = true
     error.value = ''
     let doneCalled = false
@@ -48,6 +62,7 @@ export function usePlaySse() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, game_state: gameState, tension }),
+        signal: ctrl.signal,
       })
 
       if (!resp.ok || !resp.body) {
@@ -153,12 +168,16 @@ export function usePlaySse() {
       // 未收到 done 也视为完成
       fireDone()
     } catch (e) {
+      // 中止（被新回合接管或组件卸载）→ 静默退出，不触发 onError/onDone 副作用
+      if (ctrl.signal.aborted) return
       error.value = e instanceof Error ? e.message : String(e)
       handlers.onError?.(error.value)
     } finally {
-      isStreaming.value = false
+      // 只有仍是最新回合才复位 isStreaming（防旧回合 finally 误关新回合的状态）
+      if (abortCtrl === ctrl) abortCtrl = null
+      if (!abortCtrl) isStreaming.value = false
     }
   }
 
-  return { playStep, isStreaming }
+  return { playStep, isStreaming, abort }
 }

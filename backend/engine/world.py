@@ -345,7 +345,10 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
     era["year"] = int(new_wd.get("year", 0) or 0)
     era["season"] = season_of(int(new_wd.get("month", 1) or 1))
     # 5. 周期事件（驻留每 4 拍生成一次世界动态——保留 generate_events 的日常生态分支）
+    #    驻留轮次自增：换地点重置 1、驻留每拍 +1（此前恒为 1 从未自增，%4 永假，活世界机制失效）
     scene_turns = int(result.get("scene_turns") or state.get("scene_turns") or 1)
+    same_place = bool(target) and bool(cur_loc) and (target in cur_loc or cur_loc in target)
+    scene_turns = 1 if not same_place else scene_turns + 1
     if scene_turns > 0 and scene_turns % 4 == 0:
         daily = generate_events(state, new_wd, False, loc)
         for ev in daily:

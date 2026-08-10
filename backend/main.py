@@ -1,6 +1,5 @@
 import os
 import time
-from collections import defaultdict
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -35,20 +34,38 @@ app.add_middleware(
 # ── 简单限流（每 IP 窗口内最大请求数，防 LLM 额度被无限消耗）──
 RATE_LIMIT = int(os.getenv("RATE_LIMIT", "30"))        # 窗口内最大请求数
 RATE_WINDOW = int(os.getenv("RATE_WINDOW", "60"))      # 窗口秒数
-_rate_hits: dict[str, list[float]] = defaultdict(list)
+_rate_hits: dict[str, list[float]] = {}
+
+
+def _client_ip(request: Request) -> str:
+    """真实客户端 IP：nginx/vite 代理后直连 peer 恒为 127.0.0.1，会退化为全局单桶。
+
+    仅在直连 peer 是本机 loopback（可信代理）时采信 X-Forwarded-For 最左项，
+    防客户端绕过代理直连时伪造头规避限流。
+    """
+    peer = request.client.host if request.client else "unknown"
+    if peer in ("127.0.0.1", "::1"):
+        fwd = request.headers.get("x-forwarded-for", "")
+        if fwd:
+            first = fwd.split(",")[0].strip()
+            if first:
+                return first
+    return peer
 
 
 @app.middleware("http")
 async def rate_limit(request: Request, call_next):
-    client = request.client.host if request.client else "unknown"
+    # healthcheck 豁免（容器健康检查频繁轮询，不计入玩家限流，防误 429）
+    if request.url.path == "/api/health":
+        return await call_next(request)
+    client = _client_ip(request)
     now = time.time()
-    hits = _rate_hits[client]
-    # 清理窗口外记录
-    while hits and hits[0] < now - RATE_WINDOW:
-        hits.pop(0)
+    # 清理窗口外记录（.get 而非 defaultdict：空键不驻留，防内存随 IP 累积）
+    hits = [t for t in _rate_hits.get(client) or [] if t >= now - RATE_WINDOW]
     if len(hits) >= RATE_LIMIT:
         return JSONResponse(status_code=429, content={"detail": "请求过于频繁，请稍后再试"})
     hits.append(now)
+    _rate_hits[client] = hits
     return await call_next(request)
 
 

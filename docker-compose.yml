@@ -7,9 +7,18 @@ services:
     env_file:
       - ./backend/.env
     restart: unless-stopped
+    # 持久化核心用户资产（玩家存档 + 自定义世界观）：named volume 挂 /data，
+    # 经 NEW_THREE_DB 指向 /data/worlds.db——docker compose down / 重建镜像不清空
+    volumes:
+      - new-three-data:/data
+    environment:
+      - NEW_THREE_DB=/data/worlds.db
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:80/api/health', timeout=3).status==200 else 1)"]
       interval: 30s
       timeout: 5s
       retries: 3
       start_period: 10s
+
+volumes:
+  new-three-data:

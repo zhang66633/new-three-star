@@ -156,7 +156,7 @@ import { clearPlayerId, deletePlayer, getPlayerId, loadPlayer, savePlayer } from
 import type { GameState, OptionSpec, MemoryItem, PhaseReport, WorldEvent, StreamEvent } from '../types/play'
 
 const router = useRouter()
-const { playStep, isStreaming } = usePlaySse()
+const { playStep, isStreaming, abort } = usePlaySse()
 const playGuanyu = inject<() => void>('playGuanyu', () => {})
 
 // ── 叙事流式块（composable 抽离）──
@@ -169,6 +169,12 @@ type LoadPhase = 'cinematic' | 'thinking' | 'streaming' | 'memory' | 'character'
 const gameState = ref<GameState | null>(null)
 const options = ref<OptionSpec[]>([])
 const freeInput = ref('')
+const lastAction = ref('')     // 最近一次实际发出的动作（错误重试用，防输入框已清空丢失原动作）
+// 存档串行化：fire-and-forget 并发 POST 会乱序落库（旧快照覆盖新状态），排队保证写库顺序
+let saveChain: Promise<unknown> = Promise.resolve()
+function queueSave(st: GameState | null) {
+  saveChain = saveChain.then(() => savePlayer(st)).catch(() => {})
+}
 const errorMessage = ref('')   // 请求失败的用户可见错误提示
 const showIntro = ref(true)    // 开场叙述页（IntroOverlay）
 const started = ref(false)     // 首次流式开始后主界面常显（与 turn 解耦）
@@ -283,6 +289,7 @@ const liteBannerText = ref('')       // 轻过渡铭牌文本（顶部淡入）
 // 场景事件的世界日期/季节预告：scene 先于 state，时代快进时立即刷新 EraBanner（否则全屏宣告 189 但日期还停 184）
 const sceneDatePreview = ref<{ year: number; month: number; day: number; season?: string } | null>(null)
 let liteBannerTimer: number | null = null
+let inkTimer: number | null = null   // 墨染转场复位 timer（triggerInk 使用，onBeforeUnmount 清理）
 function showLiteBanner(chapter: string, title: string, location = '') {
   liteBannerText.value = [location || chapter, title].filter(Boolean).join(' · ')
   if (liteBannerTimer) clearTimeout(liteBannerTimer)
@@ -296,6 +303,10 @@ onMounted(() => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', inkSplash)
+  abort()                          // 中止在飞 SSE：防卸载后回调在死实例上执行、onDone 误存档
+  clearPhaseTimers()               // 清理阶段切换 timer（防卸载后死实例上改 loadPhase）
+  if (liteBannerTimer) { clearTimeout(liteBannerTimer); liteBannerTimer = null }
+  if (inkTimer) { clearTimeout(inkTimer); inkTimer = null }
   if (loaderTimer) { clearTimeout(loaderTimer); loaderTimer = null }
   if (achTimer) { clearTimeout(achTimer); achTimer = null }
 })
@@ -348,7 +359,7 @@ function resumeGame(st: GameState | null = resumeState.value) {
   isStreaming.value = false
   hideLoader()   // 恢复路径不经过 onScene，必须手动隐藏加载器（否则 CinematicLoader 一直盖着）
   loadPhase.value = 'options'
-  savePlayer(gameState.value)   // 立即回写一次（保持存档）
+  queueSave(gameState.value)   // 立即回写一次（保持存档）
 }
 
 /** 新开历险：删除旧档（放弃当前进度）→ 换新玩家档 → 重新播开场 */
@@ -453,7 +464,7 @@ async function startGame() {
     onDone: () => {
       finalizeBlock()
       hideLoader()
-      savePlayer(gameState.value?.dead ? null : gameState.value)   // 每拍自动快照（死亡拍不保存，保留死前档）
+      queueSave(gameState.value?.dead ? null : gameState.value)   // 每拍自动快照（死亡拍不保存，保留死前档）
       // 兜底：若 phase 序列卡住则 2s 后强制到 options
       schedulePhase(() => {
         if (loadPhase.value !== 'options' && loadPhase.value !== 'streaming') {
@@ -475,10 +486,11 @@ function chooseOption(opt: OptionSpec) {
   sendAction(opt.text, opt.tension)
 }
 
-function submitFree() {
-  const action = freeInput.value.trim()
-  if (!action) return
-  sendAction(action, 0)
+function submitFree(action?: string) {
+  // 优先用 ChoiceArea emit 的 payload（与输入框清空时序解耦），缺失时回退输入框当前值
+  const act = (action ?? freeInput.value).trim()
+  if (!act) return
+  sendAction(act, 0)
 }
 
 /** 地点面板点选：前往目标地点（director 导航：已解锁回访 / 未解锁沿 flow 推进） */
@@ -492,6 +504,8 @@ function askRumor(name: string) {
 }
 
 async function sendAction(action: string, tension: number) {
+  if (isStreaming.value) return   // 防并发回合：SSE 进行中忽略新动作（双击选项/兜底按钮连点/挂起窗口连续操作）
+  lastAction.value = action   // 记录实际动作（错误重试时重发，输入框已清空也不丢）
   clearPhaseTimers()   // 清除上一回合遗留的阶段切换 timer，防串回合
   const prevOptions = options.value
   options.value = []
@@ -555,6 +569,16 @@ async function sendAction(action: string, tension: number) {
       sceneDatePreview.value = null   // 世界日期已由 state 权威值接管
       const prev = gameState.value
       gameState.value = state
+      // 简报已读竞态修复：briefing 事件先于 state 到达，用户在 state 前关简报会漏标本批事件 seen
+      //（下次 new_briefing 回合被重播）——state 落地后按简报事件 id 补标，随 onDone 快照落盘
+      const ids = pendingSeenIds
+      if (ids && ids.size && state?.world_events?.length) {
+        state.world_events = state.world_events.map(e =>
+          ids.has(e.event_id) ? { ...e, seen: true } : e
+        )
+        gameState.value = { ...state }
+      }
+      pendingSeenIds = null
       pushAchievements(state.new_achievements)   // 成就解锁提示
       if (state.dead) deadDialog.value = true    // 死亡 → 弹「此身已逝」
       const prevStm = prev?.memory?.stm?.length ?? 0
@@ -579,7 +603,7 @@ async function sendAction(action: string, tension: number) {
     onDone: () => {
       finalizeBlock()
       hideLoader()
-      savePlayer(gameState.value?.dead ? null : gameState.value)   // 每拍自动快照（死亡拍不保存，保留死前档）
+      queueSave(gameState.value?.dead ? null : gameState.value)   // 每拍自动快照（死亡拍不保存，保留死前档）
       schedulePhase(() => {
         if (loadPhase.value !== 'options' && loadPhase.value !== 'streaming') {
           loadPhase.value = 'options'
@@ -601,7 +625,8 @@ async function sendAction(action: string, tension: number) {
 // ── 墨染转场（场景切换时触发）──
 function triggerInk() {
   inkActive.value = true
-  setTimeout(() => { inkActive.value = false }, 1200)
+  if (inkTimer) clearTimeout(inkTimer)
+  inkTimer = window.setTimeout(() => { inkActive.value = false; inkTimer = null }, 1200)
 }
 
 // ── 派生 ──
@@ -628,10 +653,12 @@ const worldDateLabel = computed(() => {
 const briefingVisible = ref(false)
 const briefingText = ref('')
 const briefingEvents = ref<WorldEvent[]>([])
+let pendingSeenIds: Set<string> | null = null   // 本批简报事件 id（state 落地后按 id 补标 seen，防关简报时序竞态）
 /** 收到 SSE briefing 事件（先于 chunk 到达）→ 先弹简报，叙事在底下流式继续 */
 function showBriefing(ev: StreamEvent & { type: 'briefing' }) {
   briefingText.value = ev.briefing ?? ''
   briefingEvents.value = ev.events ?? []
+  pendingSeenIds = new Set((ev.events ?? []).map(e => e.event_id).filter(Boolean))
   briefingVisible.value = true
 }
 function closeBriefing() {
@@ -639,7 +666,7 @@ function closeBriefing() {
   markBriefingRead()
   // 审查⑪：已读 seen 随关闭动作落盘——onDone 快照先于用户读完简报执行，若不立即存，
   // 读后即关/刷新会丢失 seen 标记、同批事件下次重播
-  savePlayer(gameState.value?.dead ? null : gameState.value)
+  queueSave(gameState.value?.dead ? null : gameState.value)
 }
 function markBriefingRead() {
   // 简报已读：标记 seen（前端维护；后端下次快照持久化）
@@ -651,7 +678,7 @@ function markBriefingRead() {
 function markMenuRead() {
   // 世界菜单已读：标记 seen + 落盘（防刷新后同批事件重播，与简报已读同机制）
   markBriefingRead()
-  savePlayer(gameState.value?.dead ? null : gameState.value)
+  queueSave(gameState.value?.dead ? null : gameState.value)
 }
 
 const characterRels = computed(() => gameState.value?.relations ?? {})
@@ -691,7 +718,8 @@ function retryAfterError() {
   if (gameState.value === null) {
     startGame()
   } else {
-    sendAction(freeInput.value.trim() || '继续前行', 0)
+    // 用 lastAction 重发上回合真实动作（此前读已清空的输入框会静默退化为"继续前行"）
+    sendAction(lastAction.value || '继续前行', 0)
   }
 }
 </script>
