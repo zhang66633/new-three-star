@@ -124,6 +124,14 @@ FAMOUS_SCENE_BY_EVENT: dict[str, str] = {
     # P4：192 年董卓伏诛（凤仪亭）→ 李傕郭汜乱长安
     "e_192_04_dongzhuo_fuzhu": "P4_s1_fengyiting",
     "e_192_06_lijue_guosi": "P4_s2_lijueguosi",
+    # P4：194-199 群雄割据（三让徐州→迎帝→辕门射戟→称帝→白门楼→败亡→煮酒）
+    "e_194_09_sanrang_xuzhou": "P4_s3_sanrang",
+    "e_196_08_caocao_yingdi": "P4_s4_yingdi",
+    "e_196_10_yuanmen_sheji": "P4_s5_yuanmen",
+    "e_197_02_yuanshu_chengdi": "P4_s6_chengdi",
+    "e_198_12_lvbu_zhiming": "P4_s7_lvbu",
+    "e_199_07_yuanshu_baiwang": "P4_s8_baiwang",
+    "e_199_11_zhujiu_lunying": "P4_s9_zhujiu",
 }
 
 

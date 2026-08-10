@@ -150,6 +150,46 @@ async def main():
     check("董卓退场 alive=False", dz is None or dz.get("alive") is False,
           str(dz.get("alive") if dz else "未登记"))
 
+    # ── 9. P4 群雄割据名场面（Step P5：三让徐州/吕布之命/煮酒论英雄）──
+    print("=== P4 群雄割据名场面 ===")
+    # 9a. 徐州 194-09 三让徐州（P4_s3_sanrang）
+    g12 = from_dict(r10)
+    g12["player"]["location"] = "徐州"
+    g12["era"]["location"] = "徐州"
+    g12["world_date"] = {"year": 194, "month": 9, "day": 1}
+    g12["era"]["year"] = 194
+    r11 = await run_step(to_dict(g12), "挤在徐州城头，看陶谦这出让城大戏", 0)
+    ps11 = (r11.get("meta") or {}).get("plan_summary") or {}
+    ll11 = [l.get("text", "") for l in ps11.get("locked_lines", [])]
+    check("徐州 194-09 三让徐州锁台词（军民老幼斩尽杀绝）",
+          any("斩尽杀绝" in t for t in ll11), str(ll11[:1]))
+    check("三让徐州见证者 flag", "见证者_三让徐州" in (r11.get("flags") or []), str(r11.get("flags")))
+    # 9b. 徐州 198-12 吕布之命（P4_s7_lvbu）+ 吕布退场
+    g13 = from_dict(r11)
+    g13["world_date"] = {"year": 198, "month": 12, "day": 1}
+    g13["era"]["year"] = 198
+    r12 = await run_step(to_dict(g13), "站到下邳城头，看白门楼这场谢幕", 0)
+    ps12 = (r12.get("meta") or {}).get("plan_summary") or {}
+    ll12 = [l.get("text", "") for l in ps12.get("locked_lines", [])]
+    check("徐州 198-12 吕布之命锁台词（可还记得丁原和董卓）",
+          any("丁原和董卓" in t for t in ll12), str(ll12[:1]))
+    check("吕布之命见证者 flag", "见证者_吕布之命" in (r12.get("flags") or []), str(r12.get("flags")))
+    lb = (r12.get("character_states") or {}).get("吕布")
+    check("吕布退场 alive=False", lb is None or lb.get("alive") is False,
+          str(lb.get("alive") if lb else "未登记"))
+    # 9c. 许都 199-11 煮酒论英雄（P4_s9_zhujiu）
+    g14 = from_dict(r12)
+    g14["player"]["location"] = "许都"
+    g14["era"]["location"] = "许都"
+    g14["world_date"] = {"year": 199, "month": 11, "day": 1}
+    g14["era"]["year"] = 199
+    r13 = await run_step(to_dict(g14), "溜进许都梅园，偷听这出论英雄", 0)
+    ps13 = (r13.get("meta") or {}).get("plan_summary") or {}
+    ll13 = [l.get("text", "") for l in ps13.get("locked_lines", [])]
+    check("许都 199-11 煮酒锁台词（天下英雄唯使君与操）",
+          any("天下英雄" in t and "刘备" in t for t in ll13), str(ll13[:1]))
+    check("煮酒论英雄见证者 flag", "见证者_煮酒论英雄" in (r13.get("flags") or []), str(r13.get("flags")))
+
     # ── 汇总 ──
     fails = [n for n, c in ok if not c]
     print(f"\n结果: {len(ok) - len(fails)}/{len(ok)} 通过")
