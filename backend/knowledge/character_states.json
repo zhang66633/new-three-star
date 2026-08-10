@@ -15,7 +15,7 @@
     "汉灵帝": {"location": "洛阳", "activity": "卧病在床", "goal": "多活几年，别让宦官外戚抢了权"},
     "王允": {"location": "洛阳", "activity": "司徒府中，明哲保身", "goal": "借刀除董，为汉室谋一条活路", "dies_on": "192-06"},
     "孙权": {"location": "吴郡", "activity": "随兄长孙策历练", "goal": "继承父兄基业"},
-    "周瑜": {"location": "吴郡", "activity": "与孙策交好，操练水军", "goal": "辅佐孙策，成就江东基业"},
+    "周瑜": {"location": "吴郡", "activity": "与孙策交好，操练水军", "goal": "辅佐孙策，成就江东基业", "dies_on": "210-11"},
     "诸葛亮": {"location": "隆中", "activity": "躬耕陇亩，好为梁父吟", "goal": "等一个值得辅佐的明主"},
     "司马懿": {"location": "河内", "activity": "隐忍观望，拒绝出仕", "goal": "看透天下棋局，静待时机"},
     "貂蝉": {"location": "洛阳", "activity": "王允府中待字闺中，被塞进借刀杀人的局", "goal": "等一个人把她从这乱局里带出去"},
@@ -46,13 +46,14 @@
     "吕蒙": {"location": "江东", "activity": "孙权帐下将领", "goal": "建功立业"},
     "陆逊": {"location": "江东", "activity": "江东名士，深藏不露", "goal": "等一个机会"},
     "孙策": {"location": "江东", "activity": "孙坚长子，江东小霸王", "goal": "继承父志，横扫江东"},
-    "庞统": {"location": "襄阳", "activity": "凤雏，隐居待价", "goal": "等一个识货的主公"},
+    "庞统": {"location": "襄阳", "activity": "凤雏，隐居待价", "goal": "等一个识货的主公", "dies_on": "214-06"},
     "法正": {"location": "益州", "activity": "刘璋幕僚，怀才不遇", "goal": "寻一条出路"},
     "魏延": {"location": "襄阳", "activity": "刘表手下部曲", "goal": "建功立业，不甘人下"},
     "马超": {"location": "西凉", "activity": "马腾之子，西凉锦马超", "goal": "护西凉基业"},
     "邢道荣": {"location": "零陵", "activity": "零陵上将，口出狂言", "goal": "扬名立万"},
     "纪灵": {"location": "淮南", "activity": "袁术帐下大将", "goal": "为袁术攻刘备"},
-    "许褚": {"location": "许都", "activity": "曹操虎卫，力大无穷", "goal": "护曹操周全"}
+    "许褚": {"location": "许都", "activity": "曹操虎卫，力大无穷", "goal": "护曹操周全"},
+    "刘表": {"location": "荆州", "activity": "坐镇荆州，守清平之土", "goal": "保荆州太平", "dies_on": "208-08"}
   },
   "_starts": {
     "location": "行踪未明",

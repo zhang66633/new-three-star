@@ -138,6 +138,25 @@ FAMOUS_SCENE_BY_EVENT: dict[str, str] = {
     "e_200_10_yuanshao_baiwang": "P4_s12_yuanshao",
     "e_201_05_xin_ye_li_zu": "P4_s13_xinye",
     "e_207_10_wolong_chushan": "P4_s14_wolong",
+    # 赤壁三足批（208-219）：博望坡→长坂坡→赤壁→华容道→借荆州→四郡→甘露寺→合肥→
+    # 周瑜之死→张松献图→入川→落凤坡→益州易主→单刀赴会→逍遥津→汉中之战→水淹七军
+    "e_208_01_bowangpo": "P5_s1_bowangpo",
+    "e_208_09_changbanpo": "P5_s2_changbanpo",
+    "e_208_10_chibizhizhan": "P5_s3_chibi",
+    "e_208_11_huarongdao": "P5_s4_huarong",
+    "e_209_05_nanjun_jiezhou": "P5_s5_nanjun",
+    "e_209_08_qujingnan_sijun": "P5_s6_sijun",
+    "e_209_10_sun_liu_ganlu": "P5_s7_ganlu",
+    "e_209_12_hefei": "P5_s8_hefei",
+    "e_210_11_zhouyu_zhi_si": "P5_s9_zhouyu",
+    "e_210_12_zhangsong_xiantu": "P5_s10_zhangsong",
+    "e_211_12_liubei_ruchuan": "P5_s11_ruchuan",
+    "e_214_06_fengchu_luofengpo": "P5_s12_luofengpo",
+    "e_214_06_yizhou_yizhu": "P5_s13_yizhou",
+    "e_215_08_dandao_fuhui": "P5_s14_dandao",
+    "e_215_08_hefei_xiaoyaojin": "P5_s15_xiaoyaojin",
+    "e_219_01_hanzhong_dingshan": "P5_s16_hanzhong",
+    "e_219_08_guanyu_beifa": "P5_s17_guanyubeifa",
 }
 
 

@@ -229,6 +229,45 @@ async def main():
           any("大梦谁先觉" in t for t in ll16), str(ll16[:1]))
     check("三顾茅庐见证者 flag", "见证者_三顾茅庐" in (r16.get("flags") or []), str(r16.get("flags")))
 
+    # ── 11. 赤壁三足名场面（赤壁批：长坂坡/赤壁之战/水淹七军）──
+    print("=== 赤壁三足名场面 ===")
+    # 11a. 南郡 208-09 长坂坡（P5_s2_changbanpo）
+    g18 = from_dict(r16)
+    g18["player"]["location"] = "南郡"
+    g18["era"]["location"] = "南郡"
+    g18["world_date"] = {"year": 208, "month": 9, "day": 1}
+    g18["era"]["year"] = 208
+    r17 = await run_step(to_dict(g18), "挤进长坂坡乱军里，看赵云这出七进七出", 0)
+    ps17 = (r17.get("meta") or {}).get("plan_summary") or {}
+    ll17 = [l.get("text", "") for l in ps17.get("locked_lines", [])]
+    check("南郡 208-09 长坂坡锁台词（燕人张翼德在此）",
+          any("燕人张翼德在此" in t for t in ll17), str(ll17[:1]))
+    check("长坂坡见证者 flag", "见证者_长坂坡" in (r17.get("flags") or []), str(r17.get("flags")))
+    # 11b. 赤壁 208-10 赤壁之战（P5_s3_chibi）
+    g19 = from_dict(r17)
+    g19["player"]["location"] = "赤壁"
+    g19["era"]["location"] = "赤壁"
+    g19["world_date"] = {"year": 208, "month": 10, "day": 1}
+    g19["era"]["year"] = 208
+    r18 = await run_step(to_dict(g19), "站到长江水寨边，看这场火烧大戏", 0)
+    ps18 = (r18.get("meta") or {}).get("plan_summary") or {}
+    ll18 = [l.get("text", "") for l in ps18.get("locked_lines", [])]
+    check("赤壁 208-10 赤壁之战锁台词（万事俱备只欠东风）",
+          any("只欠东风" in t for t in ll18), str(ll18[:1]))
+    check("赤壁之战见证者 flag", "见证者_赤壁之战" in (r18.get("flags") or []), str(r18.get("flags")))
+    # 11c. 麦城 219-08 水淹七军（P5_s17_guanyubeifa）
+    g20 = from_dict(r18)
+    g20["player"]["location"] = "麦城"
+    g20["era"]["location"] = "麦城"
+    g20["world_date"] = {"year": 219, "month": 8, "day": 1}
+    g20["era"]["year"] = 219
+    r19 = await run_step(to_dict(g20), "溜到樊城曾口川，看关羽这出大水戏", 0)
+    ps19 = (r19.get("meta") or {}).get("plan_summary") or {}
+    ll19 = [l.get("text", "") for l in ps19.get("locked_lines", [])]
+    check("麦城 219-08 水淹七军锁台词（瓮口里的王八）",
+          any("瓮口里的王八" in t for t in ll19), str(ll19[:1]))
+    check("水淹七军见证者 flag", "见证者_水淹七军" in (r19.get("flags") or []), str(r19.get("flags")))
+
     # ── 汇总 ──
     fails = [n for n, c in ok if not c]
     print(f"\n结果: {len(ok) - len(fails)}/{len(ok)} 通过")
