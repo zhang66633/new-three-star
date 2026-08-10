@@ -235,7 +235,6 @@ const totalMemCount = computed(() => stmList.value.length + ltmList.value.length
 // ── 五阶段动画序列 ──
 const loadPhase = ref<LoadPhase>('cinematic')
 const newMemCount = ref(0)       // 本轮新增记忆数（触发高亮）
-const prevRelations = ref<Record<string, number>>({})  // 上轮关系值（计算 delta）
 let loaderTimer: number | null = null
 // 阶段切换定时器句柄：跨回合清理，防旧 timer 把新回合强置成 'options'
 let phaseTimers: number[] = []
@@ -400,7 +399,6 @@ async function startGame() {
   lastSceneYear.value = 0
   sceneDatePreview.value = null
   newMemCount.value = 0
-  prevRelations.value = {}
 
   await playStep('', {} as GameState, 0, {
     onScene: (ev) => {
@@ -436,8 +434,6 @@ async function startGame() {
       const prevStm = prev?.memory?.stm?.length ?? 0
       const curStm = state?.memory?.stm?.length ?? 0
       newMemCount.value = Math.max(0, curStm - prevStm)
-      // 记录上轮关系
-      prevRelations.value = prev?.relations ? { ...prev.relations } : {}
       // 触发记忆阶段
       if (newMemCount.value > 0) {
         loadPhase.value = 'memory'
@@ -584,7 +580,6 @@ async function sendAction(action: string, tension: number) {
       const prevStm = prev?.memory?.stm?.length ?? 0
       const curStm = state?.memory?.stm?.length ?? 0
       newMemCount.value = Math.max(0, curStm - prevStm)
-      prevRelations.value = prev?.relations ? { ...prev.relations } : {}
       if (newMemCount.value > 0) {
         loadPhase.value = 'memory'
         schedulePhase(() => {

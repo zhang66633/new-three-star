@@ -129,7 +129,7 @@ def new_game_state() -> GameState:
         "era": {
             "chapter": "P1 黄金风起",
             "year": 184,
-            "season": "冬",  # 184-02 → 月份派生（season_of(2)=冬）；见 world.season_of
+            "season": "春",  # 184-02 → season_of(2)=春（见 world.season_of，开局"春雨夜醒来"）；director 每拍按 world_date 派生覆盖
             "location": "颍川",
         },
         "relations": {},

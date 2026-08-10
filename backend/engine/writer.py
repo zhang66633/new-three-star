@@ -832,18 +832,19 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
                 if td is not None:
                     if td != 0:
                         result["trust_delta"][name] = td
-                elif rd is not None:
+                elif rd is not None and rd != 0:
                     # LLM 给了关系但漏了信任（规则 13 未强制逐键完整）：按关系回退派生
-                    # （与启发式同公式），防该角色的信任永久冻结在旧值
+                    # （与启发式同公式），防该角色的信任永久冻结在旧值。
+                    # rd=0 是 LLM 显式"关系不变"→ 不派生，防 0//2+1=1 把"没变化"误当信任 +1 漂移
                     derived = max(-3, min(4, rd // 2 + 1))
                     if derived != 0:
                         result["trust_delta"][name] = derived
             else:
                 if rel_base != 0:
                     result["relations_delta"][name] = rel_base
-                trust_delta = max(-3, min(4, rel_base // 2 + 1))
-                if trust_delta != 0:
-                    result["trust_delta"][name] = trust_delta
+                    trust_delta = max(-3, min(4, rel_base // 2 + 1))
+                    if trust_delta != 0:
+                        result["trust_delta"][name] = trust_delta
 
     # 4. 伏笔检测（关键词）
     FORESHADOW_KW = {"日后", "有朝一日", "欠你", "承诺", "约定", "改日", "时机成熟",
