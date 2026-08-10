@@ -132,6 +132,12 @@ FAMOUS_SCENE_BY_EVENT: dict[str, str] = {
     "e_198_12_lvbu_zhiming": "P4_s7_lvbu",
     "e_199_07_yuanshu_baiwang": "P4_s8_baiwang",
     "e_199_11_zhujiu_lunying": "P4_s9_zhujiu",
+    # 官渡定鼎批（200-207）：关羽降曹→官渡之战→袁绍败亡→投荆州→三顾茅庐
+    "e_200_06_guanyu_wuguan": "P4_s10_guanyu",
+    "e_200_09_guandu_dazhan": "P4_s11_guandu",
+    "e_200_10_yuanshao_baiwang": "P4_s12_yuanshao",
+    "e_201_05_xin_ye_li_zu": "P4_s13_xinye",
+    "e_207_10_wolong_chushan": "P4_s14_wolong",
 }
 
 

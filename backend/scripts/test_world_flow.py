@@ -190,6 +190,45 @@ async def main():
           any("天下英雄" in t and "刘备" in t for t in ll13), str(ll13[:1]))
     check("煮酒论英雄见证者 flag", "见证者_煮酒论英雄" in (r13.get("flags") or []), str(r13.get("flags")))
 
+    # ── 10. 官渡定鼎名场面（官渡批：关羽降曹/官渡之战/三顾茅庐）──
+    print("=== 官渡定鼎名场面 ===")
+    # 10a. 许都 200-06 关羽降曹（P4_s10_guanyu）
+    g15 = from_dict(r13)
+    g15["player"]["location"] = "许都"
+    g15["era"]["location"] = "许都"
+    g15["world_date"] = {"year": 200, "month": 6, "day": 1}
+    g15["era"]["year"] = 200
+    r14 = await run_step(to_dict(g15), "蹲在许都武英阁外，看曹操这出请将大戏", 0)
+    ps14 = (r14.get("meta") or {}).get("plan_summary") or {}
+    ll14 = [l.get("text", "") for l in ps14.get("locked_lines", [])]
+    check("许都 200-06 关羽降曹锁台词（只降汉帝不降曹操）",
+          any("只降汉帝" in t and "不降曹操" in t for t in ll14), str(ll14[:1]))
+    check("关羽降曹见证者 flag", "见证者_关羽降曹" in (r14.get("flags") or []), str(r14.get("flags")))
+    # 10b. 官渡 200-09 官渡之战（P4_s11_guandu）
+    g16 = from_dict(r14)
+    g16["player"]["location"] = "官渡"
+    g16["era"]["location"] = "官渡"
+    g16["world_date"] = {"year": 200, "month": 9, "day": 1}
+    g16["era"]["year"] = 200
+    r15 = await run_step(to_dict(g16), "站到官渡河岸大营，看这场以少胜多", 0)
+    ps15 = (r15.get("meta") or {}).get("plan_summary") or {}
+    ll15 = [l.get("text", "") for l in ps15.get("locked_lines", [])]
+    check("官渡 200-09 官渡之战锁台词（七万精兵优势在我）",
+          any("七万精兵" in t and "优势在我" in t for t in ll15), str(ll15[:1]))
+    check("官渡之战见证者 flag", "见证者_官渡之战" in (r15.get("flags") or []), str(r15.get("flags")))
+    # 10c. 荆州 207-10 三顾茅庐（P4_s14_wolong）
+    g17 = from_dict(r15)
+    g17["player"]["location"] = "荆州"
+    g17["era"]["location"] = "荆州"
+    g17["world_date"] = {"year": 207, "month": 10, "day": 1}
+    g17["era"]["year"] = 207
+    r16 = await run_step(to_dict(g17), "溜上卧龙岗，偷听这出三顾大戏", 0)
+    ps16 = (r16.get("meta") or {}).get("plan_summary") or {}
+    ll16 = [l.get("text", "") for l in ps16.get("locked_lines", [])]
+    check("荆州 207-10 三顾茅庐锁台词（大梦谁先觉）",
+          any("大梦谁先觉" in t for t in ll16), str(ll16[:1]))
+    check("三顾茅庐见证者 flag", "见证者_三顾茅庐" in (r16.get("flags") or []), str(r16.get("flags")))
+
     # ── 汇总 ──
     fails = [n for n, c in ok if not c]
     print(f"\n结果: {len(ok) - len(fails)}/{len(ok)} 通过")
