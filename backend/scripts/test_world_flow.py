@@ -268,6 +268,54 @@ async def main():
           any("瓮口里的王八" in t for t in ll19), str(ll19[:1]))
     check("水淹七军见证者 flag", "见证者_水淹七军" in (r19.get("flags") or []), str(r19.get("flags")))
 
+    # ── 12. P6 天下三分名场面（P6 批：败走麦城/曹操之死/白帝托孤）──
+    print("=== P6 天下三分名场面 ===")
+    # 12a. 麦城 220-01 败走麦城（P6_s1_maicheng）+ 关羽退场
+    g21 = from_dict(r19)
+    g21["player"]["location"] = "麦城"
+    g21["era"]["location"] = "麦城"
+    g21["world_date"] = {"year": 220, "month": 1, "day": 1}
+    g21["era"]["year"] = 220
+    r20 = await run_step(to_dict(g21), "混进麦城突围夜，看关羽这出穷途戏", 0)
+    ps20 = (r20.get("meta") or {}).get("plan_summary") or {}
+    ll20 = [l.get("text", "") for l in ps20.get("locked_lines", [])]
+    check("麦城 220-01 败走麦城锁台词（过江我也过江/一世英雄）",
+          any("过江我也过江" in t or "一世英雄" in t for t in ll20), str(ll20[:1]))
+    check("败走麦城见证者 flag", "见证者_败走麦城" in (r20.get("flags") or []), str(r20.get("flags")))
+    gy = (r20.get("character_states") or {}).get("关羽")
+    check("关羽退场 alive=False", gy is None or gy.get("alive") is False,
+          str(gy.get("alive") if gy else "未登记"))
+    # 12b. 许都 220-01 曹操之死（P6_s2_caocao）+ 曹操退场
+    g22 = from_dict(r20)
+    g22["player"]["location"] = "许都"
+    g22["era"]["location"] = "许都"
+    g22["world_date"] = {"year": 220, "month": 1, "day": 1}
+    g22["era"]["year"] = 220
+    r21 = await run_step(to_dict(g22), "摸进魏王府病榻前，看奸雄这最后一场", 0)
+    ps21 = (r21.get("meta") or {}).get("plan_summary") or {}
+    ll21 = [l.get("text", "") for l in ps21.get("locked_lines", [])]
+    check("许都 220-01 曹操之死锁台词（头好痛/疑冢）",
+          any("头好痛" in t or "疑冢" in t for t in ll21), str(ll21[:1]))
+    check("曹操之死见证者 flag", "见证者_曹操之死" in (r21.get("flags") or []), str(r21.get("flags")))
+    cc = (r21.get("character_states") or {}).get("曹操")
+    check("曹操退场 alive=False", cc is None or cc.get("alive") is False,
+          str(cc.get("alive") if cc else "未登记"))
+    # 12c. 益州 223-04 白帝托孤（P6_s5_baidi）+ 刘备退场
+    g23 = from_dict(r21)
+    g23["player"]["location"] = "益州"
+    g23["era"]["location"] = "益州"
+    g23["world_date"] = {"year": 223, "month": 4, "day": 1}
+    g23["era"]["year"] = 223
+    r22 = await run_step(to_dict(g23), "翻进永安宫屏风后，偷听这出托孤大戏", 0)
+    ps22 = (r22.get("meta") or {}).get("plan_summary") or {}
+    ll22 = [l.get("text", "") for l in ps22.get("locked_lines", [])]
+    check("益州 223-04 白帝托孤锁台词（自领川蜀承继帝位/如君如父）",
+          any("承继帝位" in t or "如君如父" in t for t in ll22), str(ll22[:1]))
+    check("白帝托孤见证者 flag", "见证者_白帝托孤" in (r22.get("flags") or []), str(r22.get("flags")))
+    lbx = (r22.get("character_states") or {}).get("刘备")
+    check("刘备退场 alive=False", lbx is None or lbx.get("alive") is False,
+          str(lbx.get("alive") if lbx else "未登记"))
+
     # ── 汇总 ──
     fails = [n for n, c in ok if not c]
     print(f"\n结果: {len(ok) - len(fails)}/{len(ok)} 通过")

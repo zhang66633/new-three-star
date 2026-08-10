@@ -157,6 +157,12 @@ FAMOUS_SCENE_BY_EVENT: dict[str, str] = {
     "e_215_08_hefei_xiaoyaojin": "P5_s15_xiaoyaojin",
     "e_219_01_hanzhong_dingshan": "P5_s16_hanzhong",
     "e_219_08_guanyu_beifa": "P5_s17_guanyubeifa",
+    # P6：天下三分（220-223）败走麦城→曹操之死→曹丕篡汉→夷陵之战→白帝托孤
+    "e_220_01_maicheng": "P6_s1_maicheng",
+    "e_220_01_caocao_zhi_si": "P6_s2_caocao",
+    "e_220_11_caopi_chanhan": "P6_s3_caopi",
+    "e_222_08_yiling_zhizhan": "P6_s4_yiling",
+    "e_223_04_baidi_tuogu": "P6_s5_baidi",
 }
 
 

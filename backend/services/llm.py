@@ -98,7 +98,7 @@ async def _stream_openai_compatible(
     if stop:
         payload["stop"] = stop
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
+    async with httpx.AsyncClient(timeout=300.0) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
             if resp.status_code != 200:
                 raise Exception(f"LLM API error: {resp.status_code}")

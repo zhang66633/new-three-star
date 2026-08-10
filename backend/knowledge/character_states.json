@@ -1,10 +1,10 @@
 {
   "_说明": "角色世界状态档案（自由大世界）· 决策8/14：只维护与玩家有交集的角色（按需登记）。引擎更新事实（location/alive/dies_on/last_seen），LLM 更新软状态（doing/goal/attitude/tags/notes）。seed 提供角色初始位置/活动/目标；实际登记由 engine.character_states.ensure_character 在玩家接触时触发，_starts 定义起始默认值。",
   "seeds": {
-    "曹操": {"location": "颍川", "activity": "领乡勇操练，借平乱攒兵", "goal": "证明自己，在乱世中闯出名堂"},
-    "刘备": {"location": "涿郡", "activity": "募乡勇，织席贩履之余访豪杰", "goal": "自刎归天前，先弄清楚这世道是谁在运转"},
-    "关羽": {"location": "涿郡", "activity": "跟随刘备，充当门面", "goal": "执行任务——守住刘备"},
-    "张飞": {"location": "涿郡", "activity": "看管酒庄，等着跟大哥干一票大的", "goal": "被认可——不只是个打架的"},
+    "曹操": {"location": "颍川", "activity": "领乡勇操练，借平乱攒兵", "goal": "证明自己，在乱世中闯出名堂", "dies_on": "220-01"},
+    "刘备": {"location": "涿郡", "activity": "募乡勇，织席贩履之余访豪杰", "goal": "自刎归天前，先弄清楚这世道是谁在运转", "dies_on": "223-04"},
+    "关羽": {"location": "涿郡", "activity": "跟随刘备，充当门面", "goal": "执行任务——守住刘备", "dies_on": "220-01"},
+    "张飞": {"location": "涿郡", "activity": "看管酒庄，等着跟大哥干一票大的", "goal": "被认可——不只是个打架的", "dies_on": "221-06"},
     "吕布": {"location": "并州", "activity": "被丁原收在帐下", "goal": "别被人叫'三姓家奴'", "dies_on": "198-12"},
     "董卓": {"location": "西凉", "activity": "受诏领西凉兵，按兵不动", "goal": "安全——坐等洛阳生变，消除一切威胁", "dies_on": "192-04"},
     "袁绍": {"location": "洛阳", "activity": "在何进门下走动，打理四世三公的关系", "goal": "维持现状", "dies_on": "200-10"},
