@@ -113,15 +113,17 @@ CHAPTER_BY_PHASE = {
 # ═════════ 名场面接线（决策 1：view_scene 注入 registry 名场面）═════════
 # 时间线事件 id → registry 名场面场景 id。事件到点 + 玩家在场（witnessable）时，
 # view_scene 把该场景的锁定台词/选项/flag 注入自由视野（"字幕锚定"，见 continuity.py）。
-# 未接线的事件（李傕郭汜等）仍走过程化合成（事件在 setting 简述，不锁定台词）。
-# 192 年李傕郭汜暂不接线：P4_s1_fengyiting 仍是占位（锁定台词空），注入会露出空壳；
-# 待 P4_s1 正式版完成再接（见计划：本次只接 P2/P3 正式版名场面）。
+# 未接线的事件仍走过程化合成（事件在 setting 简述，不锁定台词）。
+# P2~P4 名场面已全接线：事件到点 + 玩家在场 → 注入 registry 场景锁定台词。
 FAMOUS_SCENE_BY_EVENT: dict[str, str] = {
     "e_189_08_dongzhuo_jinjing": "P2_s1_street",
     "e_189_09_cao_cao_xian_dao": "P2_s2_ci",
     "e_190_01_zhuhou_huimeng": "P3_s1_alliance",
     "e_190_02_wenjiu_huaxiong": "P3_s2_huaxiong",
     "e_190_02_sanying_zhan_lvbu": "P3_s3_three",
+    # P4：192 年董卓伏诛（凤仪亭）→ 李傕郭汜乱长安
+    "e_192_04_dongzhuo_fuzhu": "P4_s1_fengyiting",
+    "e_192_06_lijue_guosi": "P4_s2_lijueguosi",
 }
 
 

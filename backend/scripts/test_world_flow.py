@@ -119,6 +119,37 @@ async def main():
     check("事件已过不再注入名场面", not ps8.get("locked_lines"),
           str([l.get("text", "")[:16] for l in ps8.get("locked_lines", [])]))
 
+    # ── 8. P4 名场面（Step P4：长安 192 凤仪亭/李傕郭汜）──
+    print("=== P4 名场面自由参与 ===")
+    # 8a. 长安 192-04 撞凤仪亭（P4_s1_fengyiting）
+    g10 = from_dict(r8)
+    g10["player"]["location"] = "长安"
+    g10["era"]["location"] = "长安"
+    g10["world_date"] = {"year": 192, "month": 4, "day": 1}
+    g10["era"]["year"] = 192
+    r9 = await run_step(to_dict(g10), "站在长安街口，看这场争貂蝉的热闹", 0)
+    ps9 = (r9.get("meta") or {}).get("plan_summary") or {}
+    ll9 = [l.get("text", "") for l in ps9.get("locked_lines", [])]
+    check("长安 192-04 名场面锁定台词（咱家的爱姬）",
+          any("咱家的爱姬" in t for t in ll9), str(ll9[:1]))
+    check("董卓伏诛见证者 flag", "见证者_董卓伏诛" in (r9.get("flags") or []),
+          str(r9.get("flags")))
+    # 8b. 长安 192-06 撞李傕郭汜（P4_s2_lijueguosi）
+    g11 = from_dict(r9)
+    g11["world_date"] = {"year": 192, "month": 6, "day": 1}
+    g11["era"]["year"] = 192
+    r10 = await run_step(to_dict(g11), "挤上长安城头，看这场围城大戏", 0)
+    ps10 = (r10.get("meta") or {}).get("plan_summary") or {}
+    ll10 = [l.get("text", "") for l in ps10.get("locked_lines", [])]
+    check("长安 192-06 名场面锁定台词（住手）",
+          any("住手" in t for t in ll10), str(ll10[:1]))
+    check("李傕郭汜见证者 flag", "见证者_李傕郭汜乱长安" in (r10.get("flags") or []),
+          str(r10.get("flags")))
+    # 8c. 董卓退场：长安 192-06 会话后董卓档案 alive=False（dies_on=192-04 生效）
+    dz = (r10.get("character_states") or {}).get("董卓")
+    check("董卓退场 alive=False", dz is None or dz.get("alive") is False,
+          str(dz.get("alive") if dz else "未登记"))
+
     # ── 汇总 ──
     fails = [n for n, c in ok if not c]
     print(f"\n结果: {len(ok) - len(fails)}/{len(ok)} 通过")
