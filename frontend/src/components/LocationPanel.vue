@@ -1,11 +1,12 @@
 <template>
   <!-- 地点导航（左侧抽屉）：已知地点往返 + 下站推进（自由沙盒 §5.2） -->
-  <button class="map-toggle" :class="{ 'map-toggle-open': open }" @click="open = !open">
+  <!-- embedded：主菜单页嵌入模式，不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器流式布局 -->
+  <button v-if="!embedded" class="map-toggle" :class="{ 'map-toggle-open': open }" @click="open = !open">
     {{ open ? '收起地图 ▼' : '地图' }}
   </button>
 
   <transition name="map-slide">
-    <div v-if="open" class="location-panel">
+    <div v-if="embedded || open" class="location-panel" :class="{ 'lp-embedded': embedded }">
       <div class="lp-header">天下舆图</div>
       <div class="lp-sub">去过的地方可往返，下站指引前路</div>
 
@@ -42,7 +43,10 @@
 import { ref, computed } from 'vue'
 import type { LocationState } from '../types/play'
 
-const props = defineProps<{ locationState: LocationState }>()
+const props = defineProps<{
+  locationState: LocationState
+  embedded?: boolean   // 主菜单页嵌入模式：不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器布局
+}>()
 const emit = defineEmits<{
   (e: 'travel', name: string): void
   (e: 'ask', name: string): void
@@ -133,6 +137,18 @@ function onRowClick(loc: string) {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+}
+/* 主菜单页嵌入：中和 fixed 四角定位，由菜单 tab 容器流式布局 */
+.location-panel.lp-embedded {
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
 }
 .location-panel::-webkit-scrollbar { width: 3px; }
 .location-panel::-webkit-scrollbar-thumb { background: rgba(202, 138, 4, 0.15); border-radius: 3px; }

@@ -86,6 +86,22 @@ export interface WorldEvent {
   source?: 'timeline' | 'daily' | 'period' | 'player' | 'timeskip'
 }
 
+// 角色世界状态档案（自由大世界·决策8）：引擎管事实，LLM 管软状态
+export interface CharacterState {
+  name: string
+  location: string          // 事实：当前所在（引擎按 timeline 更新）
+  activity: string          // 软状态：在做什么（LLM 更新为主）
+  goal: string              // 软状态：当前目标
+  attitude: number          // 对玩家态度 0-100
+  alive: boolean            // 事实：是否在世
+  dies_on?: string | null   // 事实：退场年月（引擎按点置 alive=false）
+  known: boolean            // 事实：玩家是否认识
+  last_seen: string         // 事实：上次接触日期
+  seen_at: string           // 事实：上次见面地点
+  tags: string[]            // 软状态标签（≤4）
+  notes: string[]           // 软状态备注（≤3）
+}
+
 // 世界简报事件（B-⑧：先出简报，后进场景叙事；SSE 在 chunk 前发送）
 export interface BriefingEvent {
   briefing: string          // LLM 合成简报（A3），可空
@@ -112,6 +128,7 @@ export interface GameState {
   dead?: boolean                   // 死亡（三属性同时极端，alive=False）——前端读档最近快照
   vitals_alarm?: string            // 濒死标记（stamina/hunger/wound，下拍 writer 演后果；已脱离则为 ''）
   location_state?: LocationState   // 地点面板状态（director 每拍写入）
+  character_states?: Record<string, CharacterState>   // 角色世界状态档案（自由大世界·决策8）
   turn: number
   retry_count: number
   history: { user?: string; assistant?: string }[]

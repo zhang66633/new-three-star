@@ -1,12 +1,13 @@
 <template>
   <!-- 记忆抽屉（三段式：PIN / LTM / STM） -->
-  <button class="memory-toggle" :class="{ 'mem-reveal': reveal }" @click="showMemory = !showMemory">
+  <!-- embedded：主菜单页嵌入模式，不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器流式布局 -->
+  <button v-if="!embedded" class="memory-toggle" :class="{ 'mem-reveal': reveal }" @click="showMemory = !showMemory">
     {{ showMemory ? '收起记忆 ▲' : '记忆' }}
     <span v-if="totalMemCount > 0" class="mt-counts">
       STM [{{ stmList.length }}/6]｜LTM [{{ ltmList.length }}]｜PIN {{ pinnedCount }}
     </span>
   </button>
-  <div v-if="showMemory" class="memory-drawer">
+  <div v-if="embedded || showMemory" class="memory-drawer" :class="{ 'md-embedded': embedded }">
     <!-- 计数头 -->
     <div class="md-header">STM [{{ stmList.length }}/6]｜LTM [{{ ltmList.length }}]｜PIN {{ pinnedCount }}条</div>
 
@@ -75,6 +76,7 @@ const props = defineProps<{
   pinnedCount: number
   totalMemCount: number
   reveal: boolean   // 记忆阶段高亮（loadPhase === 'memory'）
+  embedded?: boolean   // 主菜单页嵌入模式：不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器布局
 }>()
 const emit = defineEmits<{ (e: 'togglePin', id: string): void }>()
 
@@ -135,6 +137,27 @@ function isPinned(id: string) {
   -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
   animation: drawer-slide-down 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+/* 主菜单页嵌入：中和 fixed 四角定位，由菜单 tab 容器流式布局 */
+.memory-drawer.md-embedded {
+  position: static;
+  width: 100%;
+  max-width: none;
+  height: auto;
+  max-height: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
+  animation: none;
+  overflow: visible;
+}
+/* 嵌入模式下三段列表取消 flex 均分高度（flex:1 1 0 在 auto 高度容器里塌缩为 0），按内容流式展开 */
+.memory-drawer.md-embedded .md-section {
+  flex: none;
+  min-height: 0;
+  overflow: visible;
 }
 @keyframes drawer-slide-down {
   from { opacity: 0; transform: translateY(-8px) scale(0.97); }

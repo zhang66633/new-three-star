@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # 世界档案字段（自由沙盒 §五）：世界侧独立推进的状态，save_player 时拆写 world_states 表
-_WORLD_STATE_KEYS = ("world_date", "world_events", "location_state", "rumor_unlocked")
+_WORLD_STATE_KEYS = ("world_date", "world_events", "location_state", "rumor_unlocked", "character_states")
 
 
 class PlayRequest(BaseModel):
@@ -46,7 +46,7 @@ def _sse(obj: dict) -> str:
 async def _step_events(req: PlayRequest):
     """生成 SSE 事件流——协议顺序: scene → chunk* → state → options → phase → done"""
     from engine.state import from_dict
-    from engine.director import choose_scene
+    from engine.director import view_scene
 
     # ── SSE keepalive（每 15s 发心跳注释，防 nginx/proxy 60s 超时）──
     events: asyncio.Queue = asyncio.Queue()
@@ -62,21 +62,18 @@ async def _step_events(req: PlayRequest):
     # ── 1. 场景事件（先于 LLM 生成，确保 scene 在 chunk 之前到达前端）──
     try:
         pre_state = from_dict(req.game_state)
-        pre_plan = choose_scene(pre_state)
+        pre_plan = view_scene(pre_state)
     except Exception as e:
-        logger.exception("choose_scene 失败")
+        logger.exception("view_scene 失败")
         yield _sse({"type": "err", "content": "世界短暂失序，请重试"})
         yield _sse({"type": "done"})
         return
     # 世界日期预告：场景年代推进（如 184→189 时代快进）时，让前端立即刷新显示，
     # 不等 state 事件（叙事流完才到）——否则全屏宣告"时代快进"但日期还停在旧年代。
+    # 月份直接用真实 world_date 的月份（view_scene 的 season 已由 world_date 派生，
+    # 不再需要 season_month 对齐——那会篡改正确月份，如 184-02 被改成 03）
     prev_wd = dict(pre_state.get("world_date") or {"year": 184, "month": 2, "day": 1})
     prev_wd["year"] = max(int(prev_wd.get("year", 0)), int(pre_plan.year or 0))
-    # 审查⑬：与 graph 快进一致做季节→月份对齐——否则预告"189年·秋"却配"189年2月初一"自相矛盾
-    from engine.world import season_month
-    sm = season_month(pre_plan.season or "")
-    if sm:
-        prev_wd["month"] = sm
     yield _sse({
         "type": "scene",
         "scene": {

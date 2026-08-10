@@ -1,12 +1,13 @@
 <template>
   <!-- 玩家档案面板（右下可折叠抽屉）：资产 / 金钱·声望 / 状态 / 称号 / 已解锁成就 -->
-  <button class="panel-toggle" :class="{ 'panel-toggle-open': open }" @click="open = !open">
+  <!-- embedded：主菜单页嵌入模式，不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器流式布局 -->
+  <button v-if="!embedded" class="panel-toggle" :class="{ 'panel-toggle-open': open }" @click="open = !open">
     {{ open ? '收起档案 ▼' : '行者档案' }}
     <span v-if="!open" class="pt-badge">{{ player.coins }}钱</span>
   </button>
 
   <transition name="panel-slide">
-    <div v-if="open" class="player-panel">
+    <div v-if="embedded || open" class="player-panel" :class="{ 'pp-embedded': embedded }">
       <div class="pp-header">
         行者档案
         <span class="pp-identity">{{ player.identity }}</span>
@@ -71,7 +72,10 @@ import { ref } from 'vue'
 import type { PlayerState } from '../types/play'
 import { ACH_NAMES } from '../utils/achievements'
 
-const props = defineProps<{ player: PlayerState }>()
+const props = defineProps<{
+  player: PlayerState
+  embedded?: boolean   // 主菜单页嵌入模式：不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器布局
+}>()
 
 const open = ref(false)
 
@@ -143,6 +147,18 @@ function statVal(key: string): number {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+/* 主菜单页嵌入：中和 fixed 四角定位，由菜单 tab 容器流式布局 */
+.player-panel.pp-embedded {
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
 }
 .player-panel::-webkit-scrollbar { width: 3px; }
 .player-panel::-webkit-scrollbar-thumb { background: rgba(202, 138, 4, 0.15); border-radius: 3px; }

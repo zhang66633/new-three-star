@@ -231,6 +231,134 @@ def season_month(season: str) -> int | None:
     return {"春": 3, "夏": 6, "秋": 9, "冬": 12}.get(season)
 
 
+def season_of(month: int) -> str:
+    """月份 → 季节（自由大世界：era.season 由 world_date 派生，取代 registry 静态季）。
+
+    按农历/历史纪月理解（world_date 的月份 = 历史月，如黄巾起义 184年二月=初春）：
+    2/3/4 → 春、5/6/7 → 夏、8/9/10 → 秋、11/12/1 → 冬。
+    （开局 184-02 显示'春'，与 P1 设计'184年春雨夜醒来'一致。）
+    """
+    if month in (2, 3, 4):
+        return "春"
+    if month in (5, 6, 7):
+        return "夏"
+    if month in (8, 9, 10):
+        return "秋"
+    return "冬"
+
+
+def due_events(prev_wd: dict, cur_wd: dict, location: str = "") -> list[dict]:
+    """到点历史事件（自由大世界 §事件触发）：(prev, cur] 月窗内到点的时间线事件。
+
+    玩家在事件 locations 内（含当前地点）→ related_to_player='strong' + witnessable=True
+    + interaction_types（首次接线 history_timeline 的 player_interactions 五类互动）；
+    不在 → 'weak'（世界公告/小报得知）。source='timeline'。
+    这是"历史事件到点自动触发"的唯一入口（取代 _commit 里散落的事件生成）。
+    """
+    from .worlddata import load_timeline, _ym
+    py, pm = int(prev_wd.get("year", 0) or 0), int(prev_wd.get("month", 1) or 1)
+    cy, cm = int(cur_wd.get("year", 0) or 0), int(cur_wd.get("month", 1) or 1)
+    out = []
+    for e in load_timeline():
+        ey, em = _ym(e.get("date", ""))
+        # 到点判定：事件月已到（≤ 当前月）且不早于上一拍月。同月移动（08→08）也触发当月事件
+        # ——玩家进入事件地点时应看到"正在发生"的事（防"人在洛阳却看不到董卓进京"）。
+        # 纯驻留（prev==cur 同月）会重复返回当月事件，由调用方按 event_id 去重。
+        if not ((py, pm) <= (ey, em) <= (cy, cm)):
+            continue
+        ev_locs = [str(x) for x in (e.get("locations") or [])]
+        in_place = bool(location) and any(l in (location or "") or (location in l) for l in ev_locs)
+        # 在场判定：玩家当前地点与事件地点重叠 → 可亲历（witnessable + 五类互动模板）
+        interactions = (e.get("player_interactions") or [])
+        ev = {
+            "event_id": e.get("event_id", f"due_{ey}_{em}"),
+            "date": e.get("date", ""),
+            "event": str(e.get("event", ""))[:80],
+            "locations": ev_locs,
+            "key_npcs": list(e.get("key_npcs") or []),
+            "related_to_player": "strong" if in_place else "weak",
+            "witnessable": bool(in_place),
+            "interaction_types": [i.get("type") for i in interactions if isinstance(i, dict) and i.get("type")][:5],
+            "player_interactions": interactions[:3],  # 在场亲历时 writer 可用的互动模板
+            "seen": False,
+            "source": "timeline",
+        }
+        out.append(ev)
+    return out
+
+
+def advance_world(state: dict, action: str, result: dict) -> dict:
+    """世界推进（自由大世界 · 世界自主运转的核心）。
+
+    由 graph._commit 调用，返回世界侧增量 dict（不碰玩家数据/成就）：
+      {world_date, world_events, new_briefing, era, scene_turns}
+    内部顺序：advance_date（按行动耗时）→ due_events（(旧,新] 到点事件）
+            → next_timeline_skip（空闲休息且距下事件 >12 月 → 跳时，跳时窗补 due_events）
+            → 阶段切换（era.chapter/season 由 phase_of/season_of 派生）
+            → 周期事件（scene_turns 每 4 拍）→ freshen_events 衰减。
+    """
+    from .worlddata import phase_of, match_location
+    # 1. 移动解析：玩家「前往X」→ 目标地点（决定到达后在场判定与 era.location 写回）
+    #    非地点动作 → 目标 = 当前地点（驻留，loc 不变）
+    cur_loc = (state.get("player") or {}).get("location", "") or (result.get("era") or {}).get("location", "") or "颍川"
+    target = match_location(action) or cur_loc
+    # 1.5 推进日期（按行动类型耗时；location 供赶路距离解析）
+    days = action_days(action, [], cur_loc)
+    wd = result.get("world_date") or state.get("world_date") or {"year": 184, "month": 2, "day": 1}
+    new_wd = advance_date(wd, days)
+    world_events = list(result.get("world_events") or state.get("world_events") or [])
+    new_briefing = False
+    # 玩家位置写回（前往X 到达目标地点；era.location 同步供 view_scene/due_events 使用）
+    loc = target
+    era = dict(result.get("era") or state.get("era") or {})
+    era["location"] = loc
+    # 2. 到点事件（(旧,新] 月窗）：在场 strong+witnessable / 不在 weak
+    due = due_events(wd, new_wd, loc)
+    all_due = list(due)  # 供角色事实更新/简报（含跳时窗补）
+    seen_ids = {e.get("event_id") for e in world_events}
+    for ev in due:
+        if ev.get("event_id") not in seen_ids:
+            world_events.append(ev)
+            new_briefing = True
+    # 3. 历史压缩：驻留空闲且距下一事件 >12 月 → 跳时（带过平淡期，跳时窗补 due_events）
+    if is_idle_action(action):
+        skip = next_timeline_skip(new_wd)
+        if skip:
+            old_wd = dict(new_wd)
+            new_wd = skip["date"]
+            # 跳时窗内到点事件统一由 due_events 吸收（不重复 timeskip 事件）
+            for ev in due_events(old_wd, new_wd, loc):
+                all_due.append(ev)
+                if ev.get("event_id") not in seen_ids:
+                    world_events.append(ev)
+                    new_briefing = True
+    # 4. 阶段切换（era.chapter/season 由 world_date 派生；location 已在移动解析时写回）
+    idx = phase_of(new_wd)
+    from .director import CHAPTER_BY_PHASE
+    era["chapter"] = CHAPTER_BY_PHASE.get(idx, era.get("chapter", "P1 黄金风起"))
+    era["year"] = int(new_wd.get("year", 0) or 0)
+    era["season"] = season_of(int(new_wd.get("month", 1) or 1))
+    # 5. 周期事件（驻留每 4 拍生成一次世界动态——保留 generate_events 的日常生态分支）
+    scene_turns = int(result.get("scene_turns") or state.get("scene_turns") or 1)
+    if scene_turns > 0 and scene_turns % 4 == 0:
+        daily = generate_events(state, new_wd, False, loc)
+        for ev in daily:
+            if ev.get("event_id") not in seen_ids:
+                world_events.append(ev)
+                new_briefing = True
+    # 6. 事件相关度衰减
+    if world_events:
+        world_events = freshen_events(world_events, new_wd)
+    return {
+        "world_date": new_wd,
+        "world_events": world_events[-50:],
+        "new_briefing": new_briefing,
+        "era": era,
+        "scene_turns": scene_turns,
+        "due_events": all_due,
+    }
+
+
 def is_idle_action(action: str) -> bool:
     """判断玩家本拍是否"驻留空闲"（休息/等待/无所事事）→ 允许历史跳时。
 

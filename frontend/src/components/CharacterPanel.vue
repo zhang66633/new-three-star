@@ -1,32 +1,65 @@
 <template>
   <!-- 角色状态卡（仅在场有人时显示，父组件控制 v-if） -->
-  <aside class="character-panel" :class="{ 'cp-reveal': reveal }">
+  <!-- 在场角色优先取 character_states（自由大世界·决策10：当前地点角色），relations 兜底 -->
+  <aside class="character-panel" :class="{ 'cp-reveal': reveal, 'cp-embedded': embedded }">
     <div class="cp-title">在场</div>
-    <div v-for="(rel, name) in rels" :key="name" class="character-chip">
+    <div v-for="name in presentNames" :key="name" class="character-chip">
       <span class="chip-avatar">{{ name[0] }}</span>
       <span class="chip-info">
         <span class="chip-name">{{ name }}</span>
         <span v-if="NPC_PERSONA[name]" class="chip-trait">{{ NPC_PERSONA[name].trait }}</span>
-        <span class="chip-rels">
-          <span class="chip-rel" :class="relClass(rel)">感{{ rel }}</span>
-          <span class="chip-trust" :class="trustClass(trust[name] ?? 50)">信{{ trust[name] ?? 50 }}</span>
+        <span v-if="cs(name)?.activity" class="chip-activity">正「{{ cs(name)?.activity }}」</span>
+        <span v-if="known(name)" class="chip-rels">
+          <span class="chip-rel" :class="relClass(relOf(name))">感{{ relOf(name) }}</span>
+          <span v-if="trust[name] !== undefined" class="chip-trust" :class="trustClass(trust[name] ?? 50)">信{{ trust[name] ?? 50 }}</span>
         </span>
+        <span v-if="cs(name)?.goal" class="chip-goal">目标：{{ cs(name)?.goal }}</span>
         <span v-if="NPC_PERSONA[name]?.mechanism" class="chip-mech">{{ NPC_PERSONA[name].mechanism }}</span>
       </span>
     </div>
+    <div v-if="!presentNames.length" class="cp-empty">此处暂无相识之人</div>
   </aside>
 </template>
 
 <script setup lang="ts">
 // CharacterPanel —— 在场角色状态卡（PlayPage 抽离，纯展示）
+// 在场角色来源：character_states（当前地点角色，含 activity/goal 演出依据）；relations 兜底。
 // NPC 人设速查从 PlayPage 迁入（对齐 backend/engine/writer.py PERSONA_FULL）
+import { computed } from 'vue'
+import type { CharacterState } from '../types/play'
 import { relClass, trustClass } from '../utils/classes'
 
-defineProps<{
+const props = defineProps<{
   rels: Record<string, number>
   trust: Record<string, number>
+  characterStates?: Record<string, CharacterState>
   reveal: boolean
+  embedded?: boolean   // 主菜单页嵌入模式：中和 fixed 四角定位，内容区由菜单 tab 容器流式布局
 }>()
+
+// 在场角色（严格真实）：只显示玩家真正相识的角色——character_states 里 known=true
+// （玩家亲历过/接触过，位置匹配当前地点的由后端 distance_map 过滤），或 relations 有真实值。
+const presentNames = computed<string[]>(() => {
+  const csMap = props.characterStates ?? {}
+  const fromStates = Object.keys(csMap).filter(name => {
+    const c = csMap[name]
+    return c?.known === true || (c && (props.rels ?? {})[name] !== undefined)
+  })
+  return fromStates
+})
+function cs(name: string): CharacterState | undefined {
+  return (props.characterStates ?? {})[name]
+}
+function known(name: string): boolean {
+  const c = cs(name)
+  return c?.known === true || (props.rels ?? {})[name] !== undefined
+}
+function relOf(name: string): number {
+  if (!known(name)) return 50
+  const c = cs(name)
+  if (c && typeof c.attitude === 'number') return c.attitude
+  return props.rels[name] ?? 50
+}
 
 const NPC_PERSONA: Record<string, { trait: string; mechanism?: string }> = {
   '曹操':   { trait: '枭雄·窥天侵蚀', mechanism: '魏武挥鞭/世人看错' },
@@ -70,6 +103,18 @@ const NPC_PERSONA: Record<string, { trait: string; mechanism?: string }> = {
   z-index: 20;
   animation: panel-slide-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   box-shadow: 0 0 30px rgba(202, 138, 4, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+/* 主菜单页嵌入：中和 fixed 四角定位，由菜单 tab 容器流式布局 */
+.character-panel.cp-embedded {
+  position: static;
+  transform: none;
+  width: 100%;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 0;
+  animation: none;
 }
 @keyframes panel-slide-in {
   from { opacity: 0; transform: translateY(-50%) translateX(12px); }
@@ -123,6 +168,27 @@ const NPC_PERSONA: Record<string, { trait: string; mechanism?: string }> = {
   overflow: hidden;
   text-overflow: ellipsis;
   letter-spacing: 0.02em;
+}
+.chip-activity {
+  font-size: 0.62rem;
+  color: rgba(226, 232, 240, 0.75);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chip-goal {
+  font-size: 0.55rem;
+  color: rgba(148, 163, 184, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cp-empty {
+  font-size: 0.72rem;
+  color: rgba(148, 163, 184, 0.35);
+  font-style: italic;
+  text-align: center;
+  padding: 16px 0;
 }
 .chip-rel, .chip-trust {
   display: inline-flex; align-items: center; gap: 2px;

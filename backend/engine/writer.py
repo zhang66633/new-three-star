@@ -25,11 +25,14 @@ KNOWN_NAMES = {
     "魏延", "庞统", "姜维", "鲁肃", "吕蒙", "陆逊", "张角", "张宝", "张梁",
     "华雄", "颜良", "文丑", "邢道荣", "许攸", "蔡瑁", "徐庶", "法正", "孙坚",
     "孙策", "吕伯奢", "汉献帝", "小黄门", "黄金兵", "老者", "黑影", "乡绅",
+    # P2/P3 补充：名场面人物 + 诸侯（补 8 缺名 + 名场面说话人，防 validator P1a 判编造）
+    "李儒", "皇甫嵩", "公孙瓒", "陶谦", "孔融", "韩馥", "张邈", "鲍信",
+    "袁隗", "刘三刀", "俞涉", "潘凤",
 }
 
 # 泛型/群类角色键：非具体个体（黄金兵=复数溃兵群、老者/黑影/乡绅=跨章复用的人设原型、小黄门=职衔）。
 # 关系/信任不做持久化——同一键跨章累计会把无数不同个体混成一个值（如不同溃兵群共享 relations["黄金兵"]）。
-GENERIC_NAMES = {"黄金兵", "老者", "黑影", "乡绅", "小黄门"}
+GENERIC_NAMES = {"黄金兵", "老者", "黑影", "乡绅", "小黄门", "管家", "城门守卫", "家仆"}
 
 # 人设分层注入（决策 8）
 PERSONA_LIGHT = {
@@ -52,6 +55,21 @@ PERSONA_LIGHT = {
     "周瑜": "周瑜：儒将，才华横溢。",
     "赵云": "赵云：忠勇无双，白马银枪。",
     "孙坚": "孙坚：江东猛虎，勇猛果敢。",
+    "貂蝉": "貂蝉：王允义女，身不由己的美人，被塞进借刀杀人的局。",
+    "华雄": "华雄：董卓前锋，半人马猛将，阵前叫阵'免你们不死'。",
+    "袁术": "袁术：联军总提调，攥粮克扣，自视正统，称帝执念。",
+    "李儒": "李儒：董卓谋士，献计献策，保董卓这棵大树。",
+    "皇甫嵩": "皇甫嵩：老将，挂虚衔被当吉祥物，想再拉起队伍。",
+    "公孙瓒": "公孙瓒：白马义从，会盟凑数，争幽州地盘。",
+    "陶谦": "陶谦：徐州刺史，坐镇徐州，保一方平安。",
+    "孔融": "孔融：北海相，谈经论道，维持汉室体面。",
+    "韩馥": "韩馥：冀州牧，袁绍的房东，地盘被惦记。",
+    "张邈": "张邈：曹操盟友，会盟之一，乱世自保。",
+    "鲍信": "鲍信：济北相，会盟之一，讨董建功。",
+    "袁隗": "袁隗：袁氏长辈，朝堂上的老臣。",
+    "刘三刀": "刘三刀：联军悍将，号称三刀之内必斩吕布。",
+    "俞涉": "俞涉：袁术帐下将领，温酒斩华雄前的送头者。",
+    "潘凤": "潘凤：韩馥帐下上将，温酒斩华雄前的送头者。",
     "老者": "老者：颍川乡民，见多识广，语带玄机。",
     "黑影": "黑影：逃难路人，警惕慌张。",
     "乡绅": "乡绅：颍川本地富户，精于算计。",
@@ -102,16 +120,18 @@ WRITER_INSTRUCTION = """
 3. 文风（轻松幽默网文·乐子人·折棒轻吐槽）：语言利落、短句短段、一行一镜头，画面感保留但忌堆叠意象、忌抒情长句；叙述者是"乐子人"，世界越惨旁白越带劲、NPC 越严肃越扒他一层滑稽，沉重场面先幽默后紧张、先搞笑再出血；玩家内心是"折棒轻吐槽"，懒洋洋见惯不怪、毒舌但不 meta、不下结论不点破；感官覆盖至少两类（视觉/听觉优先），以动作、对话推进；绝不煽情、绝不诉苦、绝不上价值
 4. 结尾 2-3 个选项，每个：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30/局部 31-70/硬 71-100）+ effect（对玩家可见的后果说明）+ category（地点行动分类 §5.4：打探=打听消息/赶路=移动/停留=驻守休息/互动=与人物来往；2-3 个中至少覆盖 打探 或 互动 之一）
 5. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，直接输出 JSON 对象），格式：
-{{"narrative":"...","options":[{{"text":"...","type":"major|minor","tension":25,"effect":"...","category":"互动"}}],"relations_delta":{{"曹操":2}},"trust_delta":{{"曹操":1}},"events":[{{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}],"player_updates":{{"assets_add":["半块干粮"],"coins_delta":5,"stats_delta":{{"stamina":-10,"hunger":15}},"title_add":null,"reputation_delta":5}},"world_events_add":[{{"event":"你在中牟救下的客商转头拿你名字报恩","location":"中牟"}}]}}
+{{"narrative":"...","options":[{{"text":"...","type":"major|minor","tension":25,"effect":"...","category":"互动"}}],"relations_delta":{{"曹操":2}},"trust_delta":{{"曹操":1}},"events":[{{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}],"player_updates":{{"assets_add":["半块干粮"],"coins_delta":5,"stats_delta":{{"stamina":-10,"hunger":15}},"title_add":null,"reputation_delta":5}},"world_events_add":[{{"event":"你在中牟救下的客商转头拿你名字报恩","location":"中牟"}}],"character_updates":{{"曹操":{{"doing":"正领乡勇操练","attitude_delta":2,"tags_add":["欣赏你"]}}}}}}
    events：本拍 1-3 条关键事件（actor/action/result 客观陈述，不写内心独白/风景；无则省）
    player_updates：资产增减/金钱/属性变化/新称号/声望（reputation_delta +10~-10，当众义举或恶名才给）。注意：休息/吃(进食/觅食/买吃的)/治伤(疗伤/看伤/包扎/敷药)的系统恢复与医药费由引擎自动结算，禁止在 stats_delta/coins_delta 重复声明——stats_delta 只声明叙事性身体变化（受伤/被救/被抢/中毒等）
    world_events_add：玩家行为的持久痕迹（救下的人报恩/惹的仇家寻仇/壮举成传闻，1-2 条），受"历史大势不可推翻"约束不得改名场面结局；无则省
+   character_updates：本拍互动的角色软状态变化（doing=在做什么/goal=目标/attitude_delta=对你的态度 ±10/tags_add=性格标签/notes_add=备注，无则省）。只改软状态，不得改角色位置/生死（引擎管事实）
+   failure：玩家本拍失败（战败/中计/被擒/偷窃失手等）→ 声明代价 {{"kind":"combat|scheme|social","penalty":{{"stats_delta":{{"wound":N}},"coins_delta":-N,"assets_remove":["..."],"relations_delta":{{"X":-N}},"reputation_delta":-N}}}}；无则省。玩家绝不真死（引擎保证）
 6. 时空跳跃（跨年/大段路程）须显式交代，不得无标记硬切
 7. 世界差异克制（黄金/黄巾等）：无论首次还是后续都只是背景细节，不展开、不吐槽、不反复念叨，靠"被动遇见"自然带出；派系名称'黄金军''黄金兵'每场至多 1-2 次，其余用代称（贼军/溃兵/那支人马/叛军/他们）；口号只按锁定台词逐字出现
 8. 关系/信任按角色分别给：relations_delta、trust_delta 为每个真正互动或在场的角色给**各自独立**数值（-8~+8，正=好感/信任升，负=降），因角色而异、严禁同一值；没互动的别列
 9. 幽默手法每场至少 2 种（反差荒诞/冷幽默/夸张/自嘲/看戏点评/巧合梗），点到即止不过度
 10. 玩家动作离谱/越权/meta（改世界规则/召唤现代/作弊上帝/命令不可能）：**世界不得真的改变**——乐子人幽默拒绝，动作滑稽落空、无实际后果；选项须含"换个说法/再想想"重输出口（可作额外第 4 个选项，不挤占 2-3 个常规选项）；NPC 把他的话当疯话自然接住
-11. 活世界感：世界在自我转动——①行路/等待写真实时光流逝（赶路写路程、休息写日夜更替），世界随日期推进有回应；②自然带出底色（阶段大势/本地点生态/近期事件，取自面板 🌏/🌐）；③NPC 有自己的路要赶、要避的祸；④克制：底色不是主菜，不抢主线、不打断节奏。若面板有 🗞 与你有关的天下事（related_to_player=strong）应主动汇入本拍、玩家可现场应对（躲/应/追/装不知），选择成为"活的选择点"（§3.4）
+11. 活世界感：世界在自我转动——①行路/等待写真实时光流逝（赶路写路程、休息写日夜更替），世界随日期推进有回应；②底色（阶段大势/本地点生态）只在玩家亲眼所见/亲耳所闻时自然带出，一个镜头一句，严禁罗列设定、禁止旁白式宣告背景（"天下大势""此地日常"这类框架词不得出现在叙事）；③NPC 有自己的路要赶、要避的祸；④克制：底色不是主菜，细节留给面板（世界公告/今日头条/与你有关），叙事聚焦"你现在看见/听见/经历的事"。若面板有 🗞 与你有关的天下事（related_to_player=strong）应主动汇入本拍、玩家可现场应对（躲/应/追/装不知），选择成为"活的选择点"（§3.4）
 12. 关系影响互动：NPC 好感/信任决定态度——高信任（≥60）给推心置腹专属选项（密谈/交底/托付）；低（≤20）戒备回避、互动受限变味；让经营关系的投入在叙事/选项可见（依面板 🔗 态度提示）
 13. 打听传闻（§5.2）：玩家「打听/探听某地」→ 演打听到确切消息（NPC 按自己身份说他知道的），确认传闻地可前往（依面板 🗺 远方传闻）；叙事收在"路问明白了"，不打空转
 14. 严禁全知旁白宣告世界侧无觉察（'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
@@ -119,18 +139,40 @@ WRITER_INSTRUCTION = """
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
-    """按距离分层组装人设"""
+    """按距离分层组装人设（自由大世界·决策7：角色卡接线）
+
+    优先从 knowledge/characters/*.json（14 张角色卡）取完整人设（personality.core/triggers/
+    speech.catchphrases/behavior_rules/game_mechanics），按距离分层输出；
+    无卡的兜底用硬编码 PERSONA_FULL/LIGHT（保留作兼容）。
+    """
+    from .worlddata import load_character
     lines = []
     for name in names:
         if name not in KNOWN_NAMES:
             continue
         dist = distance_map.get(name, "远观")
-        if dist == "核心":
-            p = PERSONA_FULL.get(name) or PERSONA_LIGHT.get(name, "")
-        else:
-            p = PERSONA_LIGHT.get(name, "")
-        if p:
+        card = load_character(name)
+        if card:
+            # 角色卡接线：从 personality/speech/behavior_rules 组装（远观=core 一句，互动=+triggers，核心=全部+机制）
+            core = (card.get("personality") or {}).get("core", "")
+            catch = (card.get("speech") or {}).get("catchphrases") or []
+            bugs = (card.get("speech") or {}).get("bugs") or []
+            triggers = (card.get("personality") or {}).get("triggers") or {}
+            ident = card.get("identity", "")
+            p = f"{name}：{core}"
+            if ident:
+                p += f"（{ident[:60]}）"
+            if catch:
+                p += f" 口头禅：{'／'.join(str(c)[:20] for c in catch[:3])}"
+            if dist == "核心" and triggers:
+                t = "；".join(f"{k}→{str(v)[:24]}" for k, v in list(triggers.items())[:3])
+                p += f" 触发：{t}"
             lines.append(p)
+        else:
+            # 兜底：硬编码人设（无角色卡的泛型角色）
+            p = PERSONA_FULL.get(name) if dist == "核心" else PERSONA_LIGHT.get(name, "")
+            if p:
+                lines.append(p)
     return "\n".join(lines) if lines else "（本场景无已知角色在场）"
 
 
@@ -190,18 +232,17 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
             n = wctx["normal"]
             lines.append("")
             lines.append("🌏 当前世界背景")
-            lines.append(f"  阶段：{wctx.get('phase_name', '')}（{n.get('time_range', '')}）")
+            lines.append(f"  阶段：{wctx.get('phase_name', '')}")
+            # 天下大势一句话（截短——叙事里克制呈现，细节留面板"世界公告/今日头条"）
             if n.get("world", {}).get("summary"):
-                lines.append(f"  天下大势：{n['world']['summary']}")
-            # 本地点生态（最相关）
+                lines.append(f"  天下大势：{n['world']['summary'][:60]}")
+            # 本地点生态：只给一句（轻背景，不罗列 daily_scenes——那会诱导 LLM 全文照搬设定）
             loc = wctx.get("location_normal")
             if loc:
-                lines.append(f"  【{loc.get('name', '')}】{loc.get('status', '')}")
-                scenes = loc.get("daily_scenes") or []
-                if scenes:
-                    lines.append(f"  此地日常：{' ／ '.join(scenes[:4])}")
-            # 近期事件（事实层）
-            for e in wctx.get("recent_events", [])[-3:]:
+                if loc.get("status"):
+                    lines.append(f"  【{loc.get('name', '')}】{loc.get('status', '')[:60]}")
+            # 近期事件：只给 1 条（克制；其余在面板"与你有关/今日头条"完整呈现）
+            for e in wctx.get("recent_events", [])[-1:]:
                 lines.append(f"  近期〔{e.get('date', '')}〕{e.get('event', '')[:50]}")
     except Exception:
         pass  # 世界背景加载失败不影响叙事
@@ -291,7 +332,19 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
             # 提取核心性格（冒号后第一句）
             trait = persona.split("。")[0].split("：")[-1] if persona else "未知"
             lines.append(f"  {name}｜距离{ dist }｜好感{rel}/100｜信任{tr}/100")
-            lines.append(f"    └ {trait}")
+            # 角色世界状态（自由大世界·决策7/8/10）：在场角色的"在做什么/目标/对你的态度"演出依据
+            cs = (state.get("character_states") or {}).get(name)
+            if isinstance(cs, dict):
+                cs_extra = []
+                if cs.get("activity"):
+                    cs_extra.append(f"正「{cs['activity'][:20]}」")
+                if cs.get("goal"):
+                    cs_extra.append(f"目标：{cs['goal'][:20]}")
+                if cs.get("alive") is False:
+                    cs_extra.append("（已故）")
+                lines.append(f"    └ {trait}" + ("　" + "　".join(cs_extra) if cs_extra else ""))
+            else:
+                lines.append(f"    └ {trait}")
 
     # ── 📚 记忆回廊（优先用检索包 memory_pack：PIN 全部 + 检索 top-5 LTM + 当前 STM）──
     # memory_pack 为空时回退裸 state.memory（最近 5 条 LTM）
@@ -476,7 +529,7 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
             f"- {o.get('text', '')}（type={o.get('type', 'minor')} tension={o.get('tension', 0)}｜{o.get('effect', '')}）"
             for o in scene_opts[:3]
         )
-        instruction += "\n\n【可选骨架选项（可原样采用或在此基础上改写，至少保留 2-3 个）】\n" + pool
+        instruction += "\n\n【可选骨架选项（必须原样采用 text 与 tension，不得改变行动方向/语义；仅可做人称与前后衔接微调；至少保留 2-3 个）】\n" + pool
 
     # 重写失败原因注入
     retry = getattr(plan, "meta_retry", None)
@@ -637,7 +690,8 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
     """
     result: dict = {"memory_add": [], "relations_delta": {}, "trust_delta": {},
                     "foreshadowing_add": [], "rumors_add": [], "flags_add": [],
-                    "player_updates": {}, "world_events_add": []}
+                    "player_updates": {}, "world_events_add": [], "character_updates": {},
+                    "failure": None}
 
     # 0. 玩家数据更新：LLM 声明的 player_updates（资产/属性/称号）透传
     if isinstance(llm_data, dict):
@@ -645,6 +699,20 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
         if isinstance(pu, dict):
             result["player_updates"] = {k: v for k, v in pu.items() if k in
                 ("assets_add", "assets_remove", "coins_delta", "stats_delta", "title_add", "reputation_delta")}
+        # 角色软状态：LLM 声明的 character_updates（doing/goal/attitude_delta/tags_add/notes_add）透传
+        cu = llm_data.get("character_updates")
+        if isinstance(cu, dict):
+            result["character_updates"] = {
+                k: {kk: vv for kk, vv in v.items() if kk in
+                    ("doing", "goal", "attitude_delta", "tags_add", "notes_add")}
+                for k, v in cu.items() if isinstance(v, dict)
+            }
+        # 失败代价：LLM 声明的 failure（决策 12：不真死付代价）透传
+        fail = llm_data.get("failure")
+        if isinstance(fail, dict):
+            result["failure"] = {
+                k: v for k, v in fail.items() if k in ("kind", "penalty")
+            }
         # 世界写回：LLM 声明的 world_events_add（玩家行为对世界的局部影响，受历史大势约束）
         we = llm_data.get("world_events_add")
         if isinstance(we, list):

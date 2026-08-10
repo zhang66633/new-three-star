@@ -99,58 +99,217 @@ class ScenePlan:
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
 
 
-def choose_scene(state: GameState) -> ScenePlan:
-    """主入口：读 State → 选场景 → ScenePlan
+# 阶段 → 篇章（自由大世界：era.chapter 由 phase_of(world_date) 派生，取代 registry 静态章）
+CHAPTER_BY_PHASE = {
+    1: "P1 黄金风起",
+    2: "P2 洛阳暗夜",
+    3: "P3 诸侯并起",
+    4: "P4 中原逐鹿",
+    5: "P5 赤壁三足",
+    6: "P6 天下三分",
+}
 
-    导航逻辑（自由沙盒 · 玩家驱动，见设计 §5.2）：
-    1. 玩家动作「前往X」→ 已解锁地点直达回访 / 未解锁沿 flow 推进一拍
-    2. 无地点动作 → 按 state.skeleton_pos 停留当前场景（自由驻留）
-    3. 场景 aftermath.flow 决定下一场景（状态驱动岔路，供未表达目的地时的推进）
+
+# ═════════ 名场面接线（决策 1：view_scene 注入 registry 名场面）═════════
+# 时间线事件 id → registry 名场面场景 id。事件到点 + 玩家在场（witnessable）时，
+# view_scene 把该场景的锁定台词/选项/flag 注入自由视野（"字幕锚定"，见 continuity.py）。
+# 未接线的事件（李傕郭汜等）仍走过程化合成（事件在 setting 简述，不锁定台词）。
+# 192 年李傕郭汜暂不接线：P4_s1_fengyiting 仍是占位（锁定台词空），注入会露出空壳；
+# 待 P4_s1 正式版完成再接（见计划：本次只接 P2/P3 正式版名场面）。
+FAMOUS_SCENE_BY_EVENT: dict[str, str] = {
+    "e_189_08_dongzhuo_jinjing": "P2_s1_street",
+    "e_189_09_cao_cao_xian_dao": "P2_s2_ci",
+    "e_190_01_zhuhou_huimeng": "P3_s1_alliance",
+    "e_190_02_wenjiu_huaxiong": "P3_s2_huaxiong",
+    "e_190_02_sanying_zhan_lvbu": "P3_s3_three",
+}
+
+
+def _match_famous_scene(due: list) -> tuple:
+    """从到点事件里选"正在上演的名场面" → (事件, registry 场景) 或 (None, None)。
+
+    规则：witnessable（玩家在场亲历）且事件 id 在 FAMOUS_SCENE_BY_EVENT 中。
+    取 due 里最靠后的一个——due 已按时间线日期排序，靠后 = 最新到点；同月双事件
+    （如 190-02 温酒/三英在陈留都可见）取时间线靠后的三英，即"当前正在进行的这场"。
+    事件已过（不在窗口）/玩家不在场（不 witnessable）→ None，过程化合成兜底。
     """
-    registry = load_registry()
-    # 地点导航：读本拍玩家动作，命中「前往X」→ 目标场景（直达/推进）
-    travel = None
-    last_action = ""
-    for h in reversed(state.get("history", [])):
-        if h.get("user"):
-            last_action = h["user"]
-            break
-    if last_action:
-        travel = resolve_travel(last_action, state)
-    # 传闻解锁：玩家「打听X」命中传闻中的地点 → 本拍驻留演"确认消息"（不赶路），解锁该地
-    rumor_unlock = resolve_rumor(last_action, state) if last_action else None
-    if rumor_unlock:
-        travel = None  # 打听 = 原地确认，不移动
-    pos = (travel[1] if travel else None) or state.get("skeleton_pos") or "P1_s1_rain"
-    scene = registry.get(pos)
-    if scene is None:
-        if pos == "P1_s1_rain" or not pos:
-            # 新开局：P1_s1_rain 必须存在，否则无法起步
-            scene = registry.get("P1_s1_rain")
-        if scene is None:
-            # 未知/悬空 pos（flow 笔误或占位被删）：挂起当前场景，不回退 P1（防带记忆伪重开）
-            logging.getLogger(__name__).warning(
-                f"场景 {pos} 不存在（flow 目标悬空），挂起当前场景防伪重开"
-            )
-            return ScenePlan(_dead_end_scene(pos), {}, "")
+    reg = load_registry()
+    pick = None
+    for e in due:
+        if not e.get("witnessable"):
+            continue
+        sid = FAMOUS_SCENE_BY_EVENT.get(str(e.get("event_id", "")))
+        if sid and sid in reg:
+            pick = (e, reg[sid])  # 迭代到最后一个命中 → 最新到点的名场面
+    return pick or (None, None)
 
-    # 距离映射：从场景的锁定台词/选项中提取角色 → 默认"远观"
-    distance_map = _infer_distance_map(scene, state)
-    # 玩家已表达目的地（直达/推进）→ 本拍驻留，不再沿 flow 继续推
-    # 打听传闻 = 原地确认消息（解锁地点，不赶路不推进）
-    next_pos = "" if (travel or rumor_unlock) else _resolve_next(scene, state)
-    # 安全阀：防止 placeholder 场景自循环耗尽 LLM 额度
-    if not travel and next_pos == pos:
-        logger = logging.getLogger(__name__)
-        turn = state.get("turn", 0)
-        if turn > 15:
-            logger.warning(
-                f"场景自循环检测: {pos} → {next_pos}（turn={turn}），"
-                f"可能缺少后续场景。使用 END 终止。"
-            )
-            next_pos = "END"
-    plan = ScenePlan(scene, distance_map, next_pos)
-    plan.rumor_unlock = rumor_unlock
+
+def _current_location(state: GameState) -> str:
+    """玩家当前位置（地点名，LOCATIONS 键）。player.location 优先，era.location 兜底。"""
+    loc = state.get("player", {}).get("location", "") or (state.get("era") or {}).get("location", "")
+    from .worlddata import LOCATIONS
+    for name in LOCATIONS:
+        if loc and (name in loc or loc in name):
+            return name
+    return loc or "颍川"
+
+
+def view_scene(state: GameState) -> ScenePlan:
+    """自由大世界视野合成：读 state → 合成"玩家当前所在世界切片" → ScenePlan。
+
+    不再读 registry 场景剧本。全部字段由 world_date + phase_of + 地点常态 + 到点事件派生：
+      - scene_id / skeleton_pos = 当前地点名（LOCATIONS 键，如 "颍川"）
+      - chapter = CHAPTER_BY_PHASE[phase_of(world_date)]
+      - year/season = world_date 的年 / season_of(月)
+      - setting = 地点细描 + 天下大势 + 到点事件（在场 witnessable）
+      - distance_map = 在场角色 → "互动"（供 writer 人设分层）
+      - options = 过程化选项种子（Step 3 升级为 LLM 引导；此处先给世界行动引导）
+    world_date 是唯一时钟——杜绝"189-02 仍判 P1"（时期由世界日期判，非场景静态年）。
+    """
+    from .worlddata import world_context, LOCATIONS, phase_of
+    from .world import season_of, due_events
+
+    wd = state.get("world_date") or {"year": 184, "month": 2, "day": 1}
+    loc = _current_location(state)
+    idx = phase_of(wd)
+    chapter = CHAPTER_BY_PHASE.get(idx, "P1 黄金风起")
+    wctx = world_context(wd, loc)
+
+    # 1. setting：地点细描 + 天下大势 + 本地点常态
+    setting_lines = [f"{loc}·{wctx.get('phase_name', '')}"]
+    n = wctx.get("normal") or {}
+    if n.get("world", {}).get("summary"):
+        setting_lines.append(f"天下大势：{n['world']['summary']}")
+    lc = wctx.get("location_normal")
+    if lc:
+        setting_lines.append(f"【{lc.get('name', '')}】{lc.get('status', '')}")
+    # 2. 到点事件（本拍在场 → witnessable，注入"现场正在发生"）
+    prev_wd = {"year": int(wd.get("year", 0)), "month": int(wd.get("month", 1) or 1) - 1, "day": 1}
+    due = due_events(prev_wd, wd, loc)
+    # 2.5 名场面接线：事件到点+在场 → 命中 registry 场景（锁定台词/选项/flag 注入视野）
+    famous_ev, famous_scene = _match_famous_scene(due)
+    for e in due:
+        if e.get("witnessable") and e is not famous_ev:
+            setting_lines.append(f"现场正在发生：{e.get('event', '')}")
+    setting = "\n".join(setting_lines)
+
+    # 2.5 P1 后期软引导（决策 11：自然流逝 + 自主赴洛阳）：黄金之乱平息后（184-10 起），
+    #     往北洛阳的风声渐紧（董卓进京前兆），引导玩家可自行前往洛阳进入 P2（软引导不硬推）
+    wd_y = int(wd.get("year", 0) or 0)
+    wd_m = int(wd.get("month", 1) or 1)
+    if idx == 1 and (wd_y > 184 or (wd_y == 184 and wd_m >= 10)):
+        setting_lines.append("北边传来的风声越来越紧——洛阳城似乎要变天了。")
+        setting = "\n".join(setting_lines)
+
+    # 2.6 P1 暗线钩子（决策 17：自由行动触发）：未触发的暗线 hint 注入视野，
+    #     让 LLM 在叙事/选项里自然带出（软钩子，玩家按 trigger 行动即触发）
+    if idx == 1:
+        from .player_data import _load_darklines
+        dl_data = _load_darklines()
+        for line, spec in dl_data.items():
+            if not isinstance(spec, dict) or line.startswith("_"):
+                continue
+            if spec.get("flag") in (state.get("flags") or []):
+                continue  # 已触发
+            if spec.get("hint") and spec.get("hint") not in setting_lines:
+                setting_lines.append(f"【暗线】{spec['hint']}")
+        setting = "\n".join(setting_lines)
+
+    # 3. 在场角色（distance_map）：严格"在场即呈现"（决策 10）——只呈现玩家
+    #    真正遇到/认识的角色（character_states 已登记且位置匹配当前地点的），
+    #    以及本拍在场亲历（witnessable）事件的主角。
+    #    不再把 world_normal 常态角色全量塞入（那是"此阶段有此人物"的背景，不是"此刻在场"——
+    #    刘备/关羽在涿郡，不应出现在颍川"在场"，也不该被 LLM 造无依据的关系值）。
+    distance_map = {}
+    from .character_states import ensure_character, present_characters
+    from .worlddata import LOCATIONS
+    # ① 已登记且位置匹配当前地点的角色（玩家真接触过的）
+    cur = _current_location(state)
+    for name, st in (state.get("character_states") or {}).items():
+        cl = (st or {}).get("location", "")
+        if cl and cur and (cl in cur or cur in cl) and st.get("known"):
+            distance_map[name] = "互动"
+    # ② 本拍在场亲历（witnessable）事件的主角 → 登记进档案 + 在场
+    for e in due:
+        if not e.get("witnessable"):
+            continue
+        for npc in (e.get("key_npcs") or []):
+            if npc and npc not in distance_map:
+                distance_map[npc] = "互动"
+                ensure_character(state, npc)
+    # ③ 名场面锁定台词说话人（非泛型）→ 在场可互动（名场面主角如袁隗/刘三刀/袁术等，
+    #     可能不在事件 key_npcs 里但台词锁定必须出场；泛型说话人如管家由 writer 直接渲染）
+    if famous_scene:
+        from .writer import GENERIC_NAMES
+        for line in famous_scene.get("locked_lines", []):
+            sp = line.get("speaker", "")
+            if sp and sp not in GENERIC_NAMES and sp not in distance_map:
+                distance_map[sp] = "互动"
+                ensure_character(state, sp)
+
+    # 4. 过程化选项种子（Step 3 升级；此处给世界行动引导，writer 可改造）
+    opts = []
+    if due:
+        opts.append({"text": f"观察眼前正在发生的事（{due[0].get('event', '')[:18]}…）",
+                     "type": "minor", "tension": 5, "effect": "亲历此刻天下大事", "category": "打探"})
+    if lc and lc.get("daily_scenes"):
+        opts.append({"text": f"在这附近转转，看看{lc.get('name', '')}的人情世故",
+                     "type": "minor", "tension": 5, "effect": "打探当地消息/找机会", "category": "打探"})
+    if distance_map:
+        top = next(iter(distance_map))
+        opts.append({"text": f"去找{top}攀谈",
+                     "type": "major", "tension": 10, "effect": "与在场人物互动，经营关系", "category": "互动"})
+    # 可赴地点（阶段可达地图）
+    unlocked = [name for name, _ in LOCATIONS.items() if name != loc]
+    if unlocked:
+        opts.append({"text": f"前往{unlocked[0]}（赶路）",
+                     "type": "minor", "tension": 0, "effect": "移动至其他地点，耗费旅途时间", "category": "赶路"})
+    opts.append({"text": "在此歇脚，等天色亮些再说", "type": "minor", "tension": 0,
+                 "effect": "休息恢复，世界时间流逝", "category": "停留"})
+
+    scene = {
+        "scene_id": loc,
+        "chapter": chapter,
+        "chapter_label": f"{wd.get('year', '?')} 年 · {loc}",
+        "year": int(wd.get("year", 0) or 0),
+        "season": season_of(int(wd.get("month", 1) or 1)),
+        "location": loc,
+        "atmo": "",
+        "music": "",
+        "title": f"{loc}·{wctx.get('phase_name', '')}",
+        "setting": setting,
+        "world_normal": "世界侧一切正常运转，NPC 各忙各的。玩家是其中的自由参与者。",
+        "player_pov": (state.get("player") or {}).get("notes", []) or [
+            "你总觉得这世道有哪里不对——可仔细想，又想不起该是什么样",
+        ],
+        "locked_lines": [],
+        "options": opts,
+        "flags_on_enter": [],
+        "aftermath": {},
+    }
+    # 名场面接线（决策 1）：命中 → 注入 registry 场景的锁定台词/选项/flag。
+    # 保 scene_id=loc（地点导航零回归）；era.chapter 仍由 phase 派生（世界面板 P2 不变）。
+    if famous_scene:
+        scene["chapter_label"] = famous_scene.get("chapter_label", scene["chapter_label"])
+        scene["year"] = int(famous_scene.get("year", scene["year"]) or 0)
+        scene["season"] = famous_scene.get("season", scene["season"])
+        scene["location"] = famous_scene.get("location", scene["location"])
+        scene["atmo"] = famous_scene.get("atmo", scene["atmo"])
+        scene["music"] = famous_scene.get("music", scene["music"])
+        scene["title"] = famous_scene.get("title", scene["title"])
+        scene["setting"] = famous_scene.get("setting", scene["setting"])
+        scene["world_normal"] = famous_scene.get("world_normal", scene["world_normal"])
+        scene["player_pov"] = famous_scene.get("player_pov", scene["player_pov"])
+        scene["locked_lines"] = famous_scene.get("locked_lines", scene["locked_lines"])
+        # 名场面选项 + 自由出口（玩家可旁观/参与/离开，不被锁死在名场面里）
+        scene["options"] = list(famous_scene.get("options") or []) + [
+            {"text": "不掺和，退到一边，把这出热闹看完", "type": "minor", "tension": 0,
+             "effect": "旁观名场面，不介入", "category": "停留"},
+        ]
+        scene["flags_on_enter"] = famous_scene.get("flags_on_enter", scene["flags_on_enter"])
+        scene["aftermath"] = famous_scene.get("aftermath", scene["aftermath"])
+    plan = ScenePlan(scene, distance_map, "")
+    plan.rumor_unlock = None
     return plan
 
 
@@ -237,21 +396,25 @@ def resolve_travel(action: str, state: GameState):
 
 
 def _location_state(state: GameState, rumor_unlock: str = None) -> dict:
-    """地点面板状态：当前地点 / 已解锁（可往返）/ 下站（推进目标）/ 传闻地点（打听解锁）。
+    """地点面板状态（自由大世界 · 阶段可达地图）：当前地点 / 已解锁 / 可赴地点 / 传闻地点。
 
-    - unlocked = 去过（visited）∪ 传闻解锁（rumor_unlocked，独立于 visited 的持久字段）
+    - current = 玩家当前位置（player.location，LOCATIONS 键）
+    - unlocked = 去过（visited，历史 scene_id=地点名）∪ 传闻解锁（rumor_unlocked）
+    - next_station = 最近一个"去过地点"的传闻指向/相邻地点（引导下一步赶路）
     - rumored = 已解锁地点的传闻指向中，尚未解锁的地点（带 hint，前端显示"传闻"态）
-    - next_station = 沿 flow 链第一个"未访问且地点未解锁"的场景所属地点
     rumor_unlock: 本拍新增的打听解锁地点（并入 rumor_unlocked 参与计算）。
     """
     visited = _visited_scenes(state)
     from .worlddata import LOCATIONS, LOCATION_RUMORS
-    # 已去过 + 传闻解锁 → 可往返/可赶路
     base = list(state.get("rumor_unlocked") or [])
     if rumor_unlock and rumor_unlock not in base:
         base.append(rumor_unlock)
-    unlocked = [name for name, scenes in LOCATIONS.items() if any(s in visited for s in scenes)]
-    unlocked += [n for n in base if n not in unlocked]
+    # visited 的 scene_id 现在=地点名（view_scene 写回）；兼容旧存档（场景 id 反查地点）
+    unlocked = []
+    for name in LOCATIONS:
+        scenes = LOCATIONS[name]
+        if any(s in visited for s in scenes) or name in visited or name in base:
+            unlocked.append(name)
     # 已解锁地点的传闻 → 点亮传闻地点（未解锁、去重）
     rumored = []
     for name in unlocked:
@@ -259,14 +422,15 @@ def _location_state(state: GameState, rumor_unlock: str = None) -> dict:
             t = r.get("target", "")
             if t and t not in unlocked and all(x["name"] != t for x in rumored):
                 rumored.append({"name": t, "hint": r.get("hint", "")})
-    current = _location_of(state.get("skeleton_pos") or "")
+    current = _current_location(state)
+    # 引导：第一个"未去且不是传闻"的地点（相邻地）→ 可赴；否则下一传闻地
     next_station = None
-    for sid in _walk_flow(state):
-        if sid not in visited:
-            loc = _location_of(sid)
-            if loc and loc not in unlocked:
-                next_station = loc
-                break
+    for name in LOCATIONS:
+        if name != current and name not in unlocked and name not in [r["name"] for r in rumored]:
+            next_station = name
+            break
+    if next_station is None and rumored:
+        next_station = rumored[0]["name"]
     return {"current": current, "unlocked": unlocked, "next_station": next_station, "rumored": rumored}
 
 

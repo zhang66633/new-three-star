@@ -12,7 +12,7 @@ from typing import Literal
 from langgraph.graph import StateGraph, START, END
 
 from .state import GameState, from_dict, to_dict
-from .director import choose_scene, ScenePlan, _location_state
+from .director import view_scene, ScenePlan, _location_state
 from .writer import narrate
 from .validator import validate
 from .corrector import classify_tension, apply_correction
@@ -30,16 +30,17 @@ MAX_RETRY = 2
 # ═════════ 节点实现 ═════════
 
 def director_node(state: GameState) -> dict:
-    """选择场景，plan 可序列化摘要存入 meta（ScenePlan 对象不落 state）
+    """合成视野，plan 可序列化摘要存入 meta（ScenePlan 对象不落 state）
 
-    era 写回：把场景的 year/season/location 同步进 state.era，
+    era 写回：由 world_date + view_scene 派生（year/season/location/chapter 全部来自
+    world_date/phase_of，取代旧场景静态年——杜绝"189-02 仍判 P1"）。
     供前端 eraLabel、validator P0 时间连续性、writer 时空面板、remember 时间标签使用。
     """
-    plan = choose_scene(state)
-    # 时代状态写回（统一时钟：era.year = max(场景静态年, 世界年)，回访不回退）
+    plan = view_scene(state)
+    # 时代状态写回（统一时钟：era 由 world_date 派生，单调向前不回退）
     era = dict(state.get("era", {}))
-    wd_year = (state.get("world_date") or {}).get("year", 0)
-    era["year"] = max(int(plan.year or 0), int(wd_year or 0)) or 0
+    wd = state.get("world_date") or {}
+    era["year"] = int(plan.year or wd.get("year", 0) or 0)
     if plan.season:
         era["season"] = plan.season
     if plan.location:
@@ -113,7 +114,7 @@ def director_node(state: GameState) -> dict:
 async def narrate_node(state: GameState) -> dict:
     """生成叙事 + 选项（重写时注入失败原因）"""
     ps = state.get("meta", {}).get("plan_summary")
-    plan = ScenePlan.from_summary(ps) if ps else choose_scene(state)
+    plan = ScenePlan.from_summary(ps) if ps else view_scene(state)
 
     # 重写提示：注入上轮失败原因（retry_reasons 存 meta）
     retry_reasons = (state.get("meta") or {}).get("retry_reasons", [])
@@ -248,6 +249,13 @@ async def remember_node(state: GameState) -> dict:
         except (TypeError, ValueError):
             pass
 
+    # 2.5 角色软状态合并（自由大世界·决策9：LLM 管软状态 doing/goal/attitude/tags/notes）
+    from .character_states import merge_character_soft_state
+    try:
+        merge_character_soft_state(st, updates.get("character_updates"))
+    except Exception:
+        logger.exception("角色软状态合并失败")
+
     # 3. 伏笔合并
     foreshadowing = list(state.get("foreshadowing", []))
     for fs in (updates.get("foreshadowing_add") or [])[:2]:
@@ -356,49 +364,58 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
         ps = (result.get("meta") or {}).get("plan_summary") or {}
         history.append({"assistant": stored, "scene_id": ps.get("scene_id", "")})
         result["history"] = history[-12:]  # 防无限增长，保留最近 12 轮
-    # ── 自由沙盒世界推进（每拍有玩家动作时）──
-    # 推进世界日期 + 应用玩家数据（LLM 声明）+ 生成世界事件 + 检查成就。
+    # ── 自由大世界世界推进（每拍有玩家动作时）──
+    # advance_world：日期推进 + 到点事件 + 历史压缩跳时 + 阶段切换（世界自主运转核心）。
+    # player_data：玩家数据（LLM 声明 + 行动恢复 + 濒死）+ 玩家事件写回 + 成就。
     if action:
-        from .world import advance_date, action_days, should_generate_events, generate_events
-        from .player_data import apply_player_updates, apply_recovery, check_achievements, check_vitals, apply_vital_bounce
+        from .world import advance_world, freshen_events
+        from .player_data import (apply_player_updates, apply_recovery, check_achievements,
+                                  check_vitals, apply_vital_bounce, apply_failure, check_darkline_grants)
         try:
-            wd = result.get("world_date") or state.get("world_date") or {"year": 184, "month": 2, "day": 1}
-            # 1. 推进日期（按行动类型耗时；location 供赶路距离解析——当前地点）
-            days = action_days(action, [], (result.get("era") or {}).get("location", ""))
-            new_wd = advance_date(wd, days)
-            # 前往更晚场景：world_date 快进到目标场景年代（吸收旅途/时代跳跃，如 184→189 洛阳）
-            ps = (result.get("meta") or {}).get("plan_summary") or {}
-            scene_year = int(ps.get("year") or 0)
-            if scene_year > int(new_wd.get("year", 0)):
-                old_wd = dict(new_wd)
-                new_wd = dict(new_wd)
-                new_wd["year"] = scene_year
-                # 月份对齐场景季节（如秋→9 月）：防 189-02 仍判 P1 黄金乱起（世界常态不切换）/
-                # 季节与日期矛盾（显示"秋"却 2 月）——时代快进要真的进入那个时代
-                from .world import season_month
-                sm = season_month(ps.get("season") or "")
-                if sm:
-                    new_wd["month"] = sm
-                # 时代快进：补 (旧, 新] 期间的时间线事件（你错过的天下事）→ 简报，
-                # 世界真正"前进了"而不只是年份数字变了（黄金溃兵/董卓进京等都被吸收）
-                from .world import period_events
-                period = period_events(old_wd, new_wd)
-                if period:
-                    events = list(result.get("world_events") or state.get("world_events") or [])
-                    seen_ids = {e.get("event_id") for e in events}
-                    for ev in period:
-                        if ev.get("event_id") not in seen_ids:
-                            events.append(ev)
-                    result["world_events"] = events[-50:]
-                    result["new_briefing"] = True
+            # 1. 世界推进（advance_world 收敛：日期/到点事件/跳时/阶段/周期/衰减）
+            wd_before = result.get("world_date") or state.get("world_date") or {"year": 184, "month": 2, "day": 1}
+            world_inc = advance_world(state, action, result)
+            new_wd = world_inc["world_date"]
             result["world_date"] = new_wd
-            # 统一时钟：era.year 跟随 world_date（单调向前，回访不回退）
+            result["world_events"] = world_inc["world_events"]
+            result["new_briefing"] = bool(result.get("new_briefing") or world_inc["new_briefing"])
+            result["scene_turns"] = world_inc["scene_turns"]
             if isinstance(result.get("era"), dict):
-                result["era"]["year"] = int(new_wd.get("year", 0))
-            # 2. 应用玩家数据（LLM 声明的 player_updates + 行动恢复）
+                result["era"]["chapter"] = world_inc["era"].get("chapter", (result["era"] or {}).get("chapter", "P1 黄金风起"))
+                result["era"]["year"] = world_inc["era"].get("year", int(new_wd.get("year", 0)))
+                result["era"]["season"] = world_inc["era"].get("season", (result["era"] or {}).get("season", ""))
+                result["era"]["location"] = world_inc["era"].get("location", (result["era"] or {}).get("location", ""))
+            # 玩家位置写回（前往X 到达目标地点 → player.location，view_scene 据此合成视野）
+            if isinstance(result.get("player"), dict) and world_inc["era"].get("location"):
+                result["player"]["location"] = world_inc["era"]["location"]
+            # 角色事实更新（引擎管事实：到点事件在场角色位置/活动/存活）
+            from .character_states import update_char_facts
+            try:
+                update_char_facts(result, world_inc.get("due_events") or [], new_wd,
+                                  world_inc["era"].get("location", ""))
+            except Exception:
+                logger.exception("角色事实更新失败")
+            # 2. 玩家数据（LLM 声明的 player_updates + 行动恢复）
             # action 传入：恢复类动作的系统结算独家，剥离 LLM 重复声明的 stats_delta/coins_delta（审查⑨）
             result = apply_player_updates(result, result.get("last_output") or {}, action)
+            # 失败代价（决策 12：不真死付代价）——应用 LLM failure / 兜底败北代价
+            from .action_intent import parse_action
+            _intent = parse_action(action, (result.get("era") or {}).get("location", ""),
+                                   known_names=set((state.get("relations") or {}).keys()) | set((result.get("character_states") or {}).keys()))
             player = result.get("player") or {}
+            player = apply_failure(player, result.get("last_output") or {}, action, _intent)
+            # 失败的关系/信任代价写回 state 顶层（apply_failure 存 player._failure_* 中转）
+            _fr = player.pop("_failure_relations", {}) or {}
+            _ft = player.pop("_failure_trust", {}) or {}
+            if _fr or _ft:
+                rels = dict(result.get("relations") or state.get("relations") or {})
+                for k, v in _fr.items():
+                    rels[k] = max(0, min(100, rels.get(k, 50) + v))
+                result["relations"] = rels
+                trs = dict(result.get("trust") or state.get("trust") or {})
+                for k, v in _ft.items():
+                    trs[k] = max(0, min(100, trs.get(k, 50) + v))
+                result["trust"] = trs
             player = apply_recovery(player, action, new_wd)
             # 濒死检测：单属性触底 → 写 vitals_alarm（下拍 writer 演后果）；
             # 上拍已注入警告仍触底（LLM 未恢复）→ 兜底回弹防卡死；
@@ -414,52 +431,19 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             else:
                 result["vitals_alarm"] = ""     # 已脱离濒死 → 清除标记
             result["player"] = player
-            # 3. 生成世界事件（移动时 + 周期）
-            # 驻留计数先递增（位置变则重置为 1），再判定——否则 should_generate_events 读不到
-            # 本拍计数，periodic（每 4 拍）恒 False（A2 周期事件死代码修复）
-            pos_changed = result.get("skeleton_pos") != state.get("skeleton_pos")
-            result["scene_turns"] = 1 if pos_changed else int(state.get("scene_turns") or 1) + 1
-            moved = should_generate_events(state, result)
-            if moved:
-                new_events = generate_events(state, new_wd, moved, location=(result.get("era") or {}).get("location", ""))
-                if new_events:
-                    events = list(result.get("world_events") or state.get("world_events") or [])
-                    seen_ids = {e.get("event_id") for e in events}
-                    for ev in new_events:
-                        if ev.get("event_id") not in seen_ids:
-                            events.append(ev)
-                    result["world_events"] = events[-50:]  # 只保留最近 50 条
-                    result["new_briefing"] = True  # 前端标记有新简报
-            # 历史压缩（§1.3）：玩家驻留空闲（休息/等待）且距下一时间线事件过远 → 跳时
-            # 门控：主动行动（对话/打听/赶路/买卖）不跳时，避免打断进行中的互动
-            from .world import next_timeline_skip, is_idle_action
-            skip = next_timeline_skip(new_wd) if is_idle_action(action) else None
-            if skip:
-                new_wd = skip["date"]
-                result["world_date"] = new_wd
-                events = list(result.get("world_events") or state.get("world_events") or [])
-                events.append(skip["event"])
-                result["world_events"] = events[-50:]
-                result["new_briefing"] = True
-                if isinstance(result.get("era"), dict):
-                    result["era"]["year"] = int(new_wd.get("year", 0))
-            # 离开期间简报（B-⑩）：休息/赶路跨越大段时间（≥3 天）且未生成事件/未跳时
-            # → 补 (推进前, 当前] 期间的时间线事件，玩家醒来/落地后简报"期间天下事"
-            if days >= 3 and not moved and not skip:
-                from .world import period_events
-                period = period_events(wd, new_wd)
-                if period:
-                    events = list(result.get("world_events") or state.get("world_events") or [])
-                    seen_ids = {e.get("event_id") for e in events}
-                    for ev in period:
-                        if ev.get("event_id") not in seen_ids:
-                            events.append(ev)
-                    result["world_events"] = events[-50:]
-                    result["new_briefing"] = True
-            # 玩家行为写回世界：LLM 声明的 world_events_add → world_events 队列（strong，玩家引发）
+            # P1 暗线自由化（决策 17）：自由行动触发流亡/黄金/许家 → 授予资产+flag+伏笔
+            # 必须在 result["player"] = player 之后：check_darkline_grants 改 result["player"].assets，
+            # 若在其前调用会被后面的写回覆盖（审查：暗线 flag 触发但信物资产丢失）
+            try:
+                dl = check_darkline_grants(result, action)
+                if dl.get("assets_add") or dl.get("flags_add"):
+                    result["new_briefing"] = True  # 获得信物/同路人 → 世界留痕
+            except Exception:
+                logger.exception("暗线检查失败")
+            # 3. 玩家行为写回世界：LLM 声明的 world_events_add → world_events 队列（strong，玩家引发）
             we_add = (result.get("last_output") or {}).get("state_updates", {}).get("world_events_add") or []
             if we_add:
-                events = list(result.get("world_events") or state.get("world_events") or [])
+                events = list(result.get("world_events") or [])
                 for ev in we_add[:2]:
                     if not str(ev.get("event", "")).strip():
                         continue
@@ -473,10 +457,6 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                     })
                 result["world_events"] = events[-50:]
                 result["new_briefing"] = True   # 玩家引发的事件 → 简报
-            # 事件相关度衰减（B-①）：strong（与你有关）事件随日期推移淡出（>6 月降 weak）
-            if result.get("world_events"):
-                from .world import freshen_events
-                result["world_events"] = freshen_events(result["world_events"], new_wd)
             # 4. 检查成就
             new_ach = check_achievements(result)
             if new_ach:

@@ -215,7 +215,20 @@ def resolve_player_choice(action: str, plan) -> dict:
     """
     action = (action or "").strip()
     for i, opt in enumerate(plan.options or []):
-        if opt.get("text") and opt["text"].strip() == action:
+        opt_text = (opt.get("text") or "").strip()
+        if not opt_text:
+            continue
+        # 精确匹配优先；再退到包含匹配（LLM 微调过人称/衔接后也能回填承诺效果）
+        if opt_text == action:
+            return {
+                "text": action,
+                "effect": opt.get("effect", ""),
+                "option_index": i,
+                "tension": opt.get("tension", 0),
+                "has_effect": bool(opt.get("effect")),
+            }
+        # 包含匹配：玩家点选文本含有 registry 关键动作短语（排除过短的通用词误配）
+        if len(opt_text) >= 6 and opt_text in action:
             return {
                 "text": action,
                 "effect": opt.get("effect", ""),

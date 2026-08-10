@@ -275,3 +275,135 @@ def check_achievements(state: dict) -> list[str]:
         player["achievements"] = sorted(unlocked)
         state["player"] = player
     return new
+
+
+# ═════════ 失败代价（自由大世界 · 决策 12：不真死，付代价）═════════
+
+# 失败兜底关键词（叙事含败北标记但未声明 failure 时，默认付代价）
+_FAIL_KW = ("败了", "落败", "失手", "中计", "被抓", "落荒而逃", "战败", "被擒", "不敌",
+            "打不过", "挨了", "吃了大亏", "栽了")
+
+
+def apply_failure(player: dict, output: dict, action: str = "", intent: dict = None) -> dict:
+    """失败代价结算（决策 12）：玩家莽撞/战败/中伏 → 不真死，付代价。
+
+    优先级：
+    1. LLM 声明的 failure（结构化：kind + penalty）→ 应用 penalty
+    2. 兜底：叙事含败北标记 或 动作是战斗且意图战斗 → 默认代价
+       （受伤 wound+10、丢钱 coins-10、对战斗目标关系 -3）
+    代价后由 check_vitals 判定——单属性触底濒死（回弹），三属性同时极端才 dead（不真死保证）。
+    返回更新后的 player（附 failure_applied: bool 标记）。
+    """
+    if player is None:
+        player = {}
+    up = (output or {}).get("state_updates", {})
+    failure = up.get("failure")
+    penalty = None
+    if isinstance(failure, dict):
+        penalty = failure.get("penalty")
+    # 兜底触发：无结构化 failure，但从叙事/动作判断失败
+    narr = str((output or {}).get("narrative", ""))
+    intent_t = (intent or {}).get("type")
+    combat_action = intent_t == "战斗"
+    if penalty is None and (any(k in narr for k in _FAIL_KW) or (combat_action and not up.get("player_updates", {}).get("assets_add"))):
+        penalty = {
+            "stats_delta": {"wound": 10},
+            "coins_delta": -10,
+            "relations_delta": {((intent or {}).get("target") or ""): -3} if (intent or {}).get("target") else {},
+        }
+    if not isinstance(penalty, dict):
+        player["failure_applied"] = False
+        return player
+
+    # 应用 penalty（钳位）
+    stats = get_stats(player)
+    pd = penalty.get("stats_delta") or {}
+    for k, v in pd.items():
+        if k in stats and isinstance(v, (int, float)) and not isinstance(v, bool):
+            stats[k] = _clamp(stats[k] + int(v))
+    player["stats"] = stats
+    cd = penalty.get("coins_delta")
+    if isinstance(cd, (int, float)) and not isinstance(cd, bool):
+        player["coins"] = max(0, int(player.get("coins", 0)) + int(cd))
+    # 关系/信任代价存在 output（由 graph._commit 读取 state.relations/trust 应用）
+    rel_pen = penalty.get("relations_delta") or {}
+    tr_pen = penalty.get("trust_delta") or {}
+    if rel_pen or tr_pen:
+        player["_failure_relations"] = {k: max(-8, min(8, int(v))) for k, v in rel_pen.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+        player["_failure_trust"] = {k: max(-8, min(8, int(v))) for k, v in tr_pen.items() if isinstance(v, (int, float)) and not isinstance(v, bool)}
+    for item in (penalty.get("assets_remove") or []):
+        if item and item in player.get("assets", []):
+            player["assets"].remove(item)
+    rd = penalty.get("reputation_delta")
+    if isinstance(rd, (int, float)) and not isinstance(rd, bool):
+        player["reputation"] = _clamp(player.get("reputation", 0) + int(rd))
+    player["failure_applied"] = True
+    return player
+
+
+# ═════════ P1 三条暗线自由化（决策 17：收益保留，自由行动获取）═════════
+
+_DARKLINE_CACHE: dict = {}
+
+
+def _load_darklines() -> dict:
+    """加载 P1 暗线触发表（knowledge/p1_hidden_lines.json，mtime 缓存）。"""
+    import json
+    import os
+    path = os.path.join(os.path.dirname(__file__), "..", "knowledge", "p1_hidden_lines.json")
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return _DARKLINE_CACHE.get("_data") or {}
+    if _DARKLINE_CACHE.get("_mtime") != mtime:
+        try:
+            with open(path, encoding="utf-8") as f:
+                _DARKLINE_CACHE["_data"] = json.load(f)
+            _DARKLINE_CACHE["_mtime"] = mtime
+        except (OSError, json.JSONDecodeError):
+            pass
+    return _DARKLINE_CACHE.get("_data") or {}
+
+
+def check_darkline_grants(state: dict, action: str) -> dict:
+    """玩家自由行动 → 触发 P1 暗线（流亡/黄金/许家）→ 授予资产 + flag（幂等）。
+
+    决策 17：收益保留（推荐信/信物/同路人），获取从'选项触发'改'自由行动触发'。
+    返回 {"assets_add": [...], "flags_add": [...], "foreshadowing_add": [...]}。
+    """
+    a = (action or "").strip()
+    if not a:
+        return {"assets_add": [], "flags_add": [], "foreshadowing_add": []}
+    data = _load_darklines()
+    player = state.get("player") or {}
+    flags = set(state.get("flags", []))
+    assets = list(player.get("assets", []))
+    foreshadowing = list(state.get("foreshadowing", []))
+    add_assets, add_flags, add_fs = [], [], []
+    for line, spec in data.items():
+        if not isinstance(spec, dict) or line.startswith("_"):
+            continue
+        # 幂等按"收益资产"判定（LLM 可能先声明 flag 但漏给资产 → 这里补发收益）；
+        # 仅 flag 存在而资产缺失时不跳过（防 LLM 先 flag 后引擎丢信物）
+        grant = spec.get("grant", "")
+        if grant and grant in assets:
+            continue  # 收益已发放，幂等
+        kws = spec.get("trigger_kw") or []
+        if any(kw in a for kw in kws):
+            if grant and grant not in assets:
+                assets.append(grant)
+                add_assets.append(grant)
+            add_flags.append(spec["flag"])
+            benefit = spec.get("benefit", "")
+            if benefit and benefit not in foreshadowing:
+                foreshadowing.append(benefit)
+                add_fs.append(benefit)
+    if add_assets or add_flags or add_fs:
+        if add_assets:
+            player["assets"] = assets
+            state["player"] = player
+        if add_flags:
+            state["flags"] = sorted(set(flags) | set(add_flags))
+        if add_fs:
+            state["foreshadowing"] = foreshadowing
+    return {"assets_add": add_assets, "flags_add": add_flags, "foreshadowing_add": add_fs}

@@ -25,8 +25,10 @@ _DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "knowledge")
 # 边界连续（前一阶段 end 的次月 = 后一阶段 start），phase_of 无空窗。
 PHASES = [
     {"idx": 1, "name": "黄金乱起", "start": "184-02", "end": "189-07"},
-    {"idx": 2, "name": "董卓乱政", "start": "189-08", "end": "192-03"},
-    {"idx": 3, "name": "群雄割据", "start": "192-04", "end": "199-12"},
+    # 阶段边界按剧本篇章对齐（Plan 裁决）：190 年名场面（会盟/温酒/三英）内容在 world_normal_2
+    # （董卓乱政），故 P2 收在 190-12；P3 群雄割据从 191-01 起。董卓伏诛（192）场景章归 P4、日期章归 P3。
+    {"idx": 2, "name": "董卓乱政", "start": "189-08", "end": "190-12"},
+    {"idx": 3, "name": "群雄割据", "start": "191-01", "end": "199-12"},
     {"idx": 4, "name": "官渡定鼎", "start": "200-01", "end": "207-12"},
     {"idx": 5, "name": "赤壁三足", "start": "208-01", "end": "219-12"},
     {"idx": 6, "name": "天下三分", "start": "220-01", "end": "230-12"},
@@ -43,14 +45,19 @@ def _ym(date_key: str) -> tuple:
 
 
 # ═════════ 地点导航（自由沙盒 · 见设计 §5.2）═════════
-# 地点 → 涉及场景（对齐 registry.json 场景的 location 归属；顺序即解锁次序）
+# 地点 → 涉及场景（对齐 registry.json 场景的 location 归属；顺序即解锁次序，也是 action_days 距离基准）
 # 回访目标 = 该地点"最后访问过"的场景（记忆中的场景，LLM 圆场时间冲突）
+# 顺序按地理序（距离经济 = 索引差）：颍川→长安→洛阳→汜水关→成皋→中牟→陈留→冀州
+# 虎牢关并入成皋（P3_s3_three 挂成皋）；汜水关 = 温酒斩华雄主场（P3_s2_huaxiong）
 LOCATIONS: dict[str, list[str]] = {
     "颍川": ["P1_s1_rain", "P1_s2_gold"],
+    "长安": ["P4_s1_fengyiting"],
     "洛阳": ["P1_s3_leap", "P2_s1_street", "P2_s2_ci"],
+    "汜水关": ["P3_s2_huaxiong"],
+    "成皋": ["P2_s4_slaughter", "P3_s3_three"],
     "中牟": ["P2_s3_escape"],
-    "成皋": ["P2_s4_slaughter"],
     "陈留": ["P3_s1_alliance"],
+    "冀州": [],
 }
 
 
@@ -65,14 +72,35 @@ LOCATION_RUMORS: dict[str, list[dict]] = {
     "洛阳": [
         {"target": "中牟", "hint": "东边传闻，中牟县城设了关卡，正盘查往来行商"},
         {"target": "成皋", "hint": "过虎牢往东，成皋关城据传屯了重兵"},
+        {"target": "长安", "hint": "西边传闻，董相国要把朝廷搬到长安，火烧洛阳只差一道令"},
+        {"target": "汜水关", "hint": "东出洛阳头一道关，近日西凉军陈兵关前"},
+        {"target": "冀州", "hint": "北边传来袁本初在冀州招兵买马的消息"},
     ],
     "中牟": [
         {"target": "陈留", "hint": "县里人传，陈留近来广发帖子，邀各方豪杰赴会"},
+        {"target": "汜水关", "hint": "往西的虎牢关正打仗，过关要查细作"},
+        {"target": "冀州", "hint": "北边传来袁绍出奔冀州的风声"},
     ],
     "成皋": [
         {"target": "陈留", "hint": "往东传闻，陈留将有场大盟会，四方人马正往那赶"},
+        {"target": "长安", "hint": "虎牢关守卒说，董卓已挟天子西迁长安"},
     ],
-    "陈留": [],
+    "陈留": [
+        {"target": "冀州", "hint": "北边传闻，袁绍在冀州广纳士人，盟主名头先到一步"},
+        {"target": "汜水关", "hint": "西边关隘华雄叫阵，联军正愁没人出战"},
+    ],
+    "长安": [
+        {"target": "洛阳", "hint": "东边故都已被一把火烧成废墟"},
+        {"target": "冀州", "hint": "河北袁绍正纠合诸侯"},
+    ],
+    "汜水关": [
+        {"target": "陈留", "hint": "联军大营扎在陈留，十八路旗号都在那"},
+        {"target": "成皋", "hint": "东边虎牢关的守军换成了西凉人"},
+    ],
+    "冀州": [
+        {"target": "陈留", "hint": "南边传来诸侯在陈留会盟讨董的消息"},
+        {"target": "洛阳", "hint": "洛阳正被董卓折腾得人心惶惶"},
+    ],
 }
 
 
@@ -182,3 +210,41 @@ def world_context(world_date: dict, location: str = "") -> dict:
         "recent_events": recent,
         "location_normal": loc_normal,
     }
+
+
+# ═════════ 角色卡加载（自由大世界 · 决策7 角色性格驱动）═════════
+# knowledge/characters/*.json（14 张角色卡）——writer 人设接线的数据源，替代硬编码 PERSONA_*。
+_character_cache: dict = {}
+
+
+def _char_file(name: str) -> str:
+    """角色名 → characters/{name}.json 路径（拼音文件名映射）。"""
+    import os
+    mapping = {
+        "曹操": "cao_cao", "刘备": "liu_bei", "关羽": "guan_yu", "张飞": "zhang_fei",
+        "诸葛亮": "zhu_ge_liang", "司马懿": "si_ma_yi", "吕布": "lu_bu", "董卓": "dong_zhuo",
+        "袁绍": "yuan_shao", "孙权": "sun_quan", "周瑜": "zhou_yu", "陈宫": "chen_gong",
+        "王允": "wang_yun", "荀彧": "xun_yu",
+        "孙坚": "sun_jian", "袁术": "yuan_shu", "貂蝉": "diao_chan", "华雄": "hua_xiong",
+    }
+    base = mapping.get(name, "")
+    return os.path.join(_DATA_DIR, "characters", f"{base}.json") if base else ""
+
+
+def load_character(name: str) -> dict:
+    """读单个角色卡（mtime 缓存）。无卡/加载失败 → {}。"""
+    path = _char_file(name)
+    if not path:
+        return {}
+    return _load_json(path, _character_cache, name) or {}
+
+
+def load_all_characters() -> dict:
+    """读全部角色卡（14 张）。返回 {角色名: 卡}。"""
+    out = {}
+    for name in ("曹操", "刘备", "关羽", "张飞", "诸葛亮", "司马懿", "吕布", "董卓",
+                 "袁绍", "孙权", "周瑜", "陈宫", "王允", "荀彧"):
+        c = load_character(name)
+        if c:
+            out[name] = c
+    return out

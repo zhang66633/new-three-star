@@ -92,6 +92,8 @@ class GameState(TypedDict):
     world_date: dict              # 世界具体日期 {year, month, day}（取代 turns_left 时节）
     location_state: Optional[dict]  # 地点面板状态 {current, unlocked, next_station, rumored}（director 每拍写入）
     rumor_unlocked: list[str]       # 传闻解锁的地点（玩家「打听X」确认过传闻 → 可赶路，独立于 visited）
+    character_states: dict          # 角色世界状态档案（自由大世界·决策8）：按需登记交集角色
+                                   #   {名: {location/activity/goal/attitude/alive/dies_on/known/last_seen/seen_at/tags/notes}}
     vitals_alarm: Optional[str]     # 濒死标记（stamina/hunger/wound，下拍 writer 演后果；脱离=''）
     dead: Optional[bool]            # 死亡（三属性同时极端，alive=False）——前端读档最近快照
     # ── 引擎 ──
@@ -127,8 +129,8 @@ def new_game_state() -> GameState:
         "era": {
             "chapter": "P1 黄金风起",
             "year": 184,
-            "season": "春",
-            "location": "颍川·荒野",
+            "season": "冬",  # 184-02 → 月份派生（season_of(2)=冬）；见 world.season_of
+            "location": "颍川",
         },
         "relations": {},
         "trust": {},
@@ -136,10 +138,10 @@ def new_game_state() -> GameState:
         "knowledge": {
             "public": [],
             "hidden": ["张角已被天意吞噬，黄金军是替代产物", "世界将在 189 年发生时间跳跃至洛阳"],
-            "player": ["记忆碎片：史书上是'黄巾'，眼前旗上是'黄金'", "直觉：乱世将绵延数十年"],
+            "player": ["记忆碎片：史书上是'黄巾'，眼前旗上是'黄金'", "直觉：乱世将绵延数十年", "记忆：这场起义好像第八个月就会平息——虽然现在才刚起"],
         },
         "memory": {"stm": [], "ltm": [], "pins": []},
-        "skeleton_pos": "P1_s1_rain",
+        "skeleton_pos": "颍川",  # 自由大世界：skeleton_pos = 地点名（不再是场景 id）
         "tension": 0,
         "corrected": [],
         "foreshadowing": [],
@@ -149,6 +151,7 @@ def new_game_state() -> GameState:
         "world_date": {"year": 184, "month": 2, "day": 1},  # 世界具体日期（取代 turns_left 时节）
         "location_state": None,       # 地点面板状态（director 每拍写入）
         "rumor_unlocked": [],         # 传闻解锁的地点（打听确认后加入，见 worlddata.LOCATION_RUMORS）
+        "character_states": {},       # 角色世界状态档案（自由大世界·决策8）：按需登记交集角色
         "vitals_alarm": "",           # 濒死标记（无濒死为空串）
         "dead": False,                # 死亡标记（三属性极端）
         "turn": 0,
@@ -249,4 +252,25 @@ def from_dict(data: dict) -> GameState:
     mem = base.get("memory")
     if isinstance(mem, dict) and isinstance(mem.get("stm"), list) and len(mem["stm"]) > 6:
         mem["stm"] = mem["stm"][-6:]
+    # 角色世界状态档案：钳制（每角色 attitude 0-100、tags/notes 上限、值类型保护）
+    cs = base.get("character_states")
+    if isinstance(cs, dict):
+        clamped = {}
+        for name, st in list(cs.items())[:_DICT_CAP]:
+            if not isinstance(st, dict):
+                continue
+            s = dict(st)
+            try:
+                s["attitude"] = max(0, min(100, int(s.get("attitude", 50))))
+            except (TypeError, ValueError):
+                s["attitude"] = 50
+            if isinstance(s.get("tags"), list):
+                s["tags"] = [str(x)[:20] for x in s["tags"]][:4]
+            if isinstance(s.get("notes"), list):
+                s["notes"] = [str(x)[:60] for x in s["notes"]][:3]
+            for kk in ("location", "activity", "goal", "last_seen", "seen_at"):
+                if kk in s:
+                    s[kk] = str(s[kk])[:_STR_CAP]
+            clamped[name] = s
+        base["character_states"] = clamped
     return base

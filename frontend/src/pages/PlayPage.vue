@@ -105,34 +105,28 @@
         @submit="submitFree"
       />
 
-      <!-- 角色状态卡（仅在场有人时显示） -->
-      <CharacterPanel
-        v-if="Object.keys(characterRels).length > 0"
+      <!-- 主菜单页（全屏 tab 切换：地图/档案/在场/天下事/记忆） -->
+      <GameMenu
+        :location-state="gameState?.location_state ?? { current: null, unlocked: [], next_station: null, rumored: [] }"
+        :player="gameState?.player ?? null"
         :rels="characterRels"
         :trust="trust"
-        :reveal="loadPhase === 'character'"
-      />
-
-      <!-- 记忆抽屉（三段式：PIN / LTM / STM） -->
-      <MemoryDrawer
+        :character-states="gameState?.character_states"
+        :world-events="gameState?.world_events"
+        :world-rumors="gameState?.world_rumors"
+        :briefing="gameState?.briefing"
+        :world-date="gameState?.world_date"
         :stm-list="stmList"
         :ltm-list="ltmList"
         :pin-items="pinItems"
         :pins="pins"
         :pinned-count="pinnedCount"
         :total-mem-count="totalMemCount"
-        :reveal="loadPhase === 'memory'"
-        @toggle-pin="togglePin"
-      />
-
-      <!-- 玩家档案（右下可折叠抽屉：资产/金钱/状态/称号/成就） -->
-      <PlayerPanel v-if="gameState?.player" :player="gameState.player" />
-
-      <!-- 地点导航（左下地图抽屉：已解锁往返 + 下站推进 + 传闻打听解锁） -->
-      <LocationPanel
-        :location-state="gameState?.location_state ?? { current: null, unlocked: [], next_station: null, rumored: [] }"
+        :reveal="loadPhase === 'character'"
         @travel="travelTo"
         @ask="askRumor"
+        @toggle-pin="togglePin"
+        @read="markMenuRead"
       />
     </div>
   </div>
@@ -149,15 +143,12 @@ import AtmoBackground from '../components/AtmoBackground.vue'
 import ParticleLayer from '../components/ParticleLayer.vue'
 import IntroOverlay from '../components/IntroOverlay.vue'
 import WorldBriefing from '../components/WorldBriefing.vue'
+import GameMenu from '../components/GameMenu.vue'
 import CinematicLoader from '../components/CinematicLoader.vue'
 import EraBanner from '../components/EraBanner.vue'
 import NarrativeArea from '../components/NarrativeArea.vue'
 import ChoiceArea from '../components/ChoiceArea.vue'
-import CharacterPanel from '../components/CharacterPanel.vue'
-import MemoryDrawer from '../components/MemoryDrawer.vue'
-import PlayerPanel from '../components/PlayerPanel.vue'
 import AchievementToast from '../components/AchievementToast.vue'
-import LocationPanel from '../components/LocationPanel.vue'
 import { usePlaySse } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
@@ -656,6 +647,11 @@ function markBriefingRead() {
   if (!gs?.world_events) return
   gs.world_events = gs.world_events.map(e => e.seen ? e : { ...e, seen: true })
   gameState.value = { ...gs }
+}
+function markMenuRead() {
+  // 世界菜单已读：标记 seen + 落盘（防刷新后同批事件重播，与简报已读同机制）
+  markBriefingRead()
+  savePlayer(gameState.value?.dead ? null : gameState.value)
 }
 
 const characterRels = computed(() => gameState.value?.relations ?? {})
