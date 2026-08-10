@@ -3,7 +3,7 @@
     <div v-if="visible" class="briefing-overlay" @click="close">
       <div class="briefing-panel" @click.stop>
         <div class="briefing-title">天 下 动 态</div>
-        <div class="briefing-sub">你离开的这段时间，世间发生了这些……</div>
+        <div class="briefing-sub">天下有变，正是多事之秋……</div>
         <p v-if="briefing" class="briefing-syn">{{ briefing }}</p>
         <!-- 强相关事件：与你有关，高亮 -->
         <div class="briefing-list" v-if="strongEvents.length">

@@ -319,7 +319,10 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
     for ev in due:
         if ev.get("event_id") not in seen_ids:
             world_events.append(ev)
-            new_briefing = True
+            seen_ids.add(ev.get("event_id"))
+            # 简报降频（与玩家有关才打断）：仅在场强相关事件弹窗；弱相关远方小报只进天下事列表积累
+            if ev.get("related_to_player") == "strong":
+                new_briefing = True
     # 3. 历史压缩：驻留空闲且距下一事件 >12 月 → 跳时（带过平淡期，跳时窗补 due_events）
     if is_idle_action(action):
         skip = next_timeline_skip(new_wd)
@@ -331,10 +334,13 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
                 all_due.append(ev)
                 if ev.get("event_id") not in seen_ids:
                     world_events.append(ev)
+                    seen_ids.add(ev.get("event_id"))
                     new_briefing = True
     # 4. 阶段切换（era.chapter/season 由 world_date 派生；location 已在移动解析时写回）
     idx = phase_of(new_wd)
     from .director import CHAPTER_BY_PHASE
+    if phase_of(wd) != idx:
+        new_briefing = True   # 跨时代 → 简报（世界翻篇，值得一报）
     era["chapter"] = CHAPTER_BY_PHASE.get(idx, era.get("chapter", "P1 黄金风起"))
     era["year"] = int(new_wd.get("year", 0) or 0)
     era["season"] = season_of(int(new_wd.get("month", 1) or 1))
@@ -345,7 +351,8 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
         for ev in daily:
             if ev.get("event_id") not in seen_ids:
                 world_events.append(ev)
-                new_briefing = True
+                seen_ids.add(ev.get("event_id"))
+                # 周期动态为弱相关日常 → 不弹简报（只进天下事）
     # 6. 事件相关度衰减
     if world_events:
         world_events = freshen_events(world_events, new_wd)

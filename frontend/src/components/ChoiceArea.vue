@@ -52,6 +52,7 @@ function submit() {
   const action = freeInput.value.trim()
   if (!action) return
   emit('submit', action)
+  freeInput.value = ''  // 发送后清空输入（defineModel 双向同步到父）
 }
 </script>
 
