@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from routers import graph, worlds, play, archive
+from routers import graph, worlds, play, archive, gameworld
 from db import init_db
 
 
@@ -28,7 +28,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_methods=["GET", "POST"],
-    allow_headers=["Content-Type"],
+    # X-API-Key：BYOK（用户自带 LLM 密钥）经该请求头传递，必须放行预检
+    allow_headers=["Content-Type", "X-API-Key"],
 )
 
 # ── 简单限流（每 IP 窗口内最大请求数，防 LLM 额度被无限消耗）──
@@ -73,6 +74,7 @@ app.include_router(graph.router, prefix="/api")
 app.include_router(worlds.router, prefix="/api")
 app.include_router(play.router, prefix="/api")
 app.include_router(archive.router, prefix="/api")
+app.include_router(gameworld.router, prefix="/api")
 
 
 @app.get("/api/health")

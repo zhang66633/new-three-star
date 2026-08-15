@@ -60,7 +60,9 @@ def ensure_character(state: dict, name: str) -> dict:
         "location": seed.get("location", starts.get("location", "行踪未明")),
         "activity": seed.get("activity", starts.get("activity", "行止未明")),
         "goal": seed.get("goal", ""),
-        "attitude": starts.get("attitude", 50),
+        # 双轨合并：好感以 relations（关系网）为唯一权威，attitude 从这里派生，
+        # 避免 character_states.attitude 与 relations[name] 各自演化而漂移
+        "attitude": (state.get("relations") or {}).get(name, starts.get("attitude", 50)),
         "alive": seed.get("alive", starts.get("alive", True)),
         "dies_on": seed.get("dies_on", starts.get("dies_on")),
         "known": False,
@@ -87,9 +89,11 @@ def present_characters(state: dict, location: str = "", due_events: list = None)
         cl = (st or {}).get("location", "")
         if cl and location and (cl in location or location in cl):
             names.append(n)
-    # relations 键（玩家有过关系的人）也在场（可能 location 未同步）
+    # 已登记且 known（玩家真正见过）的关系角色——关系网预填的 30 人仅"闻其名"，
+    # 不算在场（预填 relations 后不能拿 relations 键当在场信号）
     for n in (state.get("relations") or {}):
-        if n not in names:
+        cst = states.get(n)
+        if cst and cst.get("known") and n not in names:
             names.append(n)
     # 到点事件 key_npcs（在场事件主角）
     for e in (due_events or []):

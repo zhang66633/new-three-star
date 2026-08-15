@@ -56,6 +56,7 @@
               embedded
               :rels="rels"
               :trust="trust"
+              :stances="stances"
               :character-states="characterStates"
               :reveal="reveal"
             />
@@ -87,6 +88,11 @@
               @toggle-pin="(id) => emit('togglePin', id)"
             />
           </div>
+
+          <!-- 关系网 -->
+          <div v-else-if="activeTab === 'relnet'" class="gm-section">
+            <RelationshipPanel :rels="rels" :trust="trust" :stances="stances" />
+          </div>
         </div>
       </div>
     </div>
@@ -105,12 +111,14 @@ import PlayerPanel from './PlayerPanel.vue'
 import CharacterPanel from './CharacterPanel.vue'
 import WorldMenu from './WorldMenu.vue'
 import MemoryDrawer from './MemoryDrawer.vue'
+import RelationshipPanel from './RelationshipPanel.vue'
 
 const props = withDefaults(defineProps<{
   locationState?: LocationState | null
   player?: PlayerState | null
   rels?: Record<string, number>
   trust?: Record<string, number>
+  stances?: Record<string, string>
   characterStates?: Record<string, CharacterState>
   worldEvents?: WorldEvent[]
   worldRumors?: string[]
@@ -128,6 +136,7 @@ const props = withDefaults(defineProps<{
   player: null,
   rels: () => ({}),
   trust: () => ({}),
+  stances: () => ({}),
   characterStates: () => ({}),
   worldEvents: () => [],
   worldRumors: () => [],
@@ -158,6 +167,7 @@ const TABS = [
   { key: 'present', label: '在场' },
   { key: 'world', label: '天下事' },
   { key: 'memory', label: '记忆' },
+  { key: 'relnet', label: '关系网' },
 ]
 
 function close() {
@@ -180,8 +190,12 @@ const worldDateLabel = computed(() => {
 const worldUnseen = computed(() => (props.worldEvents ?? []).filter(e => !e.seen).length)
 // 记忆 PIN 数
 const memoryPinCount = computed(() => props.pinnedCount ?? (props.pins ?? []).length)
-// 在场角色数
-const presentCount = computed(() => Object.keys(props.rels ?? {}).length)
+// 在场角色数（只算已登记/相识的角色——关系网预填的 30 人仅"闻其名"，不算在场）
+const presentCount = computed(() => {
+  const csMap = props.characterStates ?? {}
+  const rels = props.rels ?? {}
+  return Object.keys(csMap).filter(n => csMap[n]?.known === true || rels[n] !== undefined).length
+})
 
 // Tab 红点：天下事→未读；记忆→PIN 数；在场→在场人数
 function tabBadge(key: string): number | '' {

@@ -65,6 +65,7 @@
 import { ref, nextTick, onMounted, onBeforeUnmount, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import ForceGraph3D from '3d-force-graph'
+import { apiKeyHeaders } from '../apiKey'
 const ForceGraph3DAny = ForceGraph3D as any
 
 const router = useRouter()
@@ -132,7 +133,7 @@ async function generate() {
   try {
     const resp = await fetch(`${API_BASE}/api/worldview/custom-graph`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...apiKeyHeaders() },
       body: JSON.stringify({ concept: concept.value.trim() }),
     })
     const reader = resp.body?.getReader()

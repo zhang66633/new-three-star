@@ -1680,7 +1680,7 @@
    }
   ],
   "aftermath": {
-   "flow": "P4_s12_yuanshao",
+   "flow": {"暗线_乌巢情报": "P4_s12_yuanshao", "default": "P4_s12_yuanshao"},
    "memory_add": [
     "200年亲历官渡之战：曹操'七万精兵优势在我'，许攸献计夜袭乌巢，'苍天助曹不助袁'，袁绍七十万大军土崩瓦解"
    ]
@@ -2303,7 +2303,7 @@
    }
   ],
   "aftermath": {
-   "flow": "P5_s5_nanjun",
+   "flow": {"暗线_华容放曹": "P5_s5_nanjun", "default": "P5_s5_nanjun"},
    "memory_add": [
     "208年亲历华容道：三笑三打脸，赵云张飞关羽三路伏兵，关羽'散开一条路来'义释曹操，刘关张当场叩拜鲁肃"
    ]

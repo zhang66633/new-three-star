@@ -307,4 +307,9 @@ export const PLANET_SHADER_PARAMS: Record<string, PlanetShaderParams> = {
     noiseScale: 3.5, noiseSpeed: 0.5, octaves: 5, style: 3,
     vortexColor: '#ff5533', vortexOpacity: 0.5,
   },
+  settings: {
+    color1: '#1a1400', color2: '#fbbf24', color3: '#fff7cc',
+    noiseScale: 2.2, noiseSpeed: 0.15, octaves: 4, style: 1,
+    vortexColor: '#fbbf24', vortexOpacity: 0.4,
+  },
 }

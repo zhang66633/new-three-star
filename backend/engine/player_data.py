@@ -345,36 +345,55 @@ def apply_failure(player: dict, output: dict, action: str = "", intent: dict = N
 
 _DARKLINE_CACHE: dict = {}
 
+_DARKLINE_FILES = {
+    "P1": "p1_hidden_lines.json",
+    "P2": "hidden_lines_p2.json",
+    "P3": "hidden_lines_p3.json",
+    "P4": "hidden_lines_p4.json",
+    "P5": "hidden_lines_p5.json",
+    "P6": "hidden_lines_p6.json",
+}
 
-def _load_darklines() -> dict:
-    """加载 P1 暗线触发表（knowledge/p1_hidden_lines.json，mtime 缓存）。"""
+
+def _chapter_of_state(state: dict) -> str:
+    """从 state 推导当前章节前缀（P1-P6），用于加载对应暗线表。"""
+    ch = (state.get("era") or {}).get("chapter", "")
+    prefix = ch.split()[0] if ch else "P1"
+    return prefix if prefix in _DARKLINE_FILES else "P1"
+
+
+def _load_darklines(chapter: str = "P1") -> dict:
+    """加载指定章节暗线触发表（P1 用 p1_hidden_lines.json，P2-P6 用 hidden_lines_pN.json，mtime 缓存）。"""
     import json
     import os
-    path = os.path.join(os.path.dirname(__file__), "..", "knowledge", "p1_hidden_lines.json")
+    fname = _DARKLINE_FILES.get(chapter, "p1_hidden_lines.json")
+    cache = _DARKLINE_CACHE.setdefault(fname, {})
+    path = os.path.join(os.path.dirname(__file__), "..", "knowledge", fname)
     try:
         mtime = os.path.getmtime(path)
     except OSError:
-        return _DARKLINE_CACHE.get("_data") or {}
-    if _DARKLINE_CACHE.get("_mtime") != mtime:
+        return cache.get("_data") or {}
+    if cache.get("_mtime") != mtime:
         try:
             with open(path, encoding="utf-8") as f:
-                _DARKLINE_CACHE["_data"] = json.load(f)
-            _DARKLINE_CACHE["_mtime"] = mtime
+                cache["_data"] = json.load(f)
+            cache["_mtime"] = mtime
         except (OSError, json.JSONDecodeError):
             pass
-    return _DARKLINE_CACHE.get("_data") or {}
+    return cache.get("_data") or {}
 
 
 def check_darkline_grants(state: dict, action: str) -> dict:
-    """玩家自由行动 → 触发 P1 暗线（流亡/黄金/许家）→ 授予资产 + flag（幂等）。
+    """玩家自由行动 → 触发当前章节暗线 → 授予资产 + flag（幂等）。
 
     决策 17：收益保留（推荐信/信物/同路人），获取从'选项触发'改'自由行动触发'。
+    章节由 state.era.chapter 推导（P1-P6），自动加载对应暗线表。
     返回 {"assets_add": [...], "flags_add": [...], "foreshadowing_add": [...]}。
     """
     a = (action or "").strip()
     if not a:
         return {"assets_add": [], "flags_add": [], "foreshadowing_add": []}
-    data = _load_darklines()
+    data = _load_darklines(_chapter_of_state(state))
     player = state.get("player") or {}
     flags = set(state.get("flags", []))
     assets = list(player.get("assets", []))

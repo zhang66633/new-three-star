@@ -255,6 +255,14 @@ async def remember_node(state: GameState) -> dict:
         merge_character_soft_state(st, updates.get("character_updates"))
     except Exception:
         logger.exception("角色软状态合并失败")
+    # 双轨合并：attitude 一律从 relations 同步（关系网唯一权威，杜绝 attitude_delta
+    # 与 relations_delta 并行演化导致的漂移——LLM 好感变化走 relations_delta 单通道）
+    for nm, cst in (state.get("character_states") or {}).items():
+        if isinstance(cst, dict):
+            try:
+                cst["attitude"] = max(0, min(100, int(relations.get(nm, cst.get("attitude", 50)))))
+            except (TypeError, ValueError):
+                pass
 
     # 3. 伏笔合并
     foreshadowing = list(state.get("foreshadowing", []))

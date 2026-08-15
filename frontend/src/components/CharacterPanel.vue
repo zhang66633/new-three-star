@@ -12,6 +12,7 @@
         <span v-if="known(name)" class="chip-rels">
           <span class="chip-rel" :class="relClass(relOf(name))">感{{ relOf(name) }}</span>
           <span v-if="trust[name] !== undefined" class="chip-trust" :class="trustClass(trust[name] ?? 50)">信{{ trust[name] ?? 50 }}</span>
+          <span v-if="stances?.[name]" class="chip-stance">{{ stances[name] }}</span>
         </span>
         <span v-if="cs(name)?.goal" class="chip-goal">目标：{{ cs(name)?.goal }}</span>
         <span v-if="NPC_PERSONA[name]?.mechanism" class="chip-mech">{{ NPC_PERSONA[name].mechanism }}</span>
@@ -32,6 +33,7 @@ import { relClass, trustClass } from '../utils/classes'
 const props = defineProps<{
   rels: Record<string, number>
   trust: Record<string, number>
+  stances?: Record<string, string>
   characterStates?: Record<string, CharacterState>
   reveal: boolean
   embedded?: boolean   // 主菜单页嵌入模式：中和 fixed 四角定位，内容区由菜单 tab 容器流式布局

@@ -1,12 +1,21 @@
 import json
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from services.framework_picker import load_framework, load_mechanisms
-from services.llm import stream_chat
+from services.llm import stream_chat, set_api_key
 
 router = APIRouter()
+
+
+def _key_error_stream():
+    """缺少API密钥时的友好提示流（严格 BYOK 不兑底）。"""
+    async def gen():
+        msg = "请先回到星图，点击'设置'星球，填入你自己的DeepSeek密钥。"
+        yield f"data: {json.dumps({'type': 'chunk', 'content': f'[ERR] {msg}'}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+    return gen()
 
 # 机制类别 → 节点类型映射
 CATEGORY_TYPE_MAP = {
@@ -116,8 +125,12 @@ class NodeDiveRequest(BaseModel):
 
 
 @router.post("/worldview/node-dive")
-async def node_dive(req: NodeDiveRequest):
+async def node_dive(req: NodeDiveRequest, request: Request):
     """AI deep dive with B站解读风格."""
+    api_key = request.headers.get("x-api-key", "").strip()
+    if not api_key:
+        return StreamingResponse(_key_error_stream(), media_type="text/event-stream")
+    set_api_key(api_key)
     fw_id = req.framework_id or req.framework
     try:
         framework = load_framework(fw_id)
@@ -165,8 +178,12 @@ class CustomGraphRequest(BaseModel):
 
 
 @router.post("/worldview/custom-graph")
-async def custom_graph(req: CustomGraphRequest):
+async def custom_graph(req: CustomGraphRequest, request: Request):
     """Generate a new worldview as graph nodes/links via SSE."""
+    api_key = request.headers.get("x-api-key", "").strip()
+    if not api_key:
+        return StreamingResponse(_key_error_stream(), media_type="text/event-stream")
+    set_api_key(api_key)
     mechanisms = load_mechanisms()
 
     # 构建机制摘要供AI参考

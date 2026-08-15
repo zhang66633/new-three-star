@@ -3,6 +3,7 @@
 
 import { ref } from 'vue'
 import type { GameState, OptionSpec, StreamEvent } from '../types/play'
+import { apiKeyHeaders } from '../apiKey'
 
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
@@ -60,7 +61,7 @@ export function usePlaySse() {
     try {
       const resp = await fetch(`${API_BASE}/api/play/step`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...apiKeyHeaders() },
         body: JSON.stringify({ action, game_state: gameState, tension }),
         signal: ctrl.signal,
       })

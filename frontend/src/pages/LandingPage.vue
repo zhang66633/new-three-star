@@ -69,6 +69,9 @@
         <button class="fv-close" @click="visionWorld = null">✕</button>
       </div>
     </transition>
+
+    <!-- 设置星球（BYOK：玩家自己的 DeepSeek 密钥） -->
+    <SettingsModal v-if="showSettings" @close="showSettings = false" />
   </div>
 </template>
 
@@ -85,6 +88,8 @@ import * as THREE from 'three'
 import SpriteText from 'three-spritetext'
 import { planetVertexShader, planetFragmentShader, vortexVertexShader, vortexFragmentShader, PLANET_SHADER_PARAMS } from '../shaders/planetShaders'
 import MobileStarMap from '../components/MobileStarMap.vue'
+import SettingsModal from '../components/SettingsModal.vue'
+import { getApiKey } from '../apiKey'
 
 const ForceGraph3DAny = ForceGraph3D as any
 
@@ -105,6 +110,9 @@ const isMobile = (() => {
 
 function onMobileNavigate(id: string) {
   if (warpActive.value) return
+  // BYOK 门禁：设置星球直接开设置；未配置密钥时任何入口都先引导填 key
+  if (id === 'settings') { showSettings.value = true; return }
+  if (!getApiKey()) { showSettings.value = true; return }
   const world = [...WORLDS, TIANYI_WORLD].find(w => w.id === id)
   warpColor.value = world?.color || '#aabbff'
   warpActive.value = true
@@ -114,6 +122,9 @@ function onMobileNavigate(id: string) {
     } else if (id === 'tianyi') {
       playGuanyu()
       router.push('/play')
+    } else if (id === 'game_world') {
+      playGuanyu()
+      router.push('/gameworld')
     } else {
       playGuanyu()
       router.push(`/worldview/${id}`)
@@ -143,11 +154,15 @@ const TIANYI_WORLD = {
   desc: '雨夜醒来，无名无籍。这个世界的史书写错了每一个字，而只有你记得真相。',
 }
 
-// 移动端星图节点：9 个世界观 + 天意主星（create 由 MobileStarMap 内部追加）
-const MOBILE_WORLDS = [...WORLDS, TIANYI_WORLD]
+// 移动端星图节点：9 个世界观 + 天意主星 + 设置星球（create 由 MobileStarMap 内部追加）
+const MOBILE_WORLDS = [
+  ...WORLDS,
+  TIANYI_WORLD,
+  { id: 'settings', name: '⚙ API密钥', tagline: '配置你的DeepSeek密钥', color: '#fbbf24' },
+]
 
-// 当前开放的世界（只有天意 + create）
-const OPEN_WORLDS = ['tianyi', 'create']
+// 当前开放的世界（天意沙盒 + 崩坏纪元叙事 + 创造新世界 + 设置）
+const OPEN_WORLDS = ['tianyi', 'create', 'game_world', 'settings']
 function isOpenWorld(id: string) {
   return OPEN_WORLDS.includes(id)
 }
@@ -583,11 +598,15 @@ function createNebulaParticles(scene: THREE.Scene) {
 const selectedQuote = ref<string | null>(null)
 const warpActive = ref(false)
 const warpColor = ref('#030306')
+const showSettings = ref(false)
 const hoveredWorld = ref<{ name: string; tagline: string; color: string; desc?: string; img?: string } | null>(null)
 const visionWorld = ref<{ id: string; name: string; tagline: string; color: string; desc?: string } | null>(null)
 
 function enterWorld(id: string) {
   visionWorld.value = null
+  // BYOK 门禁：设置星球直接开设置；未配置密钥时任何入口都先引导填 key
+  if (id === 'settings') { showSettings.value = true; return }
+  if (!getApiKey()) { showSettings.value = true; return }
   const world = WORLDS.find(w => w.id === id)
   warpColor.value = world?.color || '#ff5533'
   warpActive.value = true
@@ -597,6 +616,9 @@ function enterWorld(id: string) {
     } else if (id === 'tianyi') {
       playGuanyu()
       router.push('/play')
+    } else if (id === 'game_world') {
+      playGuanyu()
+      router.push('/gameworld')
     } else {
       playGuanyu()
       router.push(`/worldview/${id}`)
@@ -805,6 +827,16 @@ async function initGraph() {
     isNebula: true,
   } as any)
 
+  // 设置星球（BYOK：玩家自己的 DeepSeek 密钥入口）
+  nodes.push({
+    id: 'settings',
+    name: '⚙ API密钥',
+    tagline: '配置你的DeepSeek密钥',
+    color: '#fbbf24',
+    val: 12,
+    isNebula: false,
+  } as any)
+
   const links = WORLDS.map((w, i) => ({
     source: w.id,
     target: WORLDS[(i + 1) % WORLDS.length].id,
@@ -831,6 +863,14 @@ async function initGraph() {
     console.warn('Failed to load custom worlds:', e)
   }
 
+  // 设置星球钉在星图角落，不参与力模拟漂移
+  const settingsNode = nodes.find(n => n.id === 'settings')
+  if (settingsNode) {
+    ;(settingsNode as any).fx = 150
+    ;(settingsNode as any).fy = -120
+    ;(settingsNode as any).fz = 0
+  }
+
   graphInstance = ForceGraph3DAny()(graphRef.value)
     .graphData({ nodes, links })
     .backgroundColor('#030306')
@@ -845,7 +885,7 @@ async function initGraph() {
     .linkCurvature(0.15)
     .nodeThreeObject((node: any) => {
       const group = new THREE.Group()
-      const params = PLANET_SHADER_PARAMS[node.id]
+      const params = PLANET_SHADER_PARAMS[node.id] ?? PLANET_SHADER_PARAMS.create
       const color = new THREE.Color(node.color)
       const isNebula = node.isNebula
       const isMain = node.isMain || false
@@ -960,6 +1000,8 @@ async function initGraph() {
     })
     .onNodeClick((node: any) => {
       if (warpActive.value) return
+      // 设置星球：直接弹密钥设置，不走幻象页
+      if (node.id === 'settings') { showSettings.value = true; return }
       hoveredWorld.value = null
       const targetPos = { x: node.x || 0, y: node.y || 0, z: node.z || 0 }
       const cam = graphInstance.camera()

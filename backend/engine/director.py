@@ -43,10 +43,12 @@ def _warn_dangling_flows(registry: dict) -> None:
     """加载时校验 aftermath.flow 目标 id 都在 registry 内（防 flow 笔误致伪重开）"""
     for sid, scene in registry.items():
         flow = (scene.get("aftermath") or {}).get("flow")
-        if isinstance(flow, str) and flow and flow != "END" and flow not in registry:
-            logging.getLogger(__name__).warning(
-                f"场景 {sid} aftermath.flow -> {flow} 在 registry 中不存在（将导致伪重开）"
-            )
+        targets = [flow] if isinstance(flow, str) else (list(flow.values()) if isinstance(flow, dict) else [])
+        for t in targets:
+            if isinstance(t, str) and t and t != "END" and t not in registry:
+                logging.getLogger(__name__).warning(
+                    f"场景 {sid} aftermath.flow -> {t} 在 registry 中不存在（将导致伪重开）"
+                )
 
 
 class ScenePlan:
@@ -231,19 +233,19 @@ def view_scene(state: GameState) -> ScenePlan:
         setting_lines.append("北边传来的风声越来越紧——洛阳城似乎要变天了。")
         setting = "\n".join(setting_lines)
 
-    # 2.6 P1 暗线钩子（决策 17：自由行动触发）：未触发的暗线 hint 注入视野，
-    #     让 LLM 在叙事/选项里自然带出（软钩子，玩家按 trigger 行动即触发）
-    if idx == 1:
-        from .player_data import _load_darklines
-        dl_data = _load_darklines()
-        for line, spec in dl_data.items():
-            if not isinstance(spec, dict) or line.startswith("_"):
-                continue
-            if spec.get("flag") in (state.get("flags") or []):
-                continue  # 已触发
-            if spec.get("hint") and spec.get("hint") not in setting_lines:
-                setting_lines.append(f"【暗线】{spec['hint']}")
-        setting = "\n".join(setting_lines)
+    # 2.6 暗线钩子（决策 17：自由行动触发）：当前章节未触发的暗线 hint 注入视野，
+    #     让 LLM 在叙事/选项里自然带出（软钩子，玩家按 trigger 行动即触发）。
+    #     按 era.chapter 加载对应章节暗线表（P1-P6），不再锁死 P1
+    from .player_data import _load_darklines, _chapter_of_state
+    dl_data = _load_darklines(_chapter_of_state(state))
+    for line, spec in dl_data.items():
+        if not isinstance(spec, dict) or line.startswith("_"):
+            continue
+        if spec.get("flag") in (state.get("flags") or []):
+            continue  # 已触发
+        if spec.get("hint") and spec.get("hint") not in setting_lines:
+            setting_lines.append(f"【暗线】{spec['hint']}")
+    setting = "\n".join(setting_lines)
 
     # 3. 在场角色（distance_map）：严格"在场即呈现"（决策 10）——只呈现玩家
     #    真正遇到/认识的角色（character_states 已登记且位置匹配当前地点的），
@@ -375,8 +377,9 @@ def _walk_flow(state: GameState) -> list:
     while cur in registry and cur not in seen:
         seen.add(cur)
         flow = (registry[cur].get("aftermath") or {}).get("flow")
+        # dict 条件岔路：按 state.flags/tension 解析（_resolve_next），而非只取 default
         if isinstance(flow, dict):
-            flow = flow.get("default") or ""
+            flow = _resolve_next(registry[cur], state) or ""
         if not flow or flow == "END" or flow not in registry:
             break
         out.append(flow)

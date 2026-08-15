@@ -1,24 +1,14 @@
 import httpx
 import json
 import logging
-import contextvars
 from typing import AsyncGenerator
-from config import (
-    DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL,
-    MAX_TOKENS_VERDICT,
-    PARAMS_NARRATIVE,
+from .config import (
+    DEEPSEEK_BASE_URL, DEEPSEEK_BETA_URL, DEEPSEEK_MODEL,
+    MAX_TOKENS_VERDICT, MAX_TOKENS_WORLDVIEW,
+    PARAMS_NARRATIVE, PARAMS_FORMAT, PARAMS_OPTIONS,
 )
 
 logger = logging.getLogger(__name__)
-
-# BYOK：玩家自带的 DeepSeek 密钥（X-API-Key 请求头）经请求级 ContextVar 传递，
-# 让 LangGraph 引擎各节点（narrate/validate/corrector/remember）无需改签名即可读到。
-_api_key_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("api_key", default="")
-
-
-def set_api_key(key: str) -> None:
-    """请求处理器在进入引擎前设置；空串 → stream_chat 按严格 BYOK 报错。"""
-    _api_key_ctx.set(key.strip() if key else "")
 
 
 async def stream_chat(
@@ -27,28 +17,29 @@ async def stream_chat(
     temperature: float | None = None,
     top_p: float | None = None,
     stop: list[str] | None = None,
-    api_key: str | None = None,
+    prefix: str | None = None,
+    api_key: str = "",
 ) -> AsyncGenerator[str, None]:
-    """Stream chat completion from DeepSeek.
+    """Stream chat completion from DeepSeek，用玩家自己的 key。
 
-    BYOK：api_key 缺省时读请求级 ContextVar（play.py 从 X-API-Key 头设置）。
-    严格不兑底——玩家不填 key 就明说，绝不悄悄走服务器账户（服务器 key 仅供
-    RAG embedding 等系统内部用，不承接玩家叙事）。
+    api_key 由前端通过 X-API-Key 请求头传入——每个玩家用各自的密钥，
+    服务端不做兜底（玩家 key 失效就明说，绝不悄悄走部署者的账户）。
     """
-    key = api_key if api_key else _api_key_ctx.get()
-    if not key:
-        yield "[错误] 未配置API密钥——请先到星图的'设置'星球，填入你自己的DeepSeek密钥。"
+    if not api_key:
+        yield "[错误] 未配置API密钥——请先回到星图，点击'设置'星球，填入你自己的DeepSeek密钥。"
         return
     try:
         async for chunk in _stream_openai_compatible(
             base_url=DEEPSEEK_BASE_URL,
-            api_key=key,
+            beta_url=DEEPSEEK_BETA_URL,
+            api_key=api_key,
             model=DEEPSEEK_MODEL,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p,
             stop=stop,
+            prefix=prefix,
         ):
             yield chunk
     except Exception as e:
@@ -58,6 +49,7 @@ async def stream_chat(
 
 async def _stream_openai_compatible(
     base_url: str,
+    beta_url: str,
     api_key: str,
     model: str,
     messages: list[dict],
@@ -65,36 +57,48 @@ async def _stream_openai_compatible(
     temperature: float | None = None,
     top_p: float | None = None,
     stop: list[str] | None = None,
+    prefix: str | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Call OpenAI-compatible API with streaming."""
-    url = f"{base_url}/chat/completions"
+    """Call OpenAI-compatible API with streaming.
+
+    v3.2: 完整参数支持 + Chat Prefix Completion。
+    注意：prefix 需要 beta endpoint。
+    """
+    # Chat Prefix Completion：使用 beta endpoint，强制首token
+    use_beta = prefix is not None
+    url = f"{beta_url if use_beta else base_url}/chat/completions"
 
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
 
+    # 构建消息列表：prefix 模式下在 assistant 消息末尾追加 prefix
     payload_messages = list(messages)
+    if prefix:
+        payload_messages.append({
+            "role": "assistant",
+            "content": prefix,
+            "prefix": True,
+        })
 
     payload = {
         "model": model,
         "messages": payload_messages,
         "max_tokens": max_tokens,
         "stream": True,
-        "thinking": {"type": "disabled"},  # V4 Pro 默认推理模式，必须显式关闭
     }
 
     # temperature 和 top_p：优先传入值，否则用 PARAMS_NARRATIVE 默认
-    temp = temperature if temperature is not None else PARAMS_NARRATIVE.get("temperature", 1.3)
-    tp = top_p if top_p is not None else PARAMS_NARRATIVE.get("top_p", 1.0)
+    temp = temperature if temperature is not None else PARAMS_NARRATIVE["temperature"]
+    tp = top_p if top_p is not None else PARAMS_NARRATIVE["top_p"]
     payload["temperature"] = temp
-    if tp is not None:
-        payload["top_p"] = tp
+    payload["top_p"] = tp
 
     if stop:
         payload["stop"] = stop
 
-    async with httpx.AsyncClient(timeout=300.0) as client:
+    async with httpx.AsyncClient(timeout=120.0) as client:
         async with client.stream("POST", url, json=payload, headers=headers) as resp:
             if resp.status_code != 200:
                 raise Exception(f"LLM API error: {resp.status_code}")
@@ -107,9 +111,7 @@ async def _stream_openai_compatible(
                 try:
                     data = json.loads(data_str)
                     delta = data["choices"][0].get("delta", {})
-                    # V4 Pro 推理模式：content 在 reasoning 结束后才出现
                     content = delta.get("content", "")
-                    # 如果 content 为 null，跳过（reasoning_content 阶段）
                     if content:
                         yield content
                 except (json.JSONDecodeError, KeyError, IndexError):

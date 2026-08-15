@@ -45,6 +45,9 @@
       </div>
     </transition>
 
+    <!-- 操作引导（首次进入显示一次） -->
+    <OperationGuide v-if="opsGuideVisible && started && !showIntro" @close="closeOpsGuide" />
+
     <!-- 返回星图 -->
     <button class="back-btn" @click="goBack" aria-label="返回星图">←</button>
 
@@ -111,6 +114,7 @@
         :player="gameState?.player ?? null"
         :rels="characterRels"
         :trust="trust"
+        :stances="stances"
         :character-states="gameState?.character_states"
         :world-events="gameState?.world_events"
         :world-rumors="gameState?.world_rumors"
@@ -149,6 +153,7 @@ import EraBanner from '../components/EraBanner.vue'
 import NarrativeArea from '../components/NarrativeArea.vue'
 import ChoiceArea from '../components/ChoiceArea.vue'
 import AchievementToast from '../components/AchievementToast.vue'
+import OperationGuide from '../components/OperationGuide.vue'
 import { usePlaySse } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
@@ -295,10 +300,21 @@ function showLiteBanner(chapter: string, title: string, location = '') {
   liteBannerTimer = window.setTimeout(() => { liteBannerText.value = '' }, 2400)
 }
 
+// ── 操作引导（首次进入显示一次）──
+const opsGuideVisible = ref(false)
+function closeOpsGuide() {
+  try { localStorage.setItem('sg3d_ops_guide_seen', '1') } catch { /* 隐私模式忽略 */ }
+  opsGuideVisible.value = false
+}
+
 // ── 生命周期 ──
 onMounted(() => {
   window.addEventListener('pointerdown', inkSplash, { passive: true })
   checkResume()   // 检测存档：有档弹「继续/新开」，无档正常开场
+  // 首次进入游戏显示操作引导（localStorage 记一次）
+  try {
+    opsGuideVisible.value = localStorage.getItem('sg3d_ops_guide_seen') !== '1'
+  } catch { opsGuideVisible.value = false }
 })
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', inkSplash)
@@ -679,6 +695,7 @@ function markMenuRead() {
 
 const characterRels = computed(() => gameState.value?.relations ?? {})
 const trust = computed(() => gameState.value?.trust ?? {})
+const stances = computed(() => gameState.value?.stances ?? {})
 
 // ── 思维链阶段：从当前状态提取上下文数据 ──
 const thinkingNpcList = computed(() => {

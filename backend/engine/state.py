@@ -6,6 +6,8 @@ GameState Schema（新三国 星空 · LangGraph State）
 序列化: to_dict / from_dict（前端每轮回传，沿用现状协议）
 """
 from typing import TypedDict, Literal, Optional
+import os
+import json
 
 
 class PlayerState(TypedDict):
@@ -74,8 +76,9 @@ class GameState(TypedDict):
     # ── 时代 ──
     era: EraState
     # ── 世界 ──
-    relations: dict[str, int]     # 10+ NPC 好感值 0-100
+    relations: dict[str, int]     # NPC 好感值 0-100（关系网权威源）
     trust: dict[str, int]         # 信任值（好感=态度，信任=信不信你的话）
+    stances: dict[str, str]       # 立场标签（"枭雄自危"/"仁德反曹"…，关系网用）
     flags: list[str]              # 状态标记（暗线/见证者/知情者）
     # ── 知识分层（信息迷雾）──
     knowledge: KnowledgeState
@@ -107,8 +110,27 @@ class GameState(TypedDict):
     meta: dict                    # 运行时信息（plan/距离映射等，不持久化）
 
 
+def _relation_seeds() -> dict:
+    """关系网初始种子（relation_seeds.json）：30 NPC × stance/relation/trust。mtime 缓存。"""
+    cache = _relation_seeds.__dict__
+    path = os.path.join(os.path.dirname(__file__), "..", "knowledge", "relation_seeds.json")
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        return cache.get("_data") or {}
+    if cache.get("_mtime") != mtime:
+        try:
+            with open(path, encoding="utf-8") as f:
+                cache["_data"] = (json.load(f) or {}).get("seeds", {})
+            cache["_mtime"] = mtime
+        except (OSError, json.JSONDecodeError):
+            pass
+    return cache.get("_data") or {}
+
+
 def new_game_state() -> GameState:
     """开局状态：P1 黄金风起 · 雨夜醒来"""
+    _rs = _relation_seeds()  # 关系网初始值（好感/信任/立场），仅取 seeds 里声明过的
     return {
         "player": {
             "identity": "无名旅人",
@@ -132,8 +154,9 @@ def new_game_state() -> GameState:
             "season": "春",  # 184-02 → season_of(2)=春（见 world.season_of，开局"春雨夜醒来"）；director 每拍按 world_date 派生覆盖
             "location": "颍川",
         },
-        "relations": {},
-        "trust": {},
+        "relations": {n: s["relation"] for n, s in _rs.items() if isinstance(s, dict) and "relation" in s},
+        "trust": {n: s["trust"] for n, s in _rs.items() if isinstance(s, dict) and "trust" in s},
+        "stances": {n: s["stance"] for n, s in _rs.items() if isinstance(s, dict) and "stance" in s},
         "flags": [],
         "knowledge": {
             "public": [],
@@ -227,6 +250,10 @@ def from_dict(data: dict) -> GameState:
                 except (TypeError, ValueError):
                     continue
             base[k] = clamped
+    # stances 钳位：键数 ≤_DICT_CAP、每值 ≤12 字（防前端放大长文本）
+    st = base.get("stances")
+    if isinstance(st, dict):
+        base["stances"] = {n: str(v)[:12] for n, v in list(st.items())[:_DICT_CAP]}
     # 自由沙盒：player 子字段保护（stats 钳位 0-100；list 字段钳位）
     pl = base.get("player")
     if isinstance(pl, dict):

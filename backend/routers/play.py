@@ -19,11 +19,12 @@ import asyncio
 import json
 import logging
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from engine.graph import run_step
+from services.llm import set_api_key
 
 logger = logging.getLogger(__name__)
 
@@ -43,10 +44,22 @@ def _sse(obj: dict) -> str:
     return f"data: {json.dumps(obj, ensure_ascii=False)}\n\n"
 
 
-async def _step_events(req: PlayRequest):
+def _key_error_stream():
+    """缺少API密钥时的友好提示流（严格 BYOK 不兑底）。"""
+    async def gen():
+        msg = "请先回到星图，点击'设置'星球，填入你自己的DeepSeek密钥。"
+        yield _sse({"type": "err", "content": f"[ERR] {msg}"})
+        yield _sse({"type": "done"})
+    return gen()
+
+
+async def _step_events(req: PlayRequest, api_key: str = ""):
     """生成 SSE 事件流——协议顺序: scene → chunk* → state → options → phase → done"""
     from engine.state import from_dict
     from engine.director import view_scene
+
+    # BYOK：请求级密钥入 ContextVar，LangGraph 引擎各节点经 services.llm 读取
+    set_api_key(api_key)
 
     # ── SSE keepalive（每 15s 发心跳注释，防 nginx/proxy 60s 超时）──
     events: asyncio.Queue = asyncio.Queue()
@@ -151,10 +164,16 @@ async def _step_events(req: PlayRequest):
 
 
 @router.post("/play/step")
-async def play_step(req: PlayRequest):
-    """SSE 流式：引擎完整跑完 → 最终叙事分块实时透出，末尾 state/options/done。"""
+async def play_step(req: PlayRequest, request: Request):
+    """SSE 流式：引擎完整跑完 → 最终叙事分块实时透出，末尾 state/options/done。
+
+    BYOK：读 X-API-Key 头；无 key 直接返回提示流，不跑引擎。
+    """
+    api_key = request.headers.get("x-api-key", "").strip()
+    if not api_key:
+        return StreamingResponse(_key_error_stream(), media_type="text/event-stream")
     return StreamingResponse(
-        _step_events(req),
+        _step_events(req, api_key),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

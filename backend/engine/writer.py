@@ -443,28 +443,25 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
         for e in mine:
             lines.append(f"  · 〔{e.get('date', '')}〕{e.get('event', '')[:60]}")
 
-    # ── 🔗 关系网络 ──
+    # ── 🔗 关系网络（关系网预填 ~30 人，上限列 8 条防撑爆上下文）──
     if relations:
         lines.append("")
         lines.append("🔗 关系网络")
-        # 核心关系 (好感 ≥ 30)
-        core = {k: v for k, v in relations.items() if v >= 30}
-        if core:
-            lines.append("  核心：")
-            for name, val in sorted(core.items(), key=lambda x: -x[1]):
-                tr_val = trust.get(name, 50)
-                lines.append(f"    {name} 好感{val} 信任{tr_val}")
-        # 一般关系 (0 < 好感 < 30)
-        general = {k: v for k, v in relations.items() if 0 < v < 30}
-        if general:
-            lines.append("  一般：")
-            for name, val in sorted(general.items(), key=lambda x: -x[1]):
-                lines.append(f"    {name} 好感{val}")
+        stances = state.get("stances") or {}
+        ranked = sorted(
+            ((n, rel, trust.get(n, 50)) for n, rel in relations.items() if isinstance(rel, (int, float))),
+            key=lambda x: (x[1] or 0) + (x[2] or 0), reverse=True,
+        )[:8]
+        for name, rel_val, tr_val in ranked:
+            stc = stances.get(name, "")
+            suffix = f"｜立场：{stc}" if stc else ""
+            lines.append(f"    {name} 好感{rel_val} 信任{tr_val}{suffix}")
+        hidden = len(relations) - len(ranked)
+        if hidden > 0:
+            lines.append(f"    （其余 {hidden} 人好感较低，未列出）")
         # 态度提示：信任/好感 → 明确态度（关系直接决定互动语气与可做之事，见规则 17）
         att_lines = []
-        for name in list(core.keys()) + list(general.keys()):
-            tr_val = trust.get(name, 50)
-            rel_val = relations.get(name, 50)
+        for name, rel_val, tr_val in ranked:
             if tr_val >= 60:
                 att_lines.append(f"{name} 对你亲近信任，可推心置腹（深夜密谈/交底/托付可行）")
             elif tr_val <= 20:

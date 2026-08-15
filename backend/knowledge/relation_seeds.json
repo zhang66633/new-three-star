@@ -1,0 +1,39 @@
+{
+  "_说明": "关系网初始种子：玩家开局为颍川无名氏（184 年），多数 NPC 不识玩家 → 好感普遍低、信任中性。stance 为立场标签（新三国的荒诞世界观口径）。relations/trust 演化由引擎 LLM 差分/启发式驱动，这里只定起点。",
+  "_scales": {
+    "relation": "0-100 好感；≥30 为 writer 关系网络块「核心」入选线；<30 为「一般」",
+    "trust": "0-100 信任；≥60 推心置腹、≤20 戒备（writer 规则 12）"
+  },
+  "seeds": {
+    "曹操":   { "stance": "枭雄自危",     "relation": 30, "trust": 35 },
+    "刘备":   { "stance": "仁德反曹",     "relation": 50, "trust": 45 },
+    "关羽":   { "stance": "义薄云天",     "relation": 40, "trust": 40 },
+    "张飞":   { "stance": "莽撞赤诚",     "relation": 40, "trust": 35 },
+    "诸葛亮": { "stance": "卧龙待主",     "relation": 45, "trust": 40 },
+    "董卓":   { "stance": "暴戾权臣",     "relation": 10, "trust": 20 },
+    "吕布":   { "stance": "见利忘义",     "relation": 15, "trust": 20 },
+    "袁绍":   { "stance": "四世虚名",     "relation": 30, "trust": 35 },
+    "陈宫":   { "stance": "清白执念",     "relation": 45, "trust": 40 },
+    "貂蝉":   { "stance": "离间棋子",     "relation": 35, "trust": 30 },
+    "华雄":   { "stance": "骄横悍将",     "relation": 20, "trust": 30 },
+    "王允":   { "stance": "司徒危局",     "relation": 35, "trust": 35 },
+    "荀彧":   { "stance": "王佐孤忠",     "relation": 30, "trust": 35 },
+    "袁术":   { "stance": "僭越狂悖",     "relation": 25, "trust": 30 },
+    "孙权":   { "stance": "碧眼坐断",     "relation": 30, "trust": 35 },
+    "孙坚":   { "stance": "江东猛虎",     "relation": 30, "trust": 35 },
+    "周瑜":   { "stance": "江东美玉",     "relation": 30, "trust": 35 },
+    "司马懿": { "stance": "鹰视狼顾",     "relation": 20, "trust": 25 },
+    "赵云":   { "stance": "常山孤胆",     "relation": 35, "trust": 35 },
+    "许攸":   { "stance": "恃才反复",     "relation": 30, "trust": 30 },
+    "徐庶":   { "stance": "孝义辞曹",     "relation": 40, "trust": 35 },
+    "鲁肃":   { "stance": "榻上纵横",     "relation": 35, "trust": 35 },
+    "吕蒙":   { "stance": "白衣渡江",     "relation": 30, "trust": 30 },
+    "陆逊":   { "stance": "书生拜将",     "relation": 30, "trust": 30 },
+    "孙策":   { "stance": "小霸王",       "relation": 30, "trust": 35 },
+    "庞统":   { "stance": "凤雏连环",     "relation": 35, "trust": 35 },
+    "法正":   { "stance": "恩怨分明",     "relation": 30, "trust": 30 },
+    "马超":   { "stance": "锦马超",       "relation": 30, "trust": 30 },
+    "刘表":   { "stance": "守成坐谈",     "relation": 30, "trust": 35 },
+    "贾诩":   { "stance": "毒士自保",     "relation": 20, "trust": 25 }
+  }
+}
