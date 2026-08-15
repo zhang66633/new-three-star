@@ -44,6 +44,31 @@ def _ym(date_key: str) -> tuple:
         return (0, 0)
 
 
+# ── 8 篇章（剧情骨架 §二：黄金风起/洛阳暗夜/诸侯并起/中原逐鹿/官渡风云/赤壁烈焰/三分初定/大幕将合）──
+# 与 §上面的 6 阶段常态（PHASES）是两层：PHASES 驱动世界常态底色（world_normal_*.json），
+# CHAPTERS 驱动玩家可见的故事篇章（era.chapter）。216-218 无场景，并入 P7；P8 覆盖 219 起（含夷陵/白帝）。
+CHAPTERS = [
+    {"id": "P1", "name": "黄金风起", "start": "184-01", "end": "188-12"},
+    {"id": "P2", "name": "洛阳暗夜", "start": "189-01", "end": "189-12"},
+    {"id": "P3", "name": "诸侯并起", "start": "190-01", "end": "191-12"},
+    {"id": "P4", "name": "中原逐鹿", "start": "192-01", "end": "196-12"},
+    {"id": "P5", "name": "官渡风云", "start": "197-01", "end": "200-12"},
+    {"id": "P6", "name": "赤壁烈焰", "start": "201-01", "end": "208-12"},
+    {"id": "P7", "name": "三分初定", "start": "209-01", "end": "218-12"},
+    {"id": "P8", "name": "大幕将合", "start": "219-01", "end": "230-12"},
+]
+
+
+def chapter_of(world_date: dict) -> dict:
+    """玩家日期 → 8 篇章（剧情骨架 §二）。返回 {"id", "name", "label"}。"""
+    y = int(world_date.get("year", 0) or 0)
+    m = int(world_date.get("month", 1) or 1)
+    for c in CHAPTERS:
+        if _ym(c["start"]) <= (y, m) <= _ym(c["end"]):
+            return {"id": c["id"], "name": c["name"], "label": f"{c['id']} {c['name']}"}
+    return {"id": "P1", "name": "黄金风起", "label": "P1 黄金风起"}
+
+
 # ═════════ 地点导航（自由沙盒 · 见设计 §5.2）═════════
 # 地点 → 涉及场景（对齐 registry.json 场景的 location 归属；顺序即解锁次序，也是 action_days 距离基准）
 # 回访目标 = 该地点"最后访问过"的场景（记忆中的场景，LLM 圆场时间冲突）
@@ -52,27 +77,25 @@ def _ym(date_key: str) -> tuple:
 LOCATIONS: dict[str, list[str]] = {
     "颍川": ["P1_s1_rain", "P1_s2_gold"],
     "长安": ["P4_s1_fengyiting", "P4_s2_lijueguosi"],
-    "洛阳": ["P1_s3_leap", "P2_s1_street", "P2_s2_ci"],
+    "洛阳": ["P1_s3_leap", "P2_s1_street", "P2_s2_ci", "P4_s4_yingdi", "P6_s2_caocao"],
     "汜水关": ["P3_s2_huaxiong"],
     "成皋": ["P2_s4_slaughter", "P3_s3_three"],
     "中牟": ["P2_s3_escape"],
     "陈留": ["P3_s1_alliance"],
-    "冀州": [],
-    # P5 追加（表尾，保持前 8 地相对顺序零回归；新 3 地彼此相邻）
-    "许都": [],  # 曹操迎帝/煮酒论英雄 主场（196 起；P5 场景挂此）
-    "徐州": [],  # 三让徐州/辕门射戟/吕布之命/袁术败亡 主场（P5 场景挂此）
-    "小沛": [],  # 辕门射戟 相关（吕布暂驻）
-    # 官渡批追加（表尾）：200 起官渡定鼎 + 荆州线
-    "官渡": [],  # 官渡之战/袁绍败亡 主场（官渡批场景挂此）
-    "荆州": [],  # 刘备投荆州/三顾茅庐 主场（官渡批场景挂此）
-    # 赤壁批追加（表尾）：208 起赤壁三足
-    "南郡": [],  # 长坂坡/赤壁/借荆州/周瑜之死 主场（赤壁批场景挂此）
-    "赤壁": [],  # 赤壁之战/华容道 主场
-    "益州": [],  # 张松献图/刘备入川/落凤坡 主场（210 起）
-    "成都": [],  # 益州易主 主场
-    "合肥": [],  # 合肥大战/逍遥津 主场
-    "汉中": [],  # 汉中之战 主场（219）
-    "麦城": [],  # 水淹七军/败走麦城 主场
+    "冀州": ["P4_s12_yuanshao"],
+    "许都": ["P4_s6_chengdi", "P4_s9_zhujiu", "P4_s10_guanyu", "P6_s3_caopi"],
+    "徐州": ["P4_s3_sanrang", "P4_s7_lvbu", "P4_s8_baiwang"],
+    "小沛": ["P4_s5_yuanmen"],
+    "官渡": ["P4_s11_guandu"],
+    "荆州": ["P4_s13_xinye", "P4_s14_wolong", "P5_s1_bowangpo"],
+    "南郡": ["P5_s2_changbanpo", "P5_s5_nanjun", "P5_s6_sijun", "P5_s7_ganlu", "P5_s9_zhouyu", "P5_s14_dandao", "P6_s4_yiling"],
+    "赤壁": ["P5_s3_chibi", "P5_s4_huarong"],
+    "益州": ["P5_s10_zhangsong", "P5_s11_ruchuan", "P5_s12_luofengpo", "P6_s5_baidi"],
+    "成都": ["P5_s13_yizhou"],
+    "合肥": ["P5_s8_hefei", "P5_s15_xiaoyaojin"],
+    "汉中": ["P5_s16_hanzhong"],
+    "樊城": ["P5_s17_guanyubeifa"],
+    "麦城": ["P6_s1_maicheng"],
 }
 
 
@@ -149,6 +172,7 @@ LOCATION_RUMORS: dict[str, list[dict]] = {
         {"target": "荆州", "hint": "西边荆州，刘备新得之地"},
         {"target": "赤壁", "hint": "南边赤壁，火烧后的焦土战场"},
         {"target": "麦城", "hint": "北边麦城，关羽北伐的据点"},
+        {"target": "樊城", "hint": "北边樊城，关羽正领兵围攻，曹操七路救兵将至"},
     ],
     "赤壁": [
         {"target": "南郡", "hint": "北边南郡，周瑜曹仁正相持"},
@@ -173,6 +197,11 @@ LOCATION_RUMORS: dict[str, list[dict]] = {
     "麦城": [
         {"target": "南郡", "hint": "南边南郡，关羽北伐后路已断"},
         {"target": "荆州", "hint": "西边荆州，关羽最后的据点"},
+        {"target": "樊城", "hint": "北边樊城，关羽正围城，水势看涨"},
+    ],
+    "樊城": [
+        {"target": "麦城", "hint": "南边麦城，是关羽的后路，退兵必经之地"},
+        {"target": "南郡", "hint": "南边南郡，关羽的后方大本营"},
     ],
 }
 
@@ -313,10 +342,11 @@ def load_character(name: str) -> dict:
 
 
 def load_all_characters() -> dict:
-    """读全部角色卡（14 张）。返回 {角色名: 卡}。"""
+    """读全部角色卡（18 张）。返回 {角色名: 卡}。"""
     out = {}
     for name in ("曹操", "刘备", "关羽", "张飞", "诸葛亮", "司马懿", "吕布", "董卓",
-                 "袁绍", "孙权", "周瑜", "陈宫", "王允", "荀彧"):
+                 "袁绍", "孙权", "周瑜", "陈宫", "王允", "荀彧", "孙坚", "袁术",
+                 "貂蝉", "华雄"):
         c = load_character(name)
         if c:
             out[name] = c

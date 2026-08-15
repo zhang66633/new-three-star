@@ -4,7 +4,6 @@ import logging
 from typing import AsyncGenerator
 from config import (
     DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL,
-    HY3_API_KEY, HY3_BASE_URL, HY3_MODEL,
     MAX_TOKENS_VERDICT,
     PARAMS_NARRATIVE,
 )
@@ -19,7 +18,7 @@ async def stream_chat(
     top_p: float | None = None,
     stop: list[str] | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Stream chat completion from DeepSeek, fallback to Hy3.
+    """Stream chat completion from DeepSeek.
 
     v3.2 更新：
     - 移除 frequency_penalty/presence_penalty（V4 不支持）
@@ -39,25 +38,8 @@ async def stream_chat(
         ):
             yield chunk
     except Exception as e:
-        logger.error(f"DeepSeek failed: {e}, trying fallback...")
-        if HY3_API_KEY and HY3_BASE_URL:
-            try:
-                async for chunk in _stream_openai_compatible(
-                    base_url=HY3_BASE_URL,
-                    api_key=HY3_API_KEY,
-                    model=HY3_MODEL,
-                    messages=messages,
-                    max_tokens=max_tokens,
-                    temperature=temperature,
-                    top_p=top_p,
-                    stop=stop,
-                ):
-                    yield chunk
-            except Exception as e2:
-                logger.error(f"Hy3 fallback also failed: {e2}")
-                yield "[错误] LLM服务不可用，请稍后重试。"
-        else:
-            yield "[错误] LLM服务不可用，请稍后重试。"
+        logger.error(f"DeepSeek failed: {e}")
+        yield "[错误] LLM服务不可用，请稍后重试。"
 
 
 async def _stream_openai_compatible(

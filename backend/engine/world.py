@@ -297,7 +297,7 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
             → 阶段切换（era.chapter/season 由 phase_of/season_of 派生）
             → 周期事件（scene_turns 每 4 拍）→ freshen_events 衰减。
     """
-    from .worlddata import phase_of, match_location
+    from .worlddata import phase_of, match_location, chapter_of
     # 1. 移动解析：玩家「前往X」→ 目标地点（决定到达后在场判定与 era.location 写回）
     #    非地点动作 → 目标 = 当前地点（驻留，loc 不变）
     cur_loc = (state.get("player") or {}).get("location", "") or (result.get("era") or {}).get("location", "") or "颍川"
@@ -336,12 +336,11 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
                     world_events.append(ev)
                     seen_ids.add(ev.get("event_id"))
                     new_briefing = True
-    # 4. 阶段切换（era.chapter/season 由 world_date 派生；location 已在移动解析时写回）
+    # 4. 篇章/阶段切换（era.chapter 由 8 篇章 chapter_of 派生；season 由 world_date 派生）
     idx = phase_of(new_wd)
-    from .director import CHAPTER_BY_PHASE
     if phase_of(wd) != idx:
         new_briefing = True   # 跨时代 → 简报（世界翻篇，值得一报）
-    era["chapter"] = CHAPTER_BY_PHASE.get(idx, era.get("chapter", "P1 黄金风起"))
+    era["chapter"] = chapter_of(new_wd)["label"]
     era["year"] = int(new_wd.get("year", 0) or 0)
     era["season"] = season_of(int(new_wd.get("month", 1) or 1))
     # 5. 周期事件（驻留每 4 拍生成一次世界动态——保留 generate_events 的日常生态分支）

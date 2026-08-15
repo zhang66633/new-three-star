@@ -99,17 +99,6 @@ class ScenePlan:
         return cls(scene, s.get("distance_map", {}), s.get("next_pos", ""))
 
 
-# 阶段 → 篇章（自由大世界：era.chapter 由 phase_of(world_date) 派生，取代 registry 静态章）
-CHAPTER_BY_PHASE = {
-    1: "P1 黄金风起",
-    2: "P2 洛阳暗夜",
-    3: "P3 诸侯并起",
-    4: "P4 中原逐鹿",
-    5: "P5 赤壁三足",
-    6: "P6 天下三分",
-}
-
-
 # ═════════ 名场面接线（决策 1：view_scene 注入 registry 名场面）═════════
 # 时间线事件 id → registry 名场面场景 id。事件到点 + 玩家在场（witnessable）时，
 # view_scene 把该场景的锁定台词/选项/flag 注入自由视野（"字幕锚定"，见 continuity.py）。
@@ -198,22 +187,22 @@ def _current_location(state: GameState) -> str:
 def view_scene(state: GameState) -> ScenePlan:
     """自由大世界视野合成：读 state → 合成"玩家当前所在世界切片" → ScenePlan。
 
-    不再读 registry 场景剧本。全部字段由 world_date + phase_of + 地点常态 + 到点事件派生：
+    不再读 registry 场景剧本。全部字段由 world_date + chapter_of + 地点常态 + 到点事件派生：
       - scene_id / skeleton_pos = 当前地点名（LOCATIONS 键，如 "颍川"）
-      - chapter = CHAPTER_BY_PHASE[phase_of(world_date)]
+      - chapter = chapter_of(world_date)（8 篇章，剧情骨架 §二）
       - year/season = world_date 的年 / season_of(月)
       - setting = 地点细描 + 天下大势 + 到点事件（在场 witnessable）
       - distance_map = 在场角色 → "互动"（供 writer 人设分层）
       - options = 过程化选项种子（Step 3 升级为 LLM 引导；此处先给世界行动引导）
     world_date 是唯一时钟——杜绝"189-02 仍判 P1"（时期由世界日期判，非场景静态年）。
     """
-    from .worlddata import world_context, LOCATIONS, phase_of
+    from .worlddata import world_context, LOCATIONS, phase_of, chapter_of
     from .world import season_of, due_events
 
     wd = state.get("world_date") or {"year": 184, "month": 2, "day": 1}
     loc = _current_location(state)
     idx = phase_of(wd)
-    chapter = CHAPTER_BY_PHASE.get(idx, "P1 黄金风起")
+    chapter = chapter_of(wd)["label"]
     wctx = world_context(wd, loc)
 
     # 1. setting：地点细描 + 天下大势 + 本地点常态

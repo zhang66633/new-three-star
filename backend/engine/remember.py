@@ -7,8 +7,7 @@ Remember（记忆节点 · STM/LTM/PIN 三层）
 - STM: ≤6 条 × 50-80 字（当前场景客观事实），满 6 晋升 LTM
 - LTM: 无上限 × 120-150 字（LLM 压缩生成）
 - PIN: ≤5 条（玩家手动钉选，永不压缩，检索优先）
-- 检索: PIN 全部 + top5 LTM + 当前 STM（关键词重叠 + 时效打分，见 _retrieve_ltm）
-  —— 注：未复用 services/rag.py（rag 面向知识库素材检索，非 LTM 记忆）
+- 检索: PIN 全部 + top5 LTM + 当前 STM（TF-IDF 向量排名 + 关键词/时效排名，RRF 融合，见 services/rag.py）
 - 索引: 每次 LTM 变更全量重建（记忆量小，成本可接受）
 """
 import hashlib
@@ -144,37 +143,6 @@ def retrieve_memories(state: dict, query: str) -> list[dict]:
 
 
 def _retrieve_ltm(ltm: list[dict], query: str, top_k: int = RETRIEVE_LTM_TOP) -> list[dict]:
-    """LTM 检索：关键词重叠 + 时效性混合打分，取 top_k 条。
-
-    评分：关键词命中 ×1.5 + 时效衰减（越新越高）。
-    不依赖 rag 索引（rag 面向知识库，非 LTM 记忆）。
-    """
-    if not ltm:
-        return []
-
-    # 1. 查询关键词（2-4 字滑窗取词，去重）
-    query_clean = query.replace("，", "").replace("。", "").replace(" ", "")
-    keywords = set()
-    for wlen in (2, 3, 4):
-        for i in range(len(query_clean) - wlen + 1):
-            w = query_clean[i:i + wlen]
-            if w.strip():
-                keywords.add(w)
-
-    if not keywords:
-        return sorted(ltm, key=lambda m: m.get("ts", 0), reverse=True)[:top_k]
-
-    # 2. 打分
-    max_ts = max((m.get("ts", 0) for m in ltm), default=1)
-
-    def score(m: dict) -> float:
-        text = m.get("text", "")
-        hits = sum(1 for kw in keywords if kw in text)
-        recency = m.get("ts", 0) / max(max_ts, 1)  # 0-1，越近越高
-        return hits * 1.5 + recency * 0.5
-
-    scored = sorted(ltm, key=score, reverse=True)
-    # 过滤掉 0 分（完全不相关）的条目
-    relevant = [m for m in scored if score(m) > 0]
-
-    return (relevant or scored)[:top_k]
+    """LTM 检索：TF-IDF 向量排名 与 关键词/时效排名 经 RRF 融合，取 top_k（见 services/rag.py）。"""
+    from services.rag import retrieve_ltm
+    return retrieve_ltm(ltm, query, top_k=top_k)

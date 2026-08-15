@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from routers import graph, worldview, worlds, play, archive
+from routers import graph, worlds, play, archive
 from db import init_db
 
 
@@ -70,7 +70,6 @@ async def rate_limit(request: Request, call_next):
 
 
 app.include_router(graph.router, prefix="/api")
-app.include_router(worldview.router, prefix="/api")
 app.include_router(worlds.router, prefix="/api")
 app.include_router(play.router, prefix="/api")
 app.include_router(archive.router, prefix="/api")
