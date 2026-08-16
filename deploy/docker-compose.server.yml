@@ -11,6 +11,7 @@ services:
     # 经 NEW_THREE_DB 指向 /data/worlds.db——docker compose down / 重建镜像不清空
     volumes:
       - new-three-data:/data
+      - ./downloads:/app/downloads
     environment:
       - NEW_THREE_DB=/data/worlds.db
     # 生产拓扑：nginx-ssl（443，sgweb.asia）经 webnet 反代到本容器，端口只对宿主机回环开放
