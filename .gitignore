@@ -41,3 +41,4 @@ backend/game_world/rag_index.pkl
 backend/uvicorn.log
 
 materials/intro_assets/
+_package/

@@ -82,6 +82,34 @@ async def health():
     return {"status": "ok", "service": "new-three-explorer"}
 
 
+# ═════════ 本地版自托管静态前端（frontend/dist 存在时启用）═════════
+# 打包版/离线版：后端直接托管构建产物，打开 http://127.0.0.1:8000 即玩。
+# 生产（Docker+nginx）或开发（vite dev）不触发（dist 不存在或由 nginx 先行）。
+_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+if os.path.isdir(_DIST):
+    from fastapi.staticfiles import StaticFiles
+    from fastapi.responses import FileResponse
+
+    _DIST_NORM = os.path.normpath(_DIST)
+
+    # 静态资源目录（构建产物）
+    _assets_dir = os.path.join(_DIST, "assets")
+    if os.path.isdir(_assets_dir):
+        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+
+    # SPA 兜底：命中文件则返回，否则回退 index.html（Vue Router history 模式）
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        if full_path.startswith("api/"):
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        target = os.path.normpath(os.path.join(_DIST, full_path))
+        if not target.startswith(_DIST_NORM):
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+        if os.path.isfile(target):
+            return FileResponse(target)
+        return FileResponse(os.path.join(_DIST, "index.html"))
+
+
 if __name__ == "__main__":
     import uvicorn
     # reload=True：后端代码改动自动重启（watchfiles），开发期免手动重启。
