@@ -891,6 +891,8 @@ function retryAfterError() {
   background: rgba(4, 4, 6, 0.82);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  overflow-y: auto;          /* 小屏/横屏内容超高时可滚动 */
+  -webkit-overflow-scrolling: touch;
 }
 .resume-title {
   font-family: "Noto Serif SC", "STKaiti", serif;

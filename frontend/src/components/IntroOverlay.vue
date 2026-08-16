@@ -89,6 +89,8 @@ onBeforeUnmount(() => window.clearTimeout(introTimer))
   align-items: flex-start;   /* 顶部对齐：标题固定最上方 */
   justify-content: center;
   background: #0a0a0c;   /* 兜底暗底（IntroBackground 视频覆盖其上） */
+  overflow-y: auto;          /* 内容超高（小屏/横屏）可滚动，确保「开始历险」可达 */
+  -webkit-overflow-scrolling: touch;
 }
 .intro-content {
   position: relative;
