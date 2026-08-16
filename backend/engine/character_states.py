@@ -127,6 +127,10 @@ def update_char_facts(state: dict, due_events: list, new_wd: dict, location: str
             st["last_seen"] = f"{y}-{m:02d}"
             st["seen_at"] = location
             st["known"] = True  # 在场亲历 = 玩家认识了
+            # 同步关系网「已相遇」：玩家在场亲历 = 遇到，关系网应显示（即使 LLM 未给 first_impression）
+            _enc = state.setdefault("encountered", [])
+            if npc not in _enc:
+                _enc.append(npc)
     # 历史人物按点退场
     for n, st in (state.get("character_states") or {}).items():
         dies = st.get("dies_on")

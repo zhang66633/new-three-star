@@ -115,6 +115,7 @@
         :rels="characterRels"
         :trust="trust"
         :stances="stances"
+        :encountered="gameState?.encountered ?? []"
         :character-states="gameState?.character_states"
         :world-events="gameState?.world_events"
         :world-rumors="gameState?.world_rumors"

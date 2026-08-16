@@ -254,6 +254,21 @@ async def remember_node(state: GameState) -> dict:
         except (TypeError, ValueError):
             pass
 
+    # 2.4 初次相遇落地：first_impressions（新角色初见好感 10-60）→ relations/trust 写入 + encountered 登记。
+    #    relations_delta 对已有角色默认 50 起点；初见则直接设 LLM 生成的初始值（不叠加 50）。
+    encountered = list(state.get("encountered", []))
+    for name, imp in (updates.get("first_impressions") or {}).items():
+        if not isinstance(imp, dict) or name in relations:
+            continue
+        try:
+            relations[name] = max(0, min(100, int(imp.get("relation", 30))))
+            trust[name] = max(0, min(100, int(imp.get("trust", 30))))
+        except (TypeError, ValueError):
+            relations[name] = 30
+            trust[name] = 30
+        if name not in encountered:
+            encountered.append(name)
+
     # 2.5 角色软状态合并（自由大世界·决策9：LLM 管软状态 doing/goal/attitude/tags/notes）
     from .character_states import merge_character_soft_state
     try:
@@ -294,6 +309,7 @@ async def remember_node(state: GameState) -> dict:
         "memory": st.get("memory", {}),
         "relations": relations,
         "trust": trust,
+        "encountered": encountered,
         "foreshadowing": foreshadowing,
         "world_rumors": rumors,
         "flags": flags,

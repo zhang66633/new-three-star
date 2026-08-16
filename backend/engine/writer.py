@@ -151,7 +151,7 @@ WRITER_INSTRUCTION = """
 3. 文风（轻松幽默网文·乐子人·折棒轻吐槽）：语言利落、短句短段、一行一镜头，画面感保留但忌堆叠意象、忌抒情长句；叙述者是"乐子人"，世界越惨旁白越带劲、NPC 越严肃越扒他一层滑稽，沉重场面先幽默后紧张、先搞笑再出血；玩家内心是"折棒轻吐槽"，懒洋洋见惯不怪、毒舌但不 meta、不下结论不点破；感官覆盖至少两类（视觉/听觉优先），以动作、对话推进；绝不煽情、绝不诉苦、绝不上价值
 4. 结尾 2-3 个选项，每个：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30/局部 31-70/硬 71-100）+ effect（对玩家可见的后果说明）+ category（地点行动分类 §5.4：打探=打听消息/赶路=移动/停留=驻守休息/互动=与人物来往；2-3 个中至少覆盖 打探 或 互动 之一）
 5. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，直接输出 JSON 对象），格式：
-{{"narrative":"...","options":[{{"text":"...","type":"major|minor","tension":25,"effect":"...","category":"互动"}}],"relations_delta":{{"曹操":2}},"trust_delta":{{"曹操":1}},"events":[{{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}],"player_updates":{{"assets_add":["半块干粮"],"coins_delta":5,"stats_delta":{{"stamina":-10,"hunger":15}},"title_add":null,"reputation_delta":5}},"world_events_add":[{{"event":"你在中牟救下的客商转头拿你名字报恩","location":"中牟"}}],"character_updates":{{"曹操":{{"doing":"正领乡勇操练","attitude_delta":2,"tags_add":["欣赏你"]}}}}}}
+{{"narrative":"...","options":[{{"text":"...","type":"major|minor","tension":25,"effect":"...","category":"互动"}}],"first_impressions":{{"新角色名":{{"relation":35,"trust":30,"reason":"帮了他"}}}},"relations_delta":{{"曹操":2}},"trust_delta":{{"曹操":1}},"events":[{{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}],"player_updates":{{"assets_add":["半块干粮"],"coins_delta":5,"stats_delta":{{"stamina":-10,"hunger":15}},"title_add":null,"reputation_delta":5}},"world_events_add":[{{"event":"你在中牟救下的客商转头拿你名字报恩","location":"中牟"}}],"character_updates":{{"曹操":{{"doing":"正领乡勇操练","attitude_delta":2,"tags_add":["欣赏你"]}}}}}}
    events：本拍 1-3 条关键事件（actor/action/result 客观陈述，不写内心独白/风景；无则省）
    player_updates：资产增减/金钱/属性变化/新称号/声望（reputation_delta +10~-10，当众义举或恶名才给）。注意：休息/吃(进食/觅食/买吃的)/治伤(疗伤/看伤/包扎/敷药)的系统恢复与医药费由引擎自动结算，禁止在 stats_delta/coins_delta 重复声明——stats_delta 只声明叙事性身体变化（受伤/被救/被抢/中毒等）
    world_events_add：玩家行为的持久痕迹（救下的人报恩/惹的仇家寻仇/壮举成传闻，1-2 条），受"历史大势不可推翻"约束不得改名场面结局；无则省
@@ -160,6 +160,7 @@ WRITER_INSTRUCTION = """
 6. 时空跳跃（跨年/大段路程）须显式交代，不得无标记硬切
 7. 世界差异克制（黄金/黄巾等）：无论首次还是后续都只是背景细节，不展开、不吐槽、不反复念叨，靠"被动遇见"自然带出；派系名称'黄金军''黄金兵'每场至多 1-2 次，其余用代称（贼军/溃兵/那支人马/叛军/他们）；口号只按锁定台词逐字出现
 8. 关系/信任按角色分别给：relations_delta、trust_delta 为每个真正互动或在场的角色给**各自独立**数值（-8~+8，正=好感/信任升，负=降），因角色而异、严禁同一值；没互动的别列
+8.5 初次相遇（关键）：本拍有【关系网】中尚不存在的新角色出场（relations 里没有该名字）→ 必须输出 first_impressions 字段：{{"角色名":{{"relation":N,"trust":N,"reason":"一句话理由"}}}}。relation/trust 取 **10-60 区间**（初见不可能死仇也不可能满分），按本拍玩家表现浮动：救了他/帮了他 40-60，平平交谈 25-40，冒犯/敌意 10-25。reason 说明依据（玩家做了什么）。同一角色只写一次（重复出场用 relations_delta 微调，不再 first_impressions）。已相遇角色（relations 已有）绝不输出 first_impressions
 9. 幽默手法每场至少 2 种（反差荒诞/冷幽默/夸张/自嘲/看戏点评/巧合梗），点到即止不过度
 10. 玩家动作离谱/越权/meta（改世界规则/召唤现代/作弊上帝/命令不可能）：**世界不得真的改变**——乐子人幽默拒绝，动作滑稽落空、无实际后果；选项须含"换个说法/再想想"重输出口（可作额外第 4 个选项，不挤占 2-3 个常规选项）；NPC 把他的话当疯话自然接住
 11. 活世界感：世界在自我转动——①行路/等待写真实时光流逝（赶路写路程、休息写日夜更替），世界随日期推进有回应；②底色（阶段大势/本地点生态）只在玩家亲眼所见/亲耳所闻时自然带出，一个镜头一句，严禁罗列设定、禁止旁白式宣告背景（"天下大势""此地日常"这类框架词不得出现在叙事）；③NPC 有自己的路要赶、要避的祸；④克制：底色不是主菜，细节留给面板（世界公告/今日头条/与你有关），叙事聚焦"你现在看见/听见/经历的事"。若面板有 🗞 与你有关的天下事（related_to_player=strong）应主动汇入本拍、玩家可现场应对（躲/应/追/装不知），选择成为"活的选择点"（§3.4）
@@ -446,7 +447,8 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
         for e in mine:
             lines.append(f"  · 〔{e.get('date', '')}〕{e.get('event', '')[:60]}")
 
-    # ── 🔗 关系网络（关系网预填 ~30 人，上限列 8 条防撑爆上下文）──
+    # ── 🔗 关系网络（相遇才登记：只列已遇角色；上限 8 条防撑爆上下文）──
+    # 首次相遇规则（见指令 8.5）：本拍出场且 relations 里没有的名字 → 输出 first_impressions。
     if relations:
         lines.append("")
         lines.append("🔗 关系网络")
@@ -477,6 +479,11 @@ def _build_context_panel(state: GameState, plan: ScenePlan, memory_pack: list = 
             lines.append("  态度：")
             for a in att_lines:
                 lines.append(f"    {a}")
+    else:
+        # 开局/仅遇过无关系者：明确告知 LLM 当前关系网为空，本拍出场角色皆为新面孔
+        lines.append("")
+        lines.append("🔗 关系网络")
+        lines.append("    （你尚未与任何人建立关系——本拍出场的新角色均需输出 first_impressions 初见好感）")
 
     # ── 伏笔 ──
     if foreshadowing:
@@ -722,7 +729,32 @@ def _extract_state_updates(narrative: str, options: list, plan: ScenePlan, llm_d
     result: dict = {"memory_add": [], "relations_delta": {}, "trust_delta": {},
                     "foreshadowing_add": [], "rumors_add": [], "flags_add": [],
                     "player_updates": {}, "world_events_add": [], "character_updates": {},
-                    "failure": None}
+                    "first_impressions": {}, "failure": None}
+
+    # 0. 初次相遇：LLM 声明的 first_impressions（新角色初见好感 10-60 区间）
+    #    此处只做钳位与结构校验；「是否已相遇」过滤在 graph 落地时按完整 state 判断
+    #    （relations 已有/encountered 已含 → 忽略，防 LLM 重复覆盖已建关系）。
+    if isinstance(llm_data, dict):
+        fi = llm_data.get("first_impressions")
+        if isinstance(fi, dict):
+            for k, v in fi.items():
+                if not isinstance(v, dict):
+                    continue
+                rel = v.get("relation")
+                tr = v.get("trust")
+                if isinstance(rel, (int, float)) and not isinstance(rel, bool):
+                    rel = max(10, min(60, round(rel)))
+                else:
+                    rel = 30
+                if isinstance(tr, (int, float)) and not isinstance(tr, bool):
+                    tr = max(10, min(60, round(tr)))
+                else:
+                    tr = 30
+                result["first_impressions"][k] = {
+                    "relation": rel,
+                    "trust": tr,
+                    "reason": str(v.get("reason", ""))[:40],
+                }
 
     # 0. 玩家数据更新：LLM 声明的 player_updates（资产/属性/称号）透传
     if isinstance(llm_data, dict):

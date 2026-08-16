@@ -91,7 +91,7 @@
 
           <!-- 关系网 -->
           <div v-else-if="activeTab === 'relnet'" class="gm-section">
-            <RelationshipPanel :rels="rels" :trust="trust" :stances="stances" />
+            <RelationshipPanel :rels="rels" :trust="trust" :stances="stances" :encountered="encountered" />
           </div>
         </div>
       </div>
@@ -119,6 +119,7 @@ const props = withDefaults(defineProps<{
   rels?: Record<string, number>
   trust?: Record<string, number>
   stances?: Record<string, string>
+  encountered?: string[]
   characterStates?: Record<string, CharacterState>
   worldEvents?: WorldEvent[]
   worldRumors?: string[]
@@ -137,6 +138,7 @@ const props = withDefaults(defineProps<{
   rels: () => ({}),
   trust: () => ({}),
   stances: () => ({}),
+  encountered: () => [],
   characterStates: () => ({}),
   worldEvents: () => [],
   worldRumors: () => [],

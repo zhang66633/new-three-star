@@ -76,9 +76,10 @@ class GameState(TypedDict):
     # ── 时代 ──
     era: EraState
     # ── 世界 ──
-    relations: dict[str, int]     # NPC 好感值 0-100（关系网权威源）
+    relations: dict[str, int]     # NPC 好感值 0-100（关系网权威源；相遇才登记，不再开局预填）
     trust: dict[str, int]         # 信任值（好感=态度，信任=信不信你的话）
-    stances: dict[str, str]       # 立场标签（"枭雄自危"/"仁德反曹"…，关系网用）
+    stances: dict[str, str]       # 立场标签（LLM 动态生成，兼容旧档；开局空）
+    encountered: list[str]        # 已相遇角色名集合（关系网只显示这些人；首遇 LLM 生成初见好感）
     flags: list[str]              # 状态标记（暗线/见证者/知情者）
     # ── 知识分层（信息迷雾）──
     knowledge: KnowledgeState
@@ -110,10 +111,14 @@ class GameState(TypedDict):
     meta: dict                    # 运行时信息（plan/距离映射等，不持久化）
 
 
-def _relation_seeds() -> dict:
-    """关系网初始种子（relation_seeds.json）：30 NPC × stance/relation/trust。mtime 缓存。"""
-    cache = _relation_seeds.__dict__
-    path = os.path.join(os.path.dirname(__file__), "..", "knowledge", "relation_seeds.json")
+def _character_personas() -> dict:
+    """人物抽象人设标签库（character_personas.json）：name → tags。mtime 缓存。
+
+    标签源自折棒吐槽提炼（新三国观众共识的抽象梗人设），用于关系网多标签展示
+    与天意「第一印象」生成的参考。静态定义，开局即可用，不随存档变化。
+    """
+    cache = _character_personas.__dict__
+    path = os.path.join(os.path.dirname(__file__), "..", "knowledge", "character_personas.json")
     try:
         mtime = os.path.getmtime(path)
     except OSError:
@@ -121,16 +126,23 @@ def _relation_seeds() -> dict:
     if cache.get("_mtime") != mtime:
         try:
             with open(path, encoding="utf-8") as f:
-                cache["_data"] = (json.load(f) or {}).get("seeds", {})
+                data = json.load(f) or {}
+            cache["_data"] = {p["name"]: p.get("tags", []) for p in data.get("personas", []) if isinstance(p, dict) and p.get("name")}
             cache["_mtime"] = mtime
         except (OSError, json.JSONDecodeError):
             pass
     return cache.get("_data") or {}
 
 
+def get_persona_tags(name: str) -> list:
+    """取角色抽象人设标签（无则空列表）。供关系网/第一印象生成复用。"""
+    return _character_personas().get(name, [])
+
+
 def new_game_state() -> GameState:
     """开局状态：P1 黄金风起 · 雨夜醒来"""
-    _rs = _relation_seeds()  # 关系网初始值（好感/信任/立场），仅取 seeds 里声明过的
+    # 关系网不再开局预填：玩家「遇到才登记」（决策 14 哲学），relations/trust/stances 从空开始，
+    # 首次相遇由 LLM 生成 first_impression（初见好感 10-60 区间）。见 writer 系统 prompt 相遇规则。
     return {
         "player": {
             "identity": "无名旅人",
@@ -154,9 +166,10 @@ def new_game_state() -> GameState:
             "season": "春",  # 184-02 → season_of(2)=春（见 world.season_of，开局"春雨夜醒来"）；director 每拍按 world_date 派生覆盖
             "location": "颍川",
         },
-        "relations": {n: s["relation"] for n, s in _rs.items() if isinstance(s, dict) and "relation" in s},
-        "trust": {n: s["trust"] for n, s in _rs.items() if isinstance(s, dict) and "trust" in s},
-        "stances": {n: s["stance"] for n, s in _rs.items() if isinstance(s, dict) and "stance" in s},
+        "relations": {},   # 关系网：玩家遇到才登记（首次相遇由 LLM 生成初见好感）
+        "trust": {},         # 信任：同上，相遇才建
+        "stances": {},       # 立场标签：LLM 动态生成（兼容旧档字段，开局空）
+        "encountered": [],   # 已相遇角色名集合（关系网只显示这些人）
         "flags": [],
         "knowledge": {
             "public": [],
@@ -249,6 +262,17 @@ def from_dict(data: dict) -> GameState:
             base[_k] = max(0, min(1_000_000, int(base.get(_k, 0))))
         except (TypeError, ValueError):
             base[_k] = 0
+    # encountered 钳制：字符串列表去重 + 上限（防前端注入脏数据/无限膨胀）
+    enc = base.get("encountered")
+    if isinstance(enc, list):
+        seen_names = []
+        for n in enc:
+            if isinstance(n, str) and n.strip() and n not in seen_names and len(seen_names) < _LIST_CAP:
+                seen_names.append(n.strip())
+        base["encountered"] = seen_names
+    elif not isinstance(enc, list):
+        base["encountered"] = []
+
     # relations/trust 值钳位 0-100 整数（防恶意前端放大/字符串/负数）
     for k in ("relations", "trust"):
         d = base.get(k)

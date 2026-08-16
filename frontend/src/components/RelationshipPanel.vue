@@ -13,6 +13,9 @@
             <span class="relnet-name">{{ item.name }}</span>
             <span v-if="item.stance" class="relnet-stance">{{ item.stance }}</span>
           </div>
+          <div v-if="item.tags.length" class="relnet-tags">
+            <span v-for="(t, ti) in item.tags" :key="ti" class="relnet-tag">{{ t }}</span>
+          </div>
           <div class="relnet-meters">
             <div class="relnet-meter">
               <span class="relnet-label" :class="relClass(item.rel)">感 {{ item.rel }}</span>
@@ -36,26 +39,43 @@
 
 <script setup lang="ts">
 // RelationshipPanel —— 关系网总览（新·自由大世界关系网）
-// 展示全部已入关系网 NPC（relations 键）：好感条 + 信任条 + 立场标签，按 好感+信任 排序。
+// 展示已相遇 NPC（encountered 或 relations 键）：抽象人设标签（character_personas.json 静态库，多条）
+// + 好感条 + 信任条 + 立场标签，按 好感+信任 排序。未相遇的角色不显示（决策 14 哲学）。
 import { computed } from 'vue'
 import { relClass, trustClass } from '../utils/classes'
+import personasData from '../assets/personas/character_personas.json'
 
 const props = defineProps<{
   rels: Record<string, number>
   trust?: Record<string, number>
   stances?: Record<string, string>
+  encountered?: string[]
 }>()
+
+// 静态人设标签库：name → tags[]（后端 character_personas.json 同步副本）
+const personaTags = computed(() => {
+  const m: Record<string, string[]> = {}
+  const list = (personasData as any)?.personas ?? []
+  for (const p of list) {
+    if (p && typeof p.name === 'string') m[p.name] = Array.isArray(p.tags) ? p.tags : []
+  }
+  return m
+})
 
 const list = computed(() => {
   const tr = props.trust ?? {}
   const st = props.stances ?? {}
+  const enc = new Set(props.encountered ?? [])
+  // 已相遇 = encountered 集合 ∪ relations 键（兼容旧档/早期存档无 encountered 字段）
+  const isMet = (n: string) => enc.has(n) || n in (props.rels ?? {})
   return Object.entries(props.rels)
-    .filter(([, v]) => typeof v === 'number')
+    .filter(([name, v]) => typeof v === 'number' && isMet(name))
     .map(([name, rel]) => ({
       name,
       rel,
       trust: tr[name] ?? 50,
       stance: st[name] ?? '',
+      tags: personaTags.value[name] ?? [],
     }))
     .sort((a, b) => (b.rel + b.trust) - (a.rel + a.trust))
 })
@@ -132,6 +152,23 @@ const list = computed(() => {
   border-radius: 4px;
   padding: 0 5px;
   white-space: nowrap;
+}
+/* 抽象人设标签（多条，金色小胶囊，可换行） */
+.relnet-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 5px;
+}
+.relnet-tag {
+  font-size: 10.5px;
+  color: rgba(240, 220, 174, 0.92);
+  background: rgba(202, 138, 4, 0.14);
+  border: 1px solid rgba(202, 138, 4, 0.35);
+  border-radius: 999px;
+  padding: 1px 8px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 .relnet-meters {
   display: flex;

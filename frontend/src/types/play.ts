@@ -115,6 +115,7 @@ export interface GameState {
   relations: Record<string, number>
   trust: Record<string, number>
   stances?: Record<string, string>
+  encountered?: string[]
   flags: string[]
   knowledge: KnowledgeState
   memory: MemoryState
