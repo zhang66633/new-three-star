@@ -176,7 +176,14 @@ function submit() {
 }
 /* 响应式 */
 @media (max-width: 768px) {
-  .choice-area { padding: 12px 5% 24px; }
+  .choice-area { padding: 12px 4% calc(16px + env(safe-area-inset-bottom)); }
+  /* 选项移动端全宽堆叠（桌面 effect 是右侧 35% 侧栏） */
+  .choice-btn { padding: 12px 14px; }
+  .choice-effect { max-width: 100%; text-align: left; margin-top: 3px; }
+  /* 输入框 ≥16px：iOS 聚焦时防止页面自动缩放 */
+  .free-input { font-size: 16px; padding: 12px 14px; }
+  .free-submit { min-width: 46px; font-size: 1rem; }
+  .free-row { padding-bottom: max(4px, env(safe-area-inset-bottom)); }
 }
 /* prefers-reduced-motion：关闭所有动画 */
 @media (prefers-reduced-motion: reduce) {

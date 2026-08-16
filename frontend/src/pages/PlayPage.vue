@@ -951,4 +951,26 @@ function retryAfterError() {
   color: #c04030;
   text-shadow: 0 0 30px rgba(192, 64, 48, 0.35);
 }
+
+/* ── 移动端适配（<768px）── */
+@media (max-width: 768px) {
+  /* 返回按钮：移入安全区、加大触控目标（44px 苹果推荐） */
+  .back-btn {
+    top: max(12px, env(safe-area-inset-top));
+    left: 12px;
+    width: 44px;
+    height: 44px;
+    font-size: 1.2rem;
+  }
+  /* 轻过渡铭牌：避开安全区 */
+  .lite-banner {
+    top: max(14px, env(safe-area-inset-top));
+    font-size: 0.85rem;
+  }
+  /* 断点续玩/死亡回档弹层：窄屏撑满 + 安全区 */
+  .resume-dialog {
+    width: 90vw;
+    padding: 22px 18px calc(22px + env(safe-area-inset-bottom));
+  }
+}
 </style>

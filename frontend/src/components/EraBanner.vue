@@ -187,4 +187,11 @@ const hasPhaseWarnings = computed(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ── 移动端适配（<768px）：压缩顶部章节铭牌高度，把空间让给叙事区 ── */
+@media (max-width: 768px) {
+  .era-banner { padding: 14px 14px 10px; }
+  .era-chapter { font-size: 1.1rem; }
+  .era-clock { padding: 2px 8px; }
+}
 </style>

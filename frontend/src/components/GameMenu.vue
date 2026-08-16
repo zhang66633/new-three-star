@@ -324,4 +324,20 @@ const totalUnseen = computed(() => worldUnseen.value)
 .gm-section { min-height: 100%; }
 .gm-fade-enter-active, .gm-fade-leave-active { transition: opacity 0.3s ease, transform 0.3s ease; }
 .gm-fade-enter-from, .gm-fade-leave-to { opacity: 0; transform: scale(0.97); }
+
+/* ── 移动端适配（<768px）：6 个 tab 横向滚动，压缩留白 ── */
+@media (max-width: 768px) {
+  .gm-panel { width: 96vw; max-height: 90vh; border-radius: 12px; }
+  .gm-header { padding: 14px 14px 10px; }
+  .gm-title { font-size: 1.05rem; }
+  .gm-tabs {
+    padding: 8px 8px 0;
+    gap: 2px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+  }
+  .gm-tab { padding: 9px 10px; font-size: 0.82rem; white-space: nowrap; }
+  .gm-content { padding: 14px 14px calc(18px + env(safe-area-inset-bottom)); }
+}
 </style>

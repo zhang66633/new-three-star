@@ -1564,4 +1564,16 @@ async function initGraph() {
 .vision-fade-leave-active { transition: opacity 0.4s ease; }
 .vision-fade-enter-from,
 .vision-fade-leave-to { opacity: 0; }
+
+/* ── 移动端适配（<768px）：幻象页标题/留白收窄，防溢出 ── */
+@media (max-width: 768px) {
+  .fv-content { padding: 20px 16px; }
+  .fv-name { font-size: 2.2rem; letter-spacing: 0.15em; }
+  .fv-tag { font-size: 0.85rem; }
+  .fv-desc { font-size: 0.85rem; max-width: 92vw; margin-bottom: 24px; }
+  .fv-enter { padding: 12px 28px; font-size: 0.95rem; }
+  .entry-title { font-size: clamp(2rem, 9vw, 3rem); }
+  .entry-sub { font-size: 0.85rem; padding: 0 12px; }
+  .quote-card { max-width: 90vw; }
+}
 </style>
