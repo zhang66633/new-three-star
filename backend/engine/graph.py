@@ -187,9 +187,14 @@ async def corrector_node(state: GameState) -> dict:
     # 硬失败回退到修正前已过校验的 last_output（修正意图仍在 corrected 留痕，但不用破损文本）
     from .validator import deterministic_checks
     hard, _ = deterministic_checks(state, output)
+    corrected_ok = not hard
     if hard:
         logger.warning("corrector 修正未过确定性硬门，回退原文本: %s", hard[:2])
         output = dict(state.get("last_output") or {})
+    # 审查修复：重修正（事件重生成/记忆覆盖）改写叙事成功后，丢弃 LLM 声明的状态增量——
+    # 否则 memory/relations/player_updates 按未修正版本落地，与改写后的叙事矛盾
+    if tier == "heavy" and corrected_ok:
+        output["state_updates"] = {}
     # 修正记录回写（LangGraph 只认节点返回值，apply_correction 对 state 的原地修改不生效）
     corrected = list(state.get("corrected", []))
     trace_id = state.get("last_trace", "")
@@ -257,7 +262,8 @@ async def remember_node(state: GameState) -> dict:
         logger.exception("角色软状态合并失败")
     # 双轨合并：attitude 一律从 relations 同步（关系网唯一权威，杜绝 attitude_delta
     # 与 relations_delta 并行演化导致的漂移——LLM 好感变化走 relations_delta 单通道）
-    for nm, cst in (state.get("character_states") or {}).items():
+    # 审查修复：同步对象必须是 deepcopy 副本 st（即返回值来源），改原始 state 会被 LangGraph 丢弃
+    for nm, cst in (st.get("character_states") or {}).items():
         if isinstance(cst, dict):
             try:
                 cst["attitude"] = max(0, min(100, int(relations.get(nm, cst.get("attitude", 50)))))
@@ -355,6 +361,18 @@ def _prepare(state_dict: dict, action: str, tension: int) -> GameState:
     # 干预度累积（玩家所选选项的 tension；重修正后由 corrector 重置）
     if tension > 0:
         state["tension"] = max(0, min(100, state.get("tension", 0) + tension))
+    # 审查修复：自由输入无选项 tension——按意图估算干预度，防「刺杀董卓」这类
+    # 硬干预经自由输入绕过天意修正管线（§5.4 选项+自由输入并行）
+    elif action:
+        from .action_intent import parse_action
+        _intent = parse_action(action, (state.get("era") or {}).get("location", ""),
+                               known_names=set((state.get("relations") or {}).keys()))
+        _est = 50 if (_intent or {}).get("type") == "战斗" else 0
+        for _kw in ("刺杀", "行刺", "弑", "谋反", "篡位", "称帝", "烧粮", "挟天子"):
+            if _kw in action:
+                _est = max(_est, 70)
+                break
+        state["tension"] = max(0, min(100, state.get("tension", 0) + _est))
     return state
 
 
@@ -493,4 +511,7 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
             result["briefing"] = await synthesize_briefing(
                 fresh, state.get("world_date"), result.get("world_date")
             )
+            # 审查修复：已入简报的事件后端置位 seen（此前恒为 False，简报每拍重复旧闻）
+            for _e in fresh:
+                _e["seen"] = True
     return result

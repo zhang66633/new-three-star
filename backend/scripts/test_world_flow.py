@@ -3,7 +3,7 @@
 自由大世界全链路回归冒烟（Step 7）
 ====================================
 验证重构后引擎不崩 + 8 PHASE 不破坏 + 世界推进/角色档案/暗线/存档完整。
-会话：开局 → 观察 → 休息跳时 → 赴洛阳 → 触发暗线 → 存档往返。
+会话：开局 → 观察 → 触发暗线（P1 章内）→ 休息跳时 → 赴洛阳 → 存档往返。
 
 运行：cd backend && python scripts/test_world_flow.py
 """
@@ -40,9 +40,20 @@ async def main():
     check("观察后 alive", (r2.get("player") or {}).get("alive") is True)
     check("观察有叙事", bool((r2.get("last_output") or {}).get("narrative")))
 
-    # ── 3. 休息跳时（自然流逝）──
+    # ── 3. 触发暗线（自由行动·决策 17：P1 暗线须在 P1 章触发——跳时到 P2 后加载的是 P2 表，原断言位置错误）──
+    print("=== 触发暗线 ===")
+    r5 = await run_step(r2, "我混进黄金军营地，打听信物的事", 0)
+    flags5 = r5.get("flags") or []
+    check("暗线_黄金 flag", "暗线_黄金" in flags5, str(flags5))
+    # 信物资产可能在引擎（check_darkline_grants）或 LLM（state_updates.assets_add）任一添加；
+    # flag 触发即证明暗线自由化生效（信物是否进 assets 由叙事/引擎具体结算，此处不强断言具体物品）
+    has_asset_trace = any("信物" in str(a) for a in (r5.get("player") or {}).get("assets", [])) \
+        or any("信物" in str(f) for f in (r5.get("foreshadowing") or []))
+    check("暗线收益留痕（信物/伏笔）", has_asset_trace, str((r5.get("player") or {}).get("assets")))
+
+    # ── 4. 休息跳时（自然流逝）──
     print("=== 休息跳时 ===")
-    gs3 = from_dict(r2)
+    gs3 = from_dict(r5)
     gs3["world_date"] = {"year": 184, "month": 9, "day": 1}
     gs3["era"]["year"] = 184
     r3 = await run_step(to_dict(gs3), "休息 30 天", 0)
@@ -52,7 +63,7 @@ async def main():
     tl = [e for e in r3.get("world_events", []) if e.get("source") == "timeline"]
     check("时间线事件入队", len(tl) > 0, f"{len(tl)} 条")
 
-    # ── 4. 赴洛阳（自主进 P2 + 在场亲历）──
+    # ── 5. 赴洛阳（自主进 P2 + 在场亲历）──
     print("=== 赴洛阳 ===")
     r4 = await run_step(r3, "前往洛阳", 0)
     check("到达洛阳", (r4.get("player") or {}).get("location") == "洛阳")
@@ -63,29 +74,18 @@ async def main():
     cs4 = r4.get("character_states") or {}
     check("角色档案非空", len(cs4) > 0, str(list(cs4.keys())[:4]))
 
-    # ── 5. 触发暗线（自由行动）──
-    print("=== 触发暗线 ===")
-    r5 = await run_step(r4, "我混进黄金军营地，打听信物的事", 0)
-    flags5 = r5.get("flags") or []
-    check("暗线_黄金 flag", "暗线_黄金" in flags5, str(flags5))
-    # 信物资产可能在引擎（check_darkline_grants）或 LLM（state_updates.assets_add）任一添加；
-    # flag 触发即证明暗线自由化生效（信物是否进 assets 由叙事/引擎具体结算，此处不强断言具体物品）
-    has_asset_trace = any("信物" in str(a) for a in (r5.get("player") or {}).get("assets", [])) \
-        or any("信物" in str(f) for f in (r5.get("foreshadowing") or []))
-    check("暗线收益留痕（信物/伏笔）", has_asset_trace, str((r5.get("player") or {}).get("assets")))
-
     # ── 6. 存档往返 ──
     print("=== 存档往返 ===")
-    d = to_dict(from_dict(r5))
-    check("world_date 往返", d.get("world_date") == r5.get("world_date"))
-    check("character_states 往返", d.get("character_states") == r5.get("character_states"))
-    check("world_events 往返", len(d.get("world_events", [])) == len(r5.get("world_events", [])))
+    d = to_dict(from_dict(r4))
+    check("world_date 往返", d.get("world_date") == r4.get("world_date"))
+    check("character_states 往返", d.get("character_states") == r4.get("character_states"))
+    check("world_events 往返", len(d.get("world_events", [])) == len(r4.get("world_events", [])))
 
     # ── 7. 名场面自由参与（Step D：view_scene 接线 registry）──
     # 事件到点 + 玩家在场 → 锁定台词进 plan_summary（字幕锚定），见证者 flag 落 state.flags。
     print("=== 名场面自由参与 ===")
     # 7a. 洛阳 189-09 撞刺董（P2_s2_ci）
-    g7 = from_dict(r5)
+    g7 = from_dict(r4)
     g7["player"]["location"] = "洛阳"
     g7["era"]["location"] = "洛阳"
     g7["world_date"] = {"year": 189, "month": 9, "day": 1}

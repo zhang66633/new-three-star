@@ -148,6 +148,9 @@ FAMOUS_SCENE_BY_EVENT: dict[str, str] = {
     "e_215_08_hefei_xiaoyaojin": "P5_s15_xiaoyaojin",
     "e_219_01_hanzhong_dingshan": "P5_s16_hanzhong",
     "e_219_08_guanyu_beifa": "P5_s17_guanyubeifa",
+    # P2 补接线（审查：捉放曹/屠族场景此前不可达——事件到点+在场改为注入场景内容）
+    "e_189_10_zhuofangcao": "P2_s3_escape",
+    "e_189_10_lu_boshe_killing": "P2_s4_slaughter",
     # P6：天下三分（220-223）败走麦城→曹操之死→曹丕篡汉→夷陵之战→白帝托孤
     "e_220_01_maicheng": "P6_s1_maicheng",
     "e_220_01_caocao_zhi_si": "P6_s2_caocao",
@@ -245,6 +248,16 @@ def view_scene(state: GameState) -> ScenePlan:
             continue  # 已触发
         if spec.get("hint") and spec.get("hint") not in setting_lines:
             setting_lines.append(f"【暗线】{spec['hint']}")
+    # 审查修复：已触发暗线的下游回声——flag 落地为可体验的后续（信物被认出/故人寻来），
+    # 让「推荐信 P3 见曹操 / 信物 P3 情报 / 同路人 P2 同行」的承诺有兑现点
+    _DARKLINE_FOLLOWUP = {
+        "暗线_流亡": "当年结伴逃难的故人托人捎话，说在城里听说了你的名字，想与你一见",
+        "暗线_黄金": "有客商私下议论：黄金军旧部正寻访一个揣着信物的人",
+        "暗线_许家": "许家的故人正在洛阳一带打听你的下落",
+    }
+    for _f, _hint in _DARKLINE_FOLLOWUP.items():
+        if _f in (state.get("flags") or []) and _hint not in setting_lines:
+            setting_lines.append(f"【暗线后续】{_hint}")
     setting = "\n".join(setting_lines)
 
     # 3. 在场角色（distance_map）：严格"在场即呈现"（决策 10）——只呈现玩家
@@ -341,7 +354,13 @@ def view_scene(state: GameState) -> ScenePlan:
         scene["flags_on_enter"] = famous_scene.get("flags_on_enter", scene["flags_on_enter"])
         scene["aftermath"] = famous_scene.get("aftermath", scene["aftermath"])
     plan = ScenePlan(scene, distance_map, "")
-    plan.rumor_unlock = None
+    # 审查修复：传闻解锁接线（§5.2）——本拍「打听X」命中传闻地 → 解锁（resolve_rumor 原为死代码）
+    last_action = ""
+    for h in reversed(state.get("history") or []):
+        if h.get("user"):
+            last_action = h["user"]
+            break
+    plan.rumor_unlock = resolve_rumor(last_action, state) if last_action else None
     return plan
 
 

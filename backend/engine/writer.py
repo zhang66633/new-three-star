@@ -166,7 +166,8 @@ WRITER_INSTRUCTION = """
 12. 关系影响互动：NPC 好感/信任决定态度——高信任（≥60）给推心置腹专属选项（密谈/交底/托付）；低（≤20）戒备回避、互动受限变味；让经营关系的投入在叙事/选项可见（依面板 🔗 态度提示）
 13. 打听传闻（§5.2）：玩家「打听/探听某地」→ 演打听到确切消息（NPC 按自己身份说他知道的），确认传闻地可前往（依面板 🗺 远方传闻）；叙事收在"路问明白了"，不打空转
 14. 严禁全知旁白宣告世界侧无觉察（'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
-15. 选项 text/effect 严禁 meta 词与现代词出口给 NPC；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话""".strip()
+15. 选项 text/effect 严禁 meta 词与现代词出口给 NPC；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
+16. 后设词汇红线：NPC 台词/旁白叙述严禁出现"服务器/管理员/系统/NPC/进程/存档/剧本/代码/脚本/数据"等现代系统词——这些只允许出现在玩家内心吐槽里（点到即止）；角色卡中的『后设身份』仅供你理解角色行为动机，不得直出""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -192,7 +193,9 @@ def _load_persona_layer(names: list[str], distance_map: dict) -> str:
             ident = card.get("identity", "")
             p = f"{name}：{core}"
             if ident:
-                p += f"（{ident[:60]}）"
+                # 后设身份（如"觉醒的NPC/退出游戏"）：仅供理解角色行为动机，
+                # 严禁直出到叙事/台词/旁白（铁律1）——角色卡 meta 内容经此隔离
+                p += f"（后设身份·仅供动机参考，不得直出：{ident[:60]}）"
             if catch:
                 p += f" 口头禅：{'／'.join(str(c)[:20] for c in catch[:3])}"
             if dist == "核心" and triggers:

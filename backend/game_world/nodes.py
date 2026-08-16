@@ -3930,35 +3930,4 @@ def beat_count(node: str) -> int:
     """兼容旧接口：节拍总数。"""
     return scene_count(node)
 
-def scene_count(node: str) -> int:
-    """节点的场景总数。场景制优先；若无场景则回退节拍数。"""
-    data = NODE_DATA.get(node)
-    if not data:
-        return 0
-    scenes = data.get("场景", [])
-    if scenes:
-        return len(scenes)
-    beats = data.get("节拍", [])
-    return len(beats)
 
-
-def beat_count(node: str) -> int:
-    """兼容旧接口：节拍总数。"""
-    return scene_count(node)
-
-
-def scene_count(node: str) -> int:
-    """节点的场景总数。场景制优先；若无场景则回退节拍数。"""
-    data = NODE_DATA.get(node)
-    if not data:
-        return 0
-    scenes = data.get("场景", [])
-    if scenes:
-        return len(scenes)
-    beats = data.get("节拍", [])
-    return len(beats)
-
-
-def beat_count(node: str) -> int:
-    """兼容旧接口：节拍总数。"""
-    return scene_count(node)

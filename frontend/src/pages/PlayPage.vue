@@ -559,9 +559,12 @@ async function sendAction(action: string, tension: number) {
         // 同年代内移动/推进轻过渡（顶部铭牌，无全屏无关羽）——场景标签含地点，不能按标签判定
         const crossChapter = !!ev.scene.year && ev.scene.year !== lastSceneYear.value
         lastSceneYear.value = ev.scene.year ?? lastSceneYear.value
-        if (crossChapter) {
+        if (scene.music === 'guanyu') {
           showLoader(1800)
-          playGuanyu()   // 关羽之歌：只在跨章节的大切换响
+          playGuanyu()   // 关羽之歌：天意结算节点（麦城/曹操之死/周瑜之死/落凤坡/白帝托孤）
+        } else if (crossChapter) {
+          showLoader(1800)
+          playGuanyu()   // 关羽之歌：跨年代大切换响
         } else {
           hideLoader()
           showLiteBanner(ev.scene.chapter_label, ev.scene.title, ev.scene.location)
@@ -710,7 +713,6 @@ const thinkingTension = computed(() => gameState.value?.tension ?? 0)
 
 // ── PIN 记忆 ──
 async function togglePin(id: string) {
-  // PIN 状态由前端维护（后续 Phase 4 回传持久化）
   const gs = gameState.value
   if (!gs) return
   const pins = [...(gs.memory?.pins ?? [])]
@@ -719,6 +721,7 @@ async function togglePin(id: string) {
   else if (pins.length < 5) pins.push(id)
   gs.memory = { ...gs.memory, pins }
   gameState.value = { ...gs }
+  queueSave(gameState.value?.dead ? null : gameState.value)   // PIN 变更立即落盘（随完整快照持久化）
 }
 
 function goBack() {

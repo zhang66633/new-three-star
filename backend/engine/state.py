@@ -239,6 +239,16 @@ def from_dict(data: dict) -> GameState:
     for k in ("player", "era", "knowledge", "memory"):
         if not isinstance(base.get(k), dict):
             base[k] = {}
+    # tension 钳位 0-100（防前端伪造干预度强制触发天意修正）；轮次字段钳位正整数
+    try:
+        base["tension"] = max(0, min(100, int(base.get("tension", 0))))
+    except (TypeError, ValueError):
+        base["tension"] = 0
+    for _k in ("turn", "scene_turns", "retry_count"):
+        try:
+            base[_k] = max(0, min(1_000_000, int(base.get(_k, 0))))
+        except (TypeError, ValueError):
+            base[_k] = 0
     # relations/trust 值钳位 0-100 整数（防恶意前端放大/字符串/负数）
     for k in ("relations", "trust"):
         d = base.get(k)

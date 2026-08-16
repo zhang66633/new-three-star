@@ -58,13 +58,32 @@ export function usePlaySse() {
       }
     }
 
+    let receivedAny = false   // 已收到任意事件 → 流中途断裂不再自动重试（防同回合文本重复/串戏）
+    const MAX_RETRIES = 2
+    let attempt = 0
+    let resp: Response
+
     try {
-      const resp = await fetch(`${API_BASE}/api/play/step`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...apiKeyHeaders() },
-        body: JSON.stringify({ action, game_state: gameState, tension }),
-        signal: ctrl.signal,
-      })
+      // 断线自动重连（仅限尚未收到任何数据的连接阶段）：网络错误退避重试 ≤2 次
+      while (true) {
+        try {
+          resp = await fetch(`${API_BASE}/api/play/step`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...apiKeyHeaders() },
+            body: JSON.stringify({ action, game_state: gameState, tension }),
+            signal: ctrl.signal,
+          })
+          break
+        } catch (e) {
+          if (ctrl.signal.aborted) return
+          if (receivedAny || attempt >= MAX_RETRIES) throw e
+          attempt += 1
+          error.value = `连接中断，正在重连（${attempt}/${MAX_RETRIES}）…`
+          await new Promise<void>((r) => setTimeout(r, 1200 * attempt))
+          if (ctrl.signal.aborted) return
+        }
+      }
+      error.value = ''
 
       if (!resp.ok || !resp.body) {
         throw new Error(`请求失败: ${resp.status}`)
@@ -93,6 +112,7 @@ export function usePlaySse() {
           }
           try {
             const ev = JSON.parse(payload) as StreamEvent
+            receivedAny = true
             switch (ev.type) {
               case 'chunk':
                 handlers.onChunk(ev.content)
@@ -134,6 +154,7 @@ export function usePlaySse() {
           const payload = trimmed.slice(6)
           try {
             const ev = JSON.parse(payload) as StreamEvent
+            receivedAny = true
             switch (ev.type) {
               case 'chunk':
                 handlers.onChunk(ev.content)

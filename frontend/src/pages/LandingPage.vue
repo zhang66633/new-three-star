@@ -122,9 +122,6 @@ function onMobileNavigate(id: string) {
     } else if (id === 'tianyi') {
       playGuanyu()
       router.push('/play')
-    } else if (id === 'game_world') {
-      playGuanyu()
-      router.push('/gameworld')
     } else {
       playGuanyu()
       router.push(`/worldview/${id}`)
@@ -161,8 +158,8 @@ const MOBILE_WORLDS = [
   { id: 'settings', name: '⚙ API密钥', tagline: '配置你的DeepSeek密钥', color: '#fbbf24' },
 ]
 
-// 当前开放的世界（天意沙盒 + 崩坏纪元叙事 + 创造新世界 + 设置）
-const OPEN_WORLDS = ['tianyi', 'create', 'game_world', 'settings']
+// 当前开放的世界（天意沙盒 + 创造新世界 + 设置；崩坏纪元已下线旧叙事线，按世界观探索页开放）
+const OPEN_WORLDS = ['tianyi', 'create', 'settings']
 function isOpenWorld(id: string) {
   return OPEN_WORLDS.includes(id)
 }
@@ -616,9 +613,6 @@ function enterWorld(id: string) {
     } else if (id === 'tianyi') {
       playGuanyu()
       router.push('/play')
-    } else if (id === 'game_world') {
-      playGuanyu()
-      router.push('/gameworld')
     } else {
       playGuanyu()
       router.push(`/worldview/${id}`)

@@ -1,0 +1,9 @@
+tunnel: d9cf6d04-4479-470e-a468-e27fd41a478f
+credentials-file: /home/ubuntu/.cloudflared/d9cf6d04-4479-470e-a468-e27fd41a478f.json
+
+ingress:
+  - hostname: sgweb.asia
+    service: http://127.0.0.1:8080
+  - hostname: www.sgweb.asia
+    service: http://127.0.0.1:8080
+  - service: http_status:404

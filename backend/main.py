@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from routers import graph, worlds, play, archive, gameworld
+from routers import graph, worlds, play, archive
 from db import init_db
 
 
@@ -74,7 +74,6 @@ app.include_router(graph.router, prefix="/api")
 app.include_router(worlds.router, prefix="/api")
 app.include_router(play.router, prefix="/api")
 app.include_router(archive.router, prefix="/api")
-app.include_router(gameworld.router, prefix="/api")
 
 
 @app.get("/api/health")

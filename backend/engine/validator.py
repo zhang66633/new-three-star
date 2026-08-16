@@ -358,6 +358,21 @@ def check_no_pointing_out(narrative: str) -> list[str]:
     return []
 
 
+def check_meta_words(narrative: str) -> list[str]:
+    """铁律1 硬校验：核弹级现代系统词不得出现在叙事中（世界侧/玩家侧都不该出现）。
+
+    只禁最不可能被正当使用的词（服务器/管理员/系统日志等），避免误伤玩家内心的
+    折棒吐槽（存档/结算/剧本/NPC/进程 等游戏隐喻词是 POV 合法词汇，不在此列）。
+    """
+    if not narrative:
+        return []
+    _META_BAN = ("服务器", "管理员", "系统日志", "数据包", "宕机", "重启")
+    hits = [w for w in _META_BAN if w in narrative]
+    if hits:
+        return [f"P7: meta 词泄漏『{'、'.join(hits)}』——现代系统词不得入叙事（玩家内心吐槽也不得用）"]
+    return []
+
+
 def check_repetition(state: dict, output: dict) -> tuple[list[str], list[str]]:
     """重演检测（连续性子系统 scene_state 提供已演出事实）：
 
@@ -415,6 +430,8 @@ def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str
     )
     # ── 硬：铁律2 '点明不对劲'旁白（没人觉得不对/无人察觉）──
     hard += check_no_pointing_out(output.get("narrative", ""))
+    # ── 硬：铁律1 meta 词泄漏（现代系统词禁入叙事）──
+    hard += check_meta_words(output.get("narrative", ""))
 
     # ── 软：质量自检（记录不重写）──
     soft += [r for r in opt_reasons if "无选项" not in r]

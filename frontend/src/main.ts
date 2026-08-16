@@ -10,7 +10,6 @@ const router = createRouter({
     { path: '/worldview/:id', name: 'explore', component: () => import('./pages/ExplorePage.vue') },
     { path: '/create', name: 'create', component: () => import('./pages/CreatePage.vue') },
     { path: '/play', name: 'play', component: () => import('./pages/PlayPage.vue') },
-    { path: '/gameworld', name: 'gameworld', component: () => import('./pages/GameExplorePage.vue') },
   ],
 })
 

@@ -27,6 +27,7 @@ materials/script_ocr/
 Thumbs.db
 
 # RAG index (generated)
+backend/game_world/rag_index.pkl
 
 # Firecrawl cache
 .firecrawl/
