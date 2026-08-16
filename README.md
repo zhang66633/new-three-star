@@ -118,7 +118,7 @@ python scripts/test_world_flow.py   # 自由大世界全链路冒烟（56/57，1
 ## 🙏 素材与致谢
 
 - 世界观机制源自 B 站 UP 主 **吃蛋挞的折棒**《三国杀 up 锐评新三国》系列（289 期 + re 系列）与知乎高赞框架
-- 场景锁定台词以朱苏进版《三国》剧本字幕为锚（原著章节见 materials/script_ocr/）
+- 朱苏进版《三国》（原著章节见 "materials/script_ocr/"）
 - 历史时间线 48 事件均以 `historical_outcome` + `new_three_quirks` 双字段自标注剧版与史实差异
 
 ---
