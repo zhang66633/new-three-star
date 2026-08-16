@@ -16,7 +16,7 @@ deploy.tar.gz
 
 # Large files
 *.pdf
-materials/script_ocr/
+# 注：materials/script_ocr/（原著章节+整理台词）已入库，作为场景锁定台词的源头锚点
 
 # IDE
 .vscode/
