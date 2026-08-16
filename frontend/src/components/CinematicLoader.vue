@@ -156,6 +156,8 @@ const currentQuote = computed(() => quotes.value[quoteIndex.value] || { text: ''
 }
 
 /* ═════════ 内容布局 ═════════ */
+/* 根容器裁掉装饰性溢出（聚光灯/暗场），防小屏横向滚动条 */
+.cinematic-loader { overflow: hidden; }
 .loader-content {
   position: relative;
   z-index: 2;
@@ -265,5 +267,12 @@ const currentQuote = computed(() => quotes.value[quoteIndex.value] || { text: ''
   letter-spacing: 0.3em;
   color: rgba(148, 163, 184, 0.6);
   font-family: var(--font-body);
+}
+
+/* ── 移动端适配（<768px）：聚光灯不越界、内容留白收紧 ── */
+@media (max-width: 768px) {
+  .spotlight { width: min(520px, 150vw); }
+  .loader-content { padding: 0 20px; gap: 26px; }
+  .loader-status { padding: 0 16px; }
 }
 </style>

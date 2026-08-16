@@ -232,4 +232,17 @@ onBeforeUnmount(() => window.clearTimeout(introTimer))
   opacity: 0;
   transform: translateX(-50%) translateY(-8px);
 }
+
+/* ── 移动端适配（<768px）：标题缩小防横向溢出、顶部留白收紧 ── */
+@media (max-width: 768px) {
+  .intro-title {
+    top: max(64px, calc(env(safe-area-inset-top) + 56px));
+    font-size: 1.7rem;
+    letter-spacing: 0.35em;
+    margin-right: -0.35em;
+  }
+  .intro-content { padding-top: 180px; }
+  .intro-back { top: max(12px, env(safe-area-inset-top)); left: 12px; }
+  .intro-skip { top: max(12px, env(safe-area-inset-top)); right: 12px; }
+}
 </style>

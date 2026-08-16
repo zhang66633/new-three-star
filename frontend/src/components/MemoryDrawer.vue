@@ -276,4 +276,16 @@ function isPinned(id: string) {
   50%  { box-shadow: 0 0 24px rgba(202, 138, 4, 0.35); }
   100% { box-shadow: 0 0 8px rgba(202, 138, 4, 0.12); }
 }
+
+/* ── 移动端适配（<768px）：全宽 + 安全区 ── */
+@media (max-width: 768px) {
+  .memory-drawer {
+    top: max(52px, calc(env(safe-area-inset-top) + 44px));
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-width: none;
+    max-height: calc(100vh - 68px - env(safe-area-inset-bottom));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+  }
+}
 </style>

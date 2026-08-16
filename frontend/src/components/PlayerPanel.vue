@@ -262,4 +262,15 @@ function statVal(key: string): number {
 .panel-slide-enter-active { transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 .panel-slide-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
 .panel-slide-enter-from, .panel-slide-leave-to { opacity: 0; transform: translateY(8px); }
+
+/* ── 移动端适配（<768px）：宽度撑满可用区 + 底部安全区 ── */
+@media (max-width: 768px) {
+  .player-panel {
+    right: 12px;
+    width: min(300px, calc(100vw - 24px));
+    max-width: none;
+    max-height: calc(62vh - env(safe-area-inset-bottom));
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
 </style>

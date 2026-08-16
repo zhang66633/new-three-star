@@ -284,4 +284,18 @@ const hasAny = computed(() =>
 }
 .menu-fade-enter-active, .menu-fade-leave-active { transition: opacity 0.25s ease, transform 0.25s ease; }
 .menu-fade-enter-from, .menu-fade-leave-to { opacity: 0; transform: translateY(-6px); }
+
+/* ── 移动端适配（<768px）：抽屉全宽 + 避开安全区与顶部铭牌 ── */
+@media (max-width: 768px) {
+  .world-menu { top: max(10px, env(safe-area-inset-top)); right: 12px; }
+  .menu-toggle { padding: 8px 14px; font-size: 0.8rem; }
+  .menu-drawer {
+    top: max(56px, calc(env(safe-area-inset-top) + 48px));
+    right: 12px;
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 76px - env(safe-area-inset-bottom));
+    padding: 14px 16px calc(18px + env(safe-area-inset-bottom));
+  }
+  .menu-section { margin-bottom: 14px; }
+}
 </style>
