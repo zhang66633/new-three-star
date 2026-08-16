@@ -1,9 +1,10 @@
 tunnel: d9cf6d04-4479-470e-a468-e27fd41a478f
-credentials-file: /home/ubuntu/.cloudflared/d9cf6d04-4479-470e-a468-e27fd41a478f.json
+credentials-file: /etc/cloudflared/d9cf6d04-4479-470e-a468-e27fd41a478f.json
 
+# 备案期 ingress：
+#   api.sgweb.asia —— 游戏 API（Pages 前端经此回源；主域名本身不出内容）
+#   其余主机名（含 sgweb.asia 主域名）—— 一律 404，保持"网站关闭"态
 ingress:
-  - hostname: sgweb.asia
-    service: http://127.0.0.1:8080
-  - hostname: www.sgweb.asia
+  - hostname: api.sgweb.asia
     service: http://127.0.0.1:8080
   - service: http_status:404
