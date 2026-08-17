@@ -40,7 +40,7 @@
       <div class="provider-block" :class="{ 'provider-disabled': !qwenEnabled }">
         <div class="provider-head">
           <span class="provider-name">Qwen</span>
-          <span class="provider-role">主控（校验/修正/记忆）</span>
+          <span class="provider-role">主控</span>
           <span class="provider-badge">可选</span>
           <label class="provider-switch">
             <span class="switch-label">{{ qwenEnabled ? '启用' : '关闭' }}</span>
@@ -49,7 +49,7 @@
           </label>
           <span class="provider-status" :class="hasQwenKey ? 'ok' : 'warn'">{{ hasQwenKey ? '已配置' : '未配置' }}</span>
         </div>
-        <p class="provider-tip">作为主控：关闭或未配置时回退 DeepSeek（仅叙事不受影响）</p>
+        <p class="provider-tip">主控（校验/修正/记忆/简报）：关闭或未配置时回退 DeepSeek，叙事不受影响</p>
         <input
           v-model="qwenInput"
           :type="showQwenKey ? 'text' : 'password'"
