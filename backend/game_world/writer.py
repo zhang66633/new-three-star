@@ -107,6 +107,13 @@ def build_instruction(brief, state: StoryState, is_first_turn: bool, action: str
         if state.strikes > 0:
             parts.append(f"【警告：你已累计{state.strikes}/3次干扰关键剧情。{3 - state.strikes}次后将被踢出游戏。】")
 
+
+        if action.strip():
+            parts.append(
+                "★★ 本拍第一要务：先直接回应玩家的行动【" + action.strip()[:60] + "】——"
+                "NPC 听到/看到后的即时反应、对话推进、结果，从玩家这个动作展开写。"
+                "骨架只是这条行动发生的大背景，不是让你照演剧本；玩家动了什么，世界就必须回应什么。"
+            )
         parts.append("写出来。400-600字。结尾给3个[OPT]。")
         return "\n\n".join(parts)
 
@@ -211,8 +218,9 @@ async def write(brief, state: StoryState, history: list,
 
     # v3.2: Chat Prefix Completion —— 强制首token为脚本格式
     # 用最可能出现的第一行标记（[或→）引导模型
+    # 修复：玩家有行动时禁用 prefix——prefix 会把输出钉死在骨架角色行，玩家行动被跳过
     prefix = None
-    if isinstance(brief, SceneBrief) and brief.dialogue_skeleton:
+    if not (action and action.strip()) and isinstance(brief, SceneBrief) and brief.dialogue_skeleton:
         # 找骨架的第一行非[SYS]内容作为 prefix 引导
         for line in brief.dialogue_skeleton.split("\n"):
             stripped = line.strip()
