@@ -511,6 +511,12 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
         except Exception:
             # 世界推进失败不影响主叙事，但必须留痕（审查②）：否则半更新状态静默返回、排障无从下手
             logger.exception("世界推进失败（半更新可能已返回）：action=%r world_date=%s", action, result.get("world_date"))
+            # 可观测：错误标记进 meta，前端 phase 报告可见（P1 世界推进失败可观测）
+            _meta = dict(result.get("meta") or {})
+            _ps = dict(_meta.get("plan_summary") or {})
+            _ps["world_error"] = f"世界推进异常（已跳过，不影响本拍叙事）"
+            _meta["plan_summary"] = _ps
+            result["meta"] = _meta
     return to_dict(result)
 
 
