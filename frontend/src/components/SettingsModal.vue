@@ -131,7 +131,7 @@ function clear() {
 .settings-overlay {
   position: fixed;
   inset: 0;
-  z-index: 120;
+  z-index: 500;
   display: flex;
   align-items: center;
   justify-content: center;

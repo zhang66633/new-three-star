@@ -111,8 +111,8 @@ const isMobile = (() => {
 function onMobileNavigate(id: string) {
   if (warpActive.value) return
   // BYOK 门禁：设置星球直接开设置；未配置密钥时任何入口都先引导填 key
-  if (id === 'settings') { showSettings.value = true; return }
-  if (!getApiKey()) { showSettings.value = true; return }
+  if (id === 'settings') { hoveredWorld.value = null; showSettings.value = true; return }
+  if (!getApiKey()) { hoveredWorld.value = null; showSettings.value = true; return }
   const world = [...WORLDS, TIANYI_WORLD].find(w => w.id === id)
   warpColor.value = world?.color || '#aabbff'
   warpActive.value = true
@@ -605,8 +605,8 @@ const visionWorld = ref<{ id: string; name: string; tagline: string; color: stri
 function enterWorld(id: string) {
   visionWorld.value = null
   // BYOK 门禁：设置星球直接开设置；未配置密钥时任何入口都先引导填 key
-  if (id === 'settings') { showSettings.value = true; return }
-  if (!getApiKey()) { showSettings.value = true; return }
+  if (id === 'settings') { hoveredWorld.value = null; showSettings.value = true; return }
+  if (!getApiKey()) { hoveredWorld.value = null; showSettings.value = true; return }
   const world = WORLDS.find(w => w.id === id)
   warpColor.value = world?.color || '#ff5533'
   warpActive.value = true
