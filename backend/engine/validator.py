@@ -457,7 +457,7 @@ def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str
 async def llm_checks(state: dict, output: dict, scene_desc: str) -> dict:
     """LLM 层 P0-P5 判定 + P6/P7 自检（一次调用）"""
     from services.llm import stream_chat
-    from config import PARAMS_FORMAT, STOP_SEQUENCES
+    from config import PARAMS_FORMAT, STOP_SEQUENCES, QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL
 
     narrative = output.get("narrative", "")
     if not narrative:
@@ -475,8 +475,12 @@ async def llm_checks(state: dict, output: dict, scene_desc: str) -> dict:
         {"role": "system", "content": "你是严谨的叙事质量审核员，输出必须严格 JSON。"},
         {"role": "user", "content": prompt},
     ]
+    # 双模型试验：校验（主控）走 Qwen3.5——指令遵循强、JSON 输出稳；未配 Qwen key 回退 DeepSeek
     raw = ""
-    async for chunk in stream_chat(messages, max_tokens=1024, **PARAMS_FORMAT, stop=STOP_SEQUENCES):
+    _ctrl = dict(
+        base_url=QWEN_BASE_URL, model=QWEN_MODEL, api_key=QWEN_API_KEY,
+    ) if QWEN_API_KEY else {}
+    async for chunk in stream_chat(messages, max_tokens=1024, **PARAMS_FORMAT, stop=STOP_SEQUENCES, **_ctrl):
         raw += chunk
 
     # 解析 JSON（容错：LLM 可能输出数组/裸值，一律落回 dict）

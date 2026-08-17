@@ -929,7 +929,7 @@ async def synthesize_briefing(events: list, prev_date: dict = None, cur_date: di
     ——前端回退逐条事件列表。
     """
     from services.llm import stream_chat
-    from config import PARAMS_FORMAT, STOP_SEQUENCES
+    from config import PARAMS_FORMAT, STOP_SEQUENCES, QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL
     if not events:
         return ""
     ev_lines = "\n".join(
@@ -950,8 +950,12 @@ async def synthesize_briefing(events: list, prev_date: dict = None, cur_date: di
         {"role": "user", "content": f"时间跨度：{span}\n期间事件：\n{ev_lines}"},
     ]
     try:
+        # 双模型试验：世界简报（主控）走 Qwen；未配 Qwen key 回退 DeepSeek
         draft = ""
-        async for chunk in stream_chat(messages, max_tokens=300, **PARAMS_FORMAT, stop=STOP_SEQUENCES):
+        _ctrl = dict(
+            base_url=QWEN_BASE_URL, model=QWEN_MODEL, api_key=QWEN_API_KEY,
+        ) if QWEN_API_KEY else {}
+        async for chunk in stream_chat(messages, max_tokens=300, **PARAMS_FORMAT, stop=STOP_SEQUENCES, **_ctrl):
             draft += chunk
         # LLM 全挂检测（与 narrate 同款）：双 provider 失败时 stream_chat yield 错误占位字符串而非抛异常，
         # 必须拦下返回 ''（docstring 契约：前端回退逐条事件列表），否则占位文案会原样呈现给玩家

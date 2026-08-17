@@ -28,8 +28,15 @@ async def stream_chat(
     top_p: float | None = None,
     stop: list[str] | None = None,
     api_key: str | None = None,
+    base_url: str | None = None,
+    model: str | None = None,
 ) -> AsyncGenerator[str, None]:
-    """Stream chat completion from DeepSeek.
+    """Stream chat completion.
+
+    双模型路由（experiment/dual-model）：
+      - 默认（base_url/model 缺省）→ DeepSeek（叙事 writer 用）
+      - 传 base_url/model → 指定模型（validator/corrector 主控用 Qwen3.5）
+    未配置 QWEN_API_KEY 时，主控调用自动回退 DeepSeek（单模型模式，线上不受影响）。
 
     BYOK：api_key 缺省时读请求级 ContextVar（play.py 从 X-API-Key 头设置）。
     严格不兑底——玩家不填 key 就明说，绝不悄悄走服务器账户（服务器 key 仅供
@@ -41,9 +48,9 @@ async def stream_chat(
         return
     try:
         async for chunk in _stream_openai_compatible(
-            base_url=DEEPSEEK_BASE_URL,
+            base_url=base_url or DEEPSEEK_BASE_URL,
             api_key=key,
-            model=DEEPSEEK_MODEL,
+            model=model or DEEPSEEK_MODEL,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,
@@ -52,7 +59,7 @@ async def stream_chat(
         ):
             yield chunk
     except Exception as e:
-        logger.error(f"DeepSeek failed: {e}")
+        logger.error(f"LLM ({model or DEEPSEEK_MODEL}) failed: {e}")
         yield "[错误] API密钥无效或额度不足——请到星图的'设置'星球检查你的密钥。"
 
 
@@ -81,8 +88,10 @@ async def _stream_openai_compatible(
         "messages": payload_messages,
         "max_tokens": max_tokens,
         "stream": True,
-        "thinking": {"type": "disabled"},  # V4 Pro 默认推理模式，必须显式关闭
     }
+    # DeepSeek V4 Pro 默认推理模式必须显式关闭；Qwen 等 OpenAI 兼容端点不认该参数
+    if "deepseek" in base_url.lower():
+        payload["thinking"] = {"type": "disabled"}
 
     # temperature 和 top_p：优先传入值，否则用 PARAMS_NARRATIVE 默认
     temp = temperature if temperature is not None else PARAMS_NARRATIVE.get("temperature", 1.3)

@@ -7,6 +7,14 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "")
 DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
 
+# ── 双模型试验（experiment/dual-model）──
+# 主控模型（Qwen3.5）：validator 8-PHASE 校验 + corrector 天意修正走它——指令遵循强，
+# 补 DeepSeek 长指令漂移的短板。叙事（writer）仍走 DeepSeek（创意写作强项）。
+# 未配置 QWEN_API_KEY 时自动回退 DeepSeek（单模型模式），不影响线上。
+QWEN_API_KEY = os.getenv("QWEN_API_KEY", "")
+QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen3.5-35b")
+
 KNOWLEDGE_DIR = os.path.join(os.path.dirname(__file__), "knowledge")
 
 MAX_TOKENS_VERDICT = 800

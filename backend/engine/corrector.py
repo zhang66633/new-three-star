@@ -60,7 +60,7 @@ def pick_trace(tier: str) -> str:
 async def apply_correction(state: dict, output: dict, scene_desc: str, tier: str) -> dict:
     """执行修正：返回修正后的 output（narrative 改写 + corrected 记录）"""
     from services.llm import stream_chat
-    from config import PARAMS_NARRATIVE, STOP_SEQUENCES
+    from config import PARAMS_NARRATIVE, STOP_SEQUENCES, QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL
 
     trace = pick_trace(tier)
     narrative = output.get("narrative", "")
@@ -76,8 +76,12 @@ async def apply_correction(state: dict, output: dict, scene_desc: str, tier: str
         {"role": "system", "content": "你是世界修正器，输出严格 JSON。世界侧一切正常。"},
         {"role": "user", "content": prompt},
     ]
+    # 双模型试验：修正（主控）走 Qwen3.5——结构化 JSON 输出稳；未配 Qwen key 回退 DeepSeek
     raw = ""
-    async for chunk in stream_chat(messages, max_tokens=2048, **PARAMS_NARRATIVE, stop=STOP_SEQUENCES):
+    _ctrl = dict(
+        base_url=QWEN_BASE_URL, model=QWEN_MODEL, api_key=QWEN_API_KEY,
+    ) if QWEN_API_KEY else {}
+    async for chunk in stream_chat(messages, max_tokens=2048, **PARAMS_NARRATIVE, stop=STOP_SEQUENCES, **_ctrl):
         raw += chunk
 
     # 解析 JSON

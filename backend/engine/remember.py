@@ -71,7 +71,7 @@ async def promote_stm_to_ltm(state: dict) -> dict:
         return state
 
     from services.llm import stream_chat
-    from config import PARAMS_FORMAT, STOP_SEQUENCES
+    from config import PARAMS_FORMAT, STOP_SEQUENCES, QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL
 
     # 收集 STM 条目的场景标签（供 LTM 条目继承）
     stm_scenes = [s.get("scene", "") for s in stm if s.get("scene")]
@@ -82,8 +82,12 @@ async def promote_stm_to_ltm(state: dict) -> dict:
         {"role": "system", "content": "你是记忆整理器，输出严格 JSON 数组。"},
         {"role": "user", "content": prompt},
     ]
+    # 双模型试验：记忆压缩（主控）走 Qwen；未配 Qwen key 回退 DeepSeek
     raw = ""
-    async for chunk in stream_chat(messages, max_tokens=1024, **PARAMS_FORMAT, stop=STOP_SEQUENCES):
+    _ctrl = dict(
+        base_url=QWEN_BASE_URL, model=QWEN_MODEL, api_key=QWEN_API_KEY,
+    ) if QWEN_API_KEY else {}
+    async for chunk in stream_chat(messages, max_tokens=1024, **PARAMS_FORMAT, stop=STOP_SEQUENCES, **_ctrl):
         raw += chunk
 
     # 解析 JSON 数组
