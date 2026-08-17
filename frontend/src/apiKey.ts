@@ -7,6 +7,7 @@ const KEY_STORE = 'sg_deepseek_key'
 const QWEN_KEY_STORE = 'sg_qwen_key'
 const MODEL_STORE = 'sg_deepseek_model'
 const QWEN_MODEL_STORE = 'sg_qwen_model'
+const QWEN_ENABLED_STORE = 'sg_qwen_enabled'
 
 /** 可选 DeepSeek 模型列表（默认第一个为缺省；deepseek-chat 已下架不再提供） */
 export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro']
@@ -108,6 +109,24 @@ export function setQwenModel(model: string): void {
   }
 }
 
+/** Qwen 主控启用开关（默认开启；关闭后即使有 key 也不使用主控，回退 DeepSeek） */
+export function getQwenEnabled(): boolean {
+  try {
+    const v = localStorage.getItem(QWEN_ENABLED_STORE)
+    return v === null ? true : v === '1'
+  } catch {
+    return true
+  }
+}
+
+export function setQwenEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(QWEN_ENABLED_STORE, enabled ? '1' : '0')
+  } catch {
+    /* ignore */
+  }
+}
+
 /** 给 fetch 追加的请求头；未配置密钥时不带头（后端会提示先配置）。 */
 export function apiKeyHeaders(): Record<string, string> {
   const k = getApiKey()
@@ -116,8 +135,9 @@ export function apiKeyHeaders(): Record<string, string> {
   const qm = getQwenModel()
   const h: Record<string, string> = {}
   if (k) h['X-API-Key'] = k
-  if (q) h['X-QWEN-API-Key'] = q
+  // Qwen 主控：仅启用时才发送 key（关闭 = 主控回退 DeepSeek）
+  if (q && getQwenEnabled()) h['X-QWEN-API-Key'] = q
   h['X-DEEPSEEK-MODEL'] = m
-  h['X-QWEN-MODEL'] = qm
+  if (getQwenEnabled()) h['X-QWEN-MODEL'] = qm
   return h
 }

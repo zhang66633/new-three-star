@@ -36,15 +36,20 @@
         </div>
       </div>
 
-      <!-- Qwen 板块（可选：作为主控） -->
-      <div class="provider-block">
+      <!-- Qwen 板块（可选：作为主控，可开关） -->
+      <div class="provider-block" :class="{ 'provider-disabled': !qwenEnabled }">
         <div class="provider-head">
           <span class="provider-name">Qwen</span>
           <span class="provider-role">主控（校验/修正/记忆）</span>
           <span class="provider-badge">可选</span>
+          <label class="provider-switch">
+            <span class="switch-label">{{ qwenEnabled ? '启用' : '关闭' }}</span>
+            <input type="checkbox" v-model="qwenEnabled" class="switch-input" />
+            <span class="switch-track"></span>
+          </label>
           <span class="provider-status" :class="hasQwenKey ? 'ok' : 'warn'">{{ hasQwenKey ? '已配置' : '未配置' }}</span>
         </div>
-        <p class="provider-tip">作为主控：不填则自动回退 DeepSeek，仅叙事不受影响</p>
+        <p class="provider-tip">作为主控：关闭或未配置时回退 DeepSeek（仅叙事不受影响）</p>
         <input
           v-model="qwenInput"
           :type="showQwenKey ? 'text' : 'password'"
@@ -78,7 +83,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { getApiKey, setApiKey, clearApiKey, getQwenApiKey, setQwenApiKey, clearQwenApiKey, getDeepSeekModel, setDeepSeekModel, getQwenModel, setQwenModel, DEEPSEEK_MODELS, QWEN_MODELS } from '../apiKey'
+import { getApiKey, setApiKey, clearApiKey, getQwenApiKey, setQwenApiKey, clearQwenApiKey, getDeepSeekModel, setDeepSeekModel, getQwenModel, setQwenModel, getQwenEnabled, setQwenEnabled, DEEPSEEK_MODELS, QWEN_MODELS } from '../apiKey'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
@@ -90,6 +95,7 @@ const showQwenKey = ref(false)
 const hasQwenKey = ref(false)
 const modelInput = ref(getDeepSeekModel())
 const qwenModelInput = ref(getQwenModel())
+const qwenEnabled = ref(getQwenEnabled())
 
 const maskKey = computed(() => {
   const k = getApiKey()
@@ -119,6 +125,7 @@ function save() {
   if (q) { setQwenApiKey(q); hasQwenKey.value = true }
   setDeepSeekModel(modelInput.value)
   setQwenModel(qwenModelInput.value)
+  setQwenEnabled(qwenEnabled.value)
   emit('close')
 }
 
@@ -180,6 +187,58 @@ function clear() {
   font-size: 11px;
   line-height: 1.5;
   color: rgba(148,163,184,0.65);
+}
+/* Qwen 启用开关 */
+.provider-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+}
+.switch-label {
+  font-size: 10.5px;
+  color: rgba(148,163,184,0.75);
+}
+.switch-input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch-track {
+  width: 30px;
+  height: 16px;
+  border-radius: 9px;
+  background: rgba(148,163,184,0.25);
+  position: relative;
+  transition: background 0.25s;
+}
+.switch-track::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ececf2;
+  transition: transform 0.25s;
+}
+.switch-input:checked + .switch-track {
+  background: rgba(52,211,153,0.6);
+}
+.switch-input:checked + .switch-track::after {
+  transform: translateX(14px);
+}
+/* 关闭态：板块置灰 */
+.provider-disabled .key-input,
+.provider-disabled .key-select {
+  opacity: 0.45;
+}
+.provider-disabled .provider-name,
+.provider-disabled .provider-role {
+  opacity: 0.55;
 }
 .key-input {
   width: 100%;
