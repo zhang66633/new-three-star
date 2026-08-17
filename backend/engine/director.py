@@ -305,7 +305,9 @@ def view_scene(state: GameState) -> ScenePlan:
         if spec.get("flag") in (state.get("flags") or []):
             continue  # 已触发
         if spec.get("hint") and spec.get("hint") not in setting_lines:
-            setting_lines.append(f"【暗线】{spec['hint']}")
+            # 暗线钩子：以"叙事内自然带出"的指令语气注入（不带【暗线】标记——
+            # 标记会被 LLM 当正文直出，玩家看到"【暗线】"元标签就出戏）
+            setting_lines.append(f"本场可自然带出的细节（融入叙事，别直出标记）：{spec['hint']}")
     # 审查修复：已触发暗线的下游回声——flag 落地为可体验的后续（信物被认出/故人寻来），
     # 让「推荐信 P3 见曹操 / 信物 P3 情报 / 同路人 P2 同行」的承诺有兑现点
     _DARKLINE_FOLLOWUP = {
@@ -315,7 +317,8 @@ def view_scene(state: GameState) -> ScenePlan:
     }
     for _f, _hint in _DARKLINE_FOLLOWUP.items():
         if _f in (state.get("flags") or []) and _hint not in setting_lines:
-            setting_lines.append(f"【暗线后续】{_hint}")
+            # 已触发暗线的下游回声：同样以指令语气注入，不直出标记
+            setting_lines.append(f"本场可自然带出的后续（融入叙事，别直出标记）：{_hint}")
     setting = "\n".join(setting_lines)
 
     # 3. 在场角色（distance_map）：严格"在场即呈现"（决策 10）——只呈现玩家
