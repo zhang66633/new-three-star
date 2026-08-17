@@ -146,6 +146,7 @@ WRITER_INSTRUCTION = """
 【在场角色人设】{personas}
 
 【输出要求】
+0. 玩家指令权重（最高优先级）：本拍必须**以回应玩家刚才的行动为起点**——他说了什么、做了什么，世界就当场给出反应（NPC 听到/看到后的即时对话与结果）。禁止无视玩家行动自顾自推进骨架剧情；骨架只是玩家行动发生的背景舞台，不是要你照演的剧本。玩家行动永远第一，剧本推进永远第二。
 1. 生成 600-1000 字叙事正文（第二人称"你"），只写本拍新发生的事；每拍连续镜头（首拍只开场/非首拍续接推进，由【连续性】块判定）
 2. 玩家视角差异经玩家内心/观察自然呈现，但世界侧一切正常
 3. 文风（网文吐槽风·毒舌旁白）：语言利落、短句短段、一行一镜头，画面感保留但忌堆叠意象、忌抒情长句。具体执行规则：
@@ -614,6 +615,17 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     # 尾部残留 user（本轮动作尚未有 assistant 回拍，如开局后首次动作前）也透传，保证动作不丢
     if pending_user:
         messages.append({"role": "user", "content": pending_user})
+    # 玩家当前行动：单独一条最高优先级指令（规则 0）——确保不被历史截断淹没，LLM 必须先回应
+    cur_action = ""
+    for h in reversed(state.get("history", [])):
+        if h.get("user"):
+            cur_action = str(h["user"])[:200]
+            break
+    if cur_action.strip():
+        messages.append({
+            "role": "user",
+            "content": "★★ 玩家刚刚的行动：" + "\n" + cur_action.strip() + "\n\n先回应这个行动（规则 0），再推进场景。",
+        })
     messages.append({"role": "user", "content": instruction})
     return messages
 

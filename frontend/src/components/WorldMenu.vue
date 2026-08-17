@@ -116,10 +116,10 @@ const headlines = computed(() => {
   return [...es.filter(e => !e.seen), ...es.filter(e => e.seen)].slice(0, 5)
 })
 
-// 世界公告：所有事件（含简报文本）
+// 世界公告：所有事件（含简报文本）——未读优先展示（与红点一致：有未读就先看到）
 const announcements = computed(() => {
-  const es = events.value.slice().reverse().slice(0, 5)
-  return es
+  const es = events.value.slice()
+  return [...es.filter(e => !e.seen), ...es.filter(e => e.seen)].slice(0, 5)
 })
 const announceUnseen = computed(() => events.value.filter(e => !e.seen).length)
 
