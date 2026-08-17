@@ -65,7 +65,8 @@ async def stream_chat(
     RAG embedding 等系统内部用，不承接玩家叙事）。
     """
     # 双模型试验：主控调用（显式传了 base_url/model）优先用请求级 Qwen key；
-    # 无 Qwen key 时回退 DeepSeek key（单模型模式）。叙事调用（无 base_url/model）恒用 DeepSeek key。
+    # 无 Qwen key 时（关闭开关/未配置）完全回退 DeepSeek——url/model/key 全换，
+    # 避免"DeepSeek key 打 Qwen API"的 401。叙事调用（无 base_url/model）恒用 DeepSeek。
     is_ctrl = bool(base_url or model)
     qwen_key_ctx = _qwen_key_ctx.get()
     if is_ctrl and (qwen_key_ctx or api_key):
@@ -74,10 +75,14 @@ async def stream_chat(
     else:
         key = api_key if api_key else _api_key_ctx.get()
         missing_hint = "DeepSeek 密钥"
+        # 关闭/未配 Qwen：主控调用也整体回退 DeepSeek（URL + 模型名）
+        if is_ctrl:
+            base_url = DEEPSEEK_BASE_URL
+            model = _model_ctx.get() or DEEPSEEK_MODEL
     if not key:
         yield f"[错误] 未配置API密钥——请先到星图的'设置'星球，填入你自己的{missing_hint}。"
         return
-    # DeepSeek 模型：玩家请求头选择优先（X-DEEPSEEK-MODEL），未选回退 .env 默认
+    # 模型解析：叙事用玩家选的 DeepSeek 模型；主控用玩家选的 Qwen 模型（或已回退的 DeepSeek）
     _model = model
     if not _model and not is_ctrl:
         _model = _model_ctx.get() or DEEPSEEK_MODEL
