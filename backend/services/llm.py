@@ -97,7 +97,27 @@ async def stream_chat(
         ):
             yield chunk
     except Exception as e:
-        logger.error(f"LLM ({model or DEEPSEEK_MODEL}) failed: {e}")
+        # 主控调用（Qwen）失败 → 自动回退 DeepSeek 重试一次（玩家体验不受损）
+        # 叙事调用（DeepSeek）失败 → 直接报错（严格 BYOK 不兑底）
+        if is_ctrl:
+            logger.warning(f"Qwen 主控调用失败，回退 DeepSeek: {e}")
+            try:
+                async for chunk in _stream_openai_compatible(
+                    base_url=DEEPSEEK_BASE_URL,
+                    api_key=_api_key_ctx.get(),
+                    model=_model_ctx.get() or DEEPSEEK_MODEL,
+                    messages=messages,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    stop=stop,
+                ):
+                    yield chunk
+                return
+            except Exception as e2:
+                logger.error(f"DeepSeek 回退也失败: {e2}")
+        else:
+            logger.error(f"LLM ({model or DEEPSEEK_MODEL}) failed: {e}")
         yield "[错误] API密钥无效或额度不足——请到星图的'设置'星球检查你的密钥。"
 
 

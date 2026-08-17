@@ -690,7 +690,7 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
         draft += chunk
 
     # LLM 全挂检测：错误占位字符串不得当叙事正文（转异常走路由 err 分支）
-    if "[错误]" in draft and "LLM" in draft:
+    if "[错误]" in draft:
         raise RuntimeError("LLM 服务不可用")
 
     # 后处理链（services.validator 面向旧脚本格式，对散文近空操作且重复 deslop，已移除）
@@ -975,9 +975,9 @@ async def synthesize_briefing(events: list, prev_date: dict = None, cur_date: di
         _ctrl = dict(base_url=QWEN_BASE_URL, model=QWEN_MODEL)
         async for chunk in stream_chat(messages, max_tokens=300, **PARAMS_FORMAT, stop=STOP_SEQUENCES, **_ctrl):
             draft += chunk
-        # LLM 全挂检测（与 narrate 同款）：双 provider 失败时 stream_chat yield 错误占位字符串而非抛异常，
+        # LLM 全挂检测（与 narrate 同款）：stream_chat 失败时 yield "[错误]…" 占位字符串而非抛异常，
         # 必须拦下返回 ''（docstring 契约：前端回退逐条事件列表），否则占位文案会原样呈现给玩家
-        if "[错误]" in draft and "LLM" in draft:
+        if "[错误]" in draft:
             return ""
         draft = draft.strip().strip('“”"\'。').strip()
         return draft[:200]
