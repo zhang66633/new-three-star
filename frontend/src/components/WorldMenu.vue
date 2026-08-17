@@ -192,7 +192,7 @@ const hasAny = computed(() =>
   backdrop-filter: blur(16px);
 }
 /* 主菜单页嵌入：中和 fixed 四角定位，由菜单 tab 容器流式布局；
-   限高 + 内部滚动——避免内容多时撑爆菜单面板挡住其他 tab */
+   限高 + 内部滚动 + 内容窄化居中——不撑爆菜单面板、不横贯全宽挡其他 tab */
 .menu-drawer.wm-embedded {
   position: static;
   width: 100%;
@@ -204,6 +204,12 @@ const hasAny = computed(() =>
   box-shadow: none;
   backdrop-filter: none;
   padding: 0 2px 0 0;
+}
+.menu-drawer.wm-embedded .menu-section,
+.menu-drawer.wm-embedded .menu-header {
+  max-width: 460px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .menu-header {
   display: flex;
