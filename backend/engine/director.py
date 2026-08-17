@@ -15,6 +15,64 @@ from .state import GameState
 _REGISTRY: Optional[dict] = None
 _REGISTRY_MTIME: float = 0.0
 
+# 地点 → 氛围图（atmo_map.json 12 张：雨夜沉静/荒野苍茫/战火远方/洛阳暗巷/水墨山岚/
+# 破晓行军/竹林清幽/黄河怒涛/帐中暖光/雪夜孤城/星空原野/血色残阳）
+# 自由沙盒下按当前地点派生气氛（名场面接线时仍用 registry 场景的 atmo 覆盖）
+_ATMO_BY_PLACE: list[tuple] = [
+    ("洛阳", "洛阳暗巷"),
+    ("长安", "洛阳暗巷"),
+    ("许县", "帐中暖光"),
+    ("许都", "帐中暖光"),
+    ("陈留", "战火远方"),
+    ("官渡", "战火远方"),
+    ("汜水关", "战火远方"),
+    ("虎牢关", "战火远方"),
+    ("赤壁", "黄河怒涛"),
+    ("长江", "黄河怒涛"),
+    ("江夏", "黄河怒涛"),
+    ("长坂", "破晓行军"),
+    ("当阳", "破晓行军"),
+    ("麦城", "血色残阳"),
+    ("白帝", "血色残阳"),
+    ("夷陵", "血色残阳"),
+    ("冀州", "荒野苍茫"),
+    ("幽州", "荒野苍茫"),
+    ("涿郡", "荒野苍茫"),
+    ("颍川", "荒野苍茫"),
+    ("南阳", "竹林清幽"),
+    ("襄阳", "竹林清幽"),
+    ("成都", "水墨山岚"),
+    ("益州", "水墨山岚"),
+    ("汉中", "水墨山岚"),
+    ("徐州", "星空原野"),
+    ("小沛", "星空原野"),
+    ("下邳", "星空原野"),
+    ("凉州", "雪夜孤城"),
+    ("西凉", "雪夜孤城"),
+    ("并州", "雪夜孤城"),
+]
+
+
+def _derive_atmo(loc: str, wd: dict = None) -> str:
+    """自由视野氛围派生：地点关键词 → atmo_map 图（按地点 + 时段微调）。
+
+    规则：先按地点关键词匹配；匹配不到用阶段默认（战火/行军/夜战由时段决定）。
+    名场面接线时此值会被 registry 场景 atmo 覆盖。
+    """
+    if not loc:
+        return ""
+    for kw, atmo in _ATMO_BY_PLACE:
+        if kw in loc:
+            return atmo
+    # 兜底：按 season 给通用氛围
+    if wd:
+        month = int(wd.get("month", 1) or 1)
+        if month in (12, 1, 2):
+            return "雪夜孤城"
+        if month in (6, 7, 8):
+            return "战火远方"
+    return "荒野苍茫"
+
 
 def load_registry() -> dict:
     """加载场景注册表（mtime 缓存：JSON 文件变了就重读，开发期免重启）"""
@@ -319,7 +377,7 @@ def view_scene(state: GameState) -> ScenePlan:
         "year": int(wd.get("year", 0) or 0),
         "season": season_of(int(wd.get("month", 1) or 1)),
         "location": loc,
-        "atmo": "",
+        "atmo": _derive_atmo(loc, wd),   # 自由视野氛围：按地点+时段派生（名场面接线时覆盖）
         "music": "",
         "title": f"{loc}·{wctx.get('phase_name', '')}",
         "setting": setting,

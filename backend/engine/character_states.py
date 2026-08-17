@@ -104,13 +104,16 @@ def present_characters(state: dict, location: str = "", due_events: list = None)
     return names
 
 
-def update_char_facts(state: dict, due_events: list, new_wd: dict, location: str = "") -> None:
+def update_char_facts(state: dict, due_events: list, new_wd: dict, location: str = "",
+                        prev_location: str = "") -> None:
     """引擎更新事实（决策 9：引擎管事实，LLM 不可写）。
 
     对每条到点事件：
       - key_npcs 中"在场"（事件 locations 含玩家当前地）的角色 → 位置=事件地点、activity=事件摘要
         （在场亲历的事实更新；不在场的角色位置不强制更新，保持"行踪未明"由小报带过）
     dies_on <= 当前年月 → alive=False（历史人物按点退场）。
+    玩家移动后（location != prev_location）：旧地点已登记角色（未在本拍到点事件在场）
+    置 location="行踪未明"——"离场生命周期"：见过的人离开当前地后不再算在场。
     """
     y = int((new_wd or {}).get("year", 0) or 0)
     m = int((new_wd or {}).get("month", 1) or 1)
@@ -144,6 +147,19 @@ def update_char_facts(state: dict, due_events: list, new_wd: dict, location: str
                 continue
         if (y, m) >= (dy, dm):
             st["alive"] = False
+    # 离场生命周期：玩家移动到新地点后，旧地点的已登记角色（本拍到点事件在场者除外）置"行踪未明"
+    if location and prev_location and location != prev_location:
+        # 本拍在场亲历事件的主角（保持位置）
+        in_place_now = set()
+        for e in (due_events or []):
+            ev_locs = [str(x) for x in (e.get("locations") or [])]
+            if any(l in location or location in l for l in ev_locs):
+                in_place_now.update(e.get("key_npcs") or [])
+        for n, st in (state.get("character_states") or {}).items():
+            cl = (st or {}).get("location", "")
+            # 位置匹配旧地点 且 不在本拍在场名单 → 离开
+            if cl and (cl in prev_location or prev_location in cl) and n not in in_place_now:
+                st["location"] = "行踪未明"
 
 
 def merge_character_soft_state(state: dict, updates: dict) -> None:

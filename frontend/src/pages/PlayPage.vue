@@ -116,6 +116,7 @@
         :trust="trust"
         :stances="stances"
         :encountered="gameState?.encountered ?? []"
+        :present="scenePresent"
         :character-states="gameState?.character_states"
         :world-events="gameState?.world_events"
         :world-rumors="gameState?.world_rumors"
@@ -165,6 +166,16 @@ const router = useRouter()
 const { playStep, isStreaming, abort } = usePlaySse()
 const playGuanyu = inject<() => void>('playGuanyu', () => {})
 
+// 关羽之歌节律触发：概率 + 90s 冷却（防轰炸）。rate=触发概率 0-1
+function maybeGuanyu(rate: number) {
+  const now = Date.now()
+  if (now - lastGuanyuAt < 90_000) return  // 冷却中
+  if (Math.random() < rate) {
+    playGuanyu()
+    lastGuanyuAt = now
+  }
+}
+
 // ── 叙事流式块（composable 抽离）──
 const { narrativeBlocks, currentStreamText, ensureStreamingBlock, updateLastBlock, freezeLastBlock, finalizeBlock, resetBlocks } = useNarrativeBlocks()
 
@@ -185,6 +196,9 @@ const errorMessage = ref('')   // 请求失败的用户可见错误提示
 const showIntro = ref(true)    // 开场叙述页（IntroOverlay）
 const started = ref(false)     // 首次流式开始后主界面常显（与 turn 解耦）
 const lastSceneId = ref('')    // 场景门控：仅 scene_id 变化才触发加载器/分隔
+const scenePresent = ref<string[]>([])   // 后端权威在场名单（scene 事件下发）
+const turnCount = ref(0)                 // 回合计数（关羽之歌节律触发用）
+let lastGuanyuAt = 0                     // 上次关羽之歌时间戳（冷却 90s 防轰炸）
 const currentAtmo = ref('雨夜沉静')  // 当前氛围标签（驱动 AtmoBackground 切换）
 const inkActive = ref(false)       // 墨染转场遮罩状态
 
@@ -208,7 +222,10 @@ const resumeDateLabel = computed(() => {
   const wd = resumeState.value?.world_date
   if (!wd) return ''
   const day = Number(wd.day)
-  const dayText = Number.isInteger(day) ? `${day}日` : `初${day >= 15 ? '二' : '一'}`
+  // 天数显示：整数 -> 'N日'；半天 -> 显示实际天（如 7.5 显示 8日(7日过半)）
+  const dayText = Number.isInteger(day)
+    ? `${day}日`
+    : `${Math.floor(day) + 1}日（${Math.floor(day)}日过半）`
   return `上次进度 · ${wd.year}年${wd.month}月${dayText}`
 })
 
@@ -427,6 +444,7 @@ async function startGame() {
       loaderChapterLabel.value = ev.scene.chapter_label
       sceneDatePreview.value = ev.scene.world_date ? { ...ev.scene.world_date, season: ev.scene.season } : null
       if (ev.scene.atmo) currentAtmo.value = ev.scene.atmo
+      if (Array.isArray(ev.scene.present)) scenePresent.value = ev.scene.present
       playGuanyu()   // 关羽之歌：进游戏即响（最经典的梗）
       hideLoader()
       started.value = true
@@ -529,7 +547,10 @@ async function sendAction(action: string, tension: number) {
   newMemCount.value = 0
 
   await playStep(action, gameState.value ?? ({} as GameState), tension, {
-    onBriefing: (ev) => showBriefing(ev),
+    onBriefing: (ev) => {
+      showBriefing(ev)
+      maybeGuanyu(0.6)   // 世界有大事（简报）→ 关羽之歌（"天意在存档"梗）
+    },
     onChunk: (text) => {
       if (!currentStreamText.value) {
         hideLoader()
@@ -586,6 +607,9 @@ async function sendAction(action: string, tension: number) {
       sceneDatePreview.value = null   // 世界日期已由 state 权威值接管
       const prev = gameState.value
       gameState.value = state
+      // 关羽之歌节律触发：每 ~5 回合概率响（天意存档梗，带 90s 冷却防轰炸）
+      turnCount.value += 1
+      if (turnCount.value % 5 === 0) maybeGuanyu(0.5)
       // 简报已读竞态修复：briefing 事件先于 state 到达，用户在 state 前关简报会漏标本批事件 seen
       //（下次 new_briefing 回合被重播）——state 落地后按简报事件 id 补标，随 onDone 快照落盘
       const ids = pendingSeenIds
@@ -661,7 +685,10 @@ const worldDateLabel = computed(() => {
   const wd = sceneDatePreview.value ?? gameState.value?.world_date
   if (!wd) return ''
   const day = Number(wd.day)
-  const dayText = Number.isInteger(day) ? `${day}日` : `初${day >= 15 ? '二' : '一'}`
+  // 天数显示：整数 -> 'N日'；半天 -> 显示实际天（如 7.5 显示 8日(7日过半)）
+  const dayText = Number.isInteger(day)
+    ? `${day}日`
+    : `${Math.floor(day) + 1}日（${Math.floor(day)}日过半）`
   return `${wd.year}年${wd.month}月${dayText}`
 })
 

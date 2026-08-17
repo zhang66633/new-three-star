@@ -7,4 +7,6 @@ export const ACH_NAMES: Record<string, string> = {
   'wealth_100': '小有积蓄',
   'witness_huangjin': '亲历黄金军',
   'reputation_30': '小有名声',
+  'witness_scene': '亲历名场面',
+  'witness_scene_3': '名场面见证者',
 }

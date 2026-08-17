@@ -74,10 +74,10 @@ import { ref, computed } from 'vue'
 import type { WorldEvent } from '../types/play'
 
 const props = defineProps<{
-  world_events?: WorldEvent[]
-  world_rumors?: string[]
+  worldEvents?: WorldEvent[]
+  worldRumors?: string[]
   briefing?: string
-  world_date?: { year: number; month: number; day: number }
+  worldDate?: { year: number; month: number; day: number }
   embedded?: boolean   // 主菜单页嵌入模式：不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器布局
 }>()
 const emit = defineEmits<{ (e: 'read'): void }>()
@@ -93,13 +93,13 @@ function toggle() {
 function markRead() { emit('read') }
 
 const worldDateLabel = computed(() => {
-  const wd = props.world_date
+  const wd = props.worldDate
   if (!wd) return ''
   const months = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二']
   return `${wd.year}年${months[wd.month] || wd.month}月`
 })
 
-const events = computed(() => props.world_events ?? [])
+const events = computed(() => props.worldEvents ?? [])
 
 // 与你有关：related_to_player === 'strong'（未读优先）
 const aboutYou = computed(() => {
@@ -124,7 +124,7 @@ const announcements = computed(() => {
 const announceUnseen = computed(() => events.value.filter(e => !e.seen).length)
 
 // 街头传闻：world_rumors + 地点传闻
-const street = computed(() => props.world_rumors ?? [])
+const street = computed(() => props.worldRumors ?? [])
 
 const unseenCount = computed(() => events.value.filter(e => !e.seen).length)
 const hasAny = computed(() =>

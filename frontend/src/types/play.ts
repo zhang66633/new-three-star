@@ -143,7 +143,7 @@ export interface GameState {
 
 // SSE 事件类型（Phase 4 协议）
 export type StreamEvent =
-  | { type: 'scene'; scene: { scene_id: string; chapter_label: string; title: string; location: string; year: number; season?: string; world_date?: { year: number; month: number; day: number }; music?: string; atmo?: string } }
+  | { type: 'scene'; scene: { scene_id: string; chapter_label: string; title: string; location: string; year: number; season?: string; world_date?: { year: number; month: number; day: number }; music?: string; atmo?: string; present?: string[] } }
   | { type: 'chunk'; content: string }
   | { type: 'player'; content: string }
   | { type: 'briefing'; briefing: string; events: WorldEvent[] }

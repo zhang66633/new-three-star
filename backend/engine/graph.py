@@ -438,7 +438,8 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             from .character_states import update_char_facts
             try:
                 update_char_facts(result, world_inc.get("due_events") or [], new_wd,
-                                  world_inc["era"].get("location", ""))
+                                  world_inc["era"].get("location", ""),
+                                  prev_location=(state.get("player") or {}).get("location", ""))
             except Exception:
                 logger.exception("角色事实更新失败")
             # 2. 玩家数据（LLM 声明的 player_updates + 行动恢复）
@@ -527,7 +528,8 @@ async def run_step(state_dict: dict, action: str = "", tension: int = 0) -> dict
             result["briefing"] = await synthesize_briefing(
                 fresh, state.get("world_date"), result.get("world_date")
             )
-            # 审查修复：已入简报的事件后端置位 seen（此前恒为 False，简报每拍重复旧闻）
-            for _e in fresh:
-                _e["seen"] = True
+            # 简报事件：不在引擎侧标 seen——由 play.py 发出 briefing SSE 后再标，
+            # 否则前端筛"未读"恒空、简报弹窗永不触发（修复死代码）。
+            # 把已入简报的 event_id 透出，供 play.py 标 seen。
+            result["_briefing_ids"] = [e.get("event_id") for e in fresh if e.get("event_id")]
     return result

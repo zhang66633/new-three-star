@@ -91,10 +91,10 @@ def action_days(action: str, plan_options: list = None, location: str = "") -> f
                 return 0.5                    # 同地移动（城内/近郊转）
             if dist == 1:
                 return 1.0                    # 邻近地点：约 1 天
-            return 1.0 + 1.5 * (dist - 1)     # 隔站：2 站 2.5 / 3 站 4.0 / 4 站 5.5
+            return 1.0 + 2.5 * (dist - 1)     # 隔站：2 站 3.5 / 3 站 6.0 / 4 站 8.5（提速世界节奏）
         # 无明确目标地点：跨州词 → 长途；否则默认 1 天（回访/城内移动，防"回头"误判）
         if any(k in a for k in ("跨州", "远行", "长途", "数日")):
-            return 5.0
+            return 8.0
         return 1.0
     # 买卖/办事（在赶路之后：含"前往X买/办事"的复合动作先按赶路距离计时，防距离经济被旁路）
     if any(k in a for k in ("买", "卖", "买卖", "交易", "办事", "赶集")):
@@ -323,6 +323,17 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
             # 简报降频（与玩家有关才打断）：仅在场强相关事件弹窗；弱相关远方小报只进天下事列表积累
             if ev.get("related_to_player") == "strong":
                 new_briefing = True
+        elif ev.get("related_to_player") == "strong":
+            # 就地升级：事件此前以 weak 入队（如颍川首见），玩家现在亲临现场 → 升级为 strong
+            # + 触发简报（修复"人在洛阳却看不到董卓进京"——event_id 去重不再吞掉强相关）
+            for _old in world_events:
+                if _old.get("event_id") == ev.get("event_id") and _old.get("related_to_player") != "strong":
+                    _old["related_to_player"] = "strong"
+                    _old["witnessable"] = True
+                    _old["interaction_types"] = ev.get("interaction_types", [])
+                    _old["player_interactions"] = ev.get("player_interactions", [])
+                    new_briefing = True
+                    break
     # 3. 历史压缩：驻留空闲且距下一事件 >12 月 → 跳时（带过平淡期，跳时窗补 due_events）
     if is_idle_action(action):
         skip = next_timeline_skip(new_wd)
@@ -343,12 +354,15 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
     era["chapter"] = chapter_of(new_wd)["label"]
     era["year"] = int(new_wd.get("year", 0) or 0)
     era["season"] = season_of(int(new_wd.get("month", 1) or 1))
-    # 5. 周期事件（驻留每 4 拍生成一次世界动态——保留 generate_events 的日常生态分支）
+    # 5. 周期事件（驻留每 4 拍 或 时间跨 7 天 生成一次世界动态——保留 generate_events 的日常生态分支）
     #    驻留轮次自增：换地点重置 1、驻留每拍 +1（此前恒为 1 从未自增，%4 永假，活世界机制失效）
     scene_turns = int(result.get("scene_turns") or state.get("scene_turns") or 1)
     same_place = bool(target) and bool(cur_loc) and (target in cur_loc or cur_loc in target)
     scene_turns = 1 if not same_place else scene_turns + 1
-    if scene_turns > 0 and scene_turns % 4 == 0:
+    # 时间间隔触发：跨 7 天（如休息N天/长途赶路）也补一条日常，让"歇着世界也转"成立
+    _day_delta = int((new_wd.get("day") or 0) * 1) - int((wd.get("day") or 0) * 1)
+    _day_delta += (int(new_wd.get("month") or 1) - int(wd.get("month") or 1)) * 30
+    if (scene_turns > 0 and scene_turns % 4 == 0) or _day_delta >= 7:
         daily = generate_events(state, new_wd, False, loc)
         for ev in daily:
             if ev.get("event_id") not in seen_ids:
@@ -400,8 +414,8 @@ def next_timeline_skip(world_date: dict) -> dict | None:
         return None
     ny, nm = _ym(nxt.get("date", ""))
     gap = (ny - y) * 12 + (nm - m)
-    if gap <= 12:
-        return None  # 间隔小（≤1 年），不跳时（保留当前事件密集期的体验）
+    if gap <= 4:
+        return None  # 间隔小（≤4 个月），不跳时（保留当前事件密集期的体验）
     return {
         "date": {"year": ny, "month": nm, "day": 1},
         "event": {

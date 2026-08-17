@@ -35,13 +35,17 @@ const props = defineProps<{
   trust: Record<string, number>
   stances?: Record<string, string>
   characterStates?: Record<string, CharacterState>
+  present?: string[]          // 后端权威在场名单（scene 事件下发，按地点过滤）
   reveal: boolean
   embedded?: boolean   // 主菜单页嵌入模式：中和 fixed 四角定位，内容区由菜单 tab 容器流式布局
 }>()
 
-// 在场角色（严格真实）：只显示玩家真正相识的角色——character_states 里 known=true
-// （玩家亲历过/接触过，位置匹配当前地点的由后端 distance_map 过滤），或 relations 有真实值。
+// 在场角色（严格真实）：优先用后端下发的 present（distance_map 权威在场名单，按地点过滤）；
+// 退回 character_states 里 known=true 或 relations 有值的角色（兼容旧档/无 scene 事件）。
 const presentNames = computed<string[]>(() => {
+  if (props.present && props.present.length) {
+    return [...props.present].sort((a, b) => a.localeCompare(b))
+  }
   const csMap = props.characterStates ?? {}
   const fromStates = Object.keys(csMap).filter(name => {
     const c = csMap[name]

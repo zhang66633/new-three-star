@@ -102,6 +102,7 @@ async def _step_events(req: PlayRequest, api_key: str = "", qwen_api_key: str = 
             "world_date": prev_wd,   # 本拍世界日期预告（场景年代推进后），前端立即刷新
             "atmo": pre_plan.atmo,
             "music": pre_plan.music,
+            "present": sorted(pre_plan.distance_map.keys()),  # 在场名单（按地点过滤，权威源）
         },
     })
 
@@ -137,6 +138,12 @@ async def _step_events(req: PlayRequest, api_key: str = "", qwen_api_key: str = 
                             "briefing": result.get("briefing", ""),
                             "events": fresh,  # 含 weak（前端折叠展示，B-⑦）
                         })
+                        # 已入简报的事件置 seen（引擎不标、这里发完再标）——防下拍重复旧闻
+                        _ids = set(result.get("_briefing_ids") or [])
+                        if _ids:
+                            for _e in (result.get("world_events") or []):
+                                if _e.get("event_id") in _ids:
+                                    _e["seen"] = True
                 # 按最终校验后的 narrative 分块流式发送
                 narrative = last.get("narrative", "")
                 for i in range(0, len(narrative), 40):

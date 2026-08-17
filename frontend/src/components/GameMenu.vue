@@ -57,6 +57,7 @@
               :rels="rels"
               :trust="trust"
               :stances="stances"
+              :present="present"
               :character-states="characterStates"
               :reveal="reveal"
             />
@@ -120,6 +121,7 @@ const props = withDefaults(defineProps<{
   trust?: Record<string, number>
   stances?: Record<string, string>
   encountered?: string[]
+  present?: string[]
   characterStates?: Record<string, CharacterState>
   worldEvents?: WorldEvent[]
   worldRumors?: string[]
@@ -139,6 +141,7 @@ const props = withDefaults(defineProps<{
   trust: () => ({}),
   stances: () => ({}),
   encountered: () => [],
+  present: () => [],
   characterStates: () => ({}),
   worldEvents: () => [],
   worldRumors: () => [],
