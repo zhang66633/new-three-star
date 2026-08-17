@@ -40,10 +40,11 @@ const props = defineProps<{
   embedded?: boolean   // 主菜单页嵌入模式：中和 fixed 四角定位，内容区由菜单 tab 容器流式布局
 }>()
 
-// 在场角色（严格真实）：优先用后端下发的 present（distance_map 权威在场名单，按地点过滤）；
-// 退回 character_states 里 known=true 或 relations 有值的角色（兼容旧档/无 scene 事件）。
+// 在场角色（严格真实）：后端下发的 present（distance_map 权威在场名单，按地点过滤）。
+// present 是数组（含空数组=当前确实无人）→ 一律以它为准；
+// 仅 present 为 undefined（旧档/未接线）时退回 character_states 的 known/relations 启发式。
 const presentNames = computed<string[]>(() => {
-  if (props.present && props.present.length) {
+  if (Array.isArray(props.present)) {
     return [...props.present].sort((a, b) => a.localeCompare(b))
   }
   const csMap = props.characterStates ?? {}

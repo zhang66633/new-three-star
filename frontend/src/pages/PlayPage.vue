@@ -389,6 +389,7 @@ function resumeGame(st: GameState | null = resumeState.value) {
   sceneDatePreview.value = null   // 恢复用存档真实 world_date，清场景预告
   phaseReport.value = (st.last_output?.phase_report as PhaseReport | null) ?? null
   currentAtmo.value = '雨夜沉静'   // atmo 标签未持久化，恢复用默认
+  scenePresent.value = []           // 在场名单未持久化，恢复后等首拍 scene 事件下发
   started.value = true
   showIntro.value = false
   isStreaming.value = false
