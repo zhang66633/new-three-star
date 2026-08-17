@@ -19,11 +19,13 @@ async def stream_chat(
     stop: list[str] | None = None,
     prefix: str | None = None,
     api_key: str = "",
+    model: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Stream chat completion from DeepSeek，用玩家自己的 key。
 
     api_key 由前端通过 X-API-Key 请求头传入——每个玩家用各自的密钥，
     服务端不做兜底（玩家 key 失效就明说，绝不悄悄走部署者的账户）。
+    model 可选：玩家在设置星球选择的 DeepSeek 模型（未选用 .env 默认）。
     """
     if not api_key:
         yield "[错误] 未配置API密钥——请先回到星图，点击'设置'星球，填入你自己的DeepSeek密钥。"
@@ -33,7 +35,7 @@ async def stream_chat(
             base_url=DEEPSEEK_BASE_URL,
             beta_url=DEEPSEEK_BETA_URL,
             api_key=api_key,
-            model=DEEPSEEK_MODEL,
+            model=model or DEEPSEEK_MODEL,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,

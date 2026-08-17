@@ -34,6 +34,11 @@
         >去 DeepSeek 申请密钥 ↗</a>
       </div>
 
+      <label class="key-label" for="ds-model">DeepSeek 模型</label>
+      <select id="ds-model" v-model="modelInput" class="key-select">
+        <option v-for="m in DEEPSEEK_MODELS" :key="m" :value="m">{{ m }}</option>
+      </select>
+
       <hr class="key-divider" />
 
       <p class="settings-status" :class="hasQwenKey ? 'ok' : 'warn'">
@@ -74,7 +79,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { getApiKey, setApiKey, clearApiKey, getQwenApiKey, setQwenApiKey, clearQwenApiKey } from '../apiKey'
+import { getApiKey, setApiKey, clearApiKey, getQwenApiKey, setQwenApiKey, clearQwenApiKey, getDeepSeekModel, setDeepSeekModel, DEEPSEEK_MODELS } from '../apiKey'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 
@@ -84,6 +89,7 @@ const hasKey = ref(false)
 const qwenInput = ref('')
 const showQwenKey = ref(false)
 const hasQwenKey = ref(false)
+const modelInput = ref(getDeepSeekModel())
 
 const maskKey = computed(() => {
   const k = getApiKey()
@@ -117,6 +123,7 @@ function save() {
     setQwenApiKey(q)
     hasQwenKey.value = true
   }
+  setDeepSeekModel(modelInput.value)
   emit('close')
 }
 
@@ -187,6 +194,30 @@ function clear() {
   outline: none;
 }
 .key-input:focus {
+  border-color: #fbbf24;
+}
+
+.key-label {
+  display: block;
+  margin: 12px 0 6px;
+  font-size: 12px;
+  color: rgba(236, 236, 242, 0.55);
+  letter-spacing: 1px;
+}
+
+.key-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px;
+  font-size: 14px;
+  background: rgba(3, 3, 6, 0.8);
+  border: 1px solid rgba(236, 236, 242, 0.2);
+  border-radius: 8px;
+  color: #ececf2;
+  outline: none;
+  cursor: pointer;
+}
+.key-select:focus {
   border-color: #fbbf24;
 }
 

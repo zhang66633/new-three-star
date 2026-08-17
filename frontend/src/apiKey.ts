@@ -5,6 +5,10 @@
 
 const KEY_STORE = 'sg_deepseek_key'
 const QWEN_KEY_STORE = 'sg_qwen_key'
+const MODEL_STORE = 'sg_deepseek_model'
+
+/** 可选 DeepSeek 模型列表（默认第一个为缺省） */
+export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat']
 
 export function getApiKey(): string {
   try {
@@ -54,12 +58,31 @@ export function clearQwenApiKey(): void {
   }
 }
 
+export function getDeepSeekModel(): string {
+  try {
+    const m = localStorage.getItem(MODEL_STORE)
+    return m && DEEPSEEK_MODELS.includes(m) ? m : DEEPSEEK_MODELS[0]
+  } catch {
+    return DEEPSEEK_MODELS[0]
+  }
+}
+
+export function setDeepSeekModel(model: string): void {
+  try {
+    localStorage.setItem(MODEL_STORE, model)
+  } catch {
+    /* ignore */
+  }
+}
+
 /** 给 fetch 追加的请求头；未配置密钥时不带头（后端会提示先配置）。 */
 export function apiKeyHeaders(): Record<string, string> {
   const k = getApiKey()
   const q = getQwenApiKey()
+  const m = getDeepSeekModel()
   const h: Record<string, string> = {}
   if (k) h['X-API-Key'] = k
   if (q) h['X-QWEN-API-Key'] = q
+  h['X-DEEPSEEK-MODEL'] = m
   return h
 }

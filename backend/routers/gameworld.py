@@ -116,6 +116,8 @@ async def narrative(req: NarrativeRequest, request: Request):
     api_key = request.headers.get("x-api-key", "").strip()
     if not api_key:
         return StreamingResponse(_key_error_stream(), media_type="text/event-stream")
+    # DeepSeek 模型选择（设置星球下拉，随 X-DEEPSEEK-MODEL 头传入）
+    ds_model = request.headers.get("x-deepseek-model", "").strip()
     is_first_turn = len(req.history) == 0
     state = StoryState.from_dict(req.state)
 
@@ -140,7 +142,7 @@ async def narrative(req: NarrativeRequest, request: Request):
 
     async def generate():
         try:
-            draft = await write(brief, state, req.history, req.action, is_first_turn, api_key=api_key)
+            draft = await write(brief, state, req.history, req.action, is_first_turn, api_key=api_key, model=ds_model or None)
         except Exception:
             draft = ""
 

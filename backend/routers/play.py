@@ -24,7 +24,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from engine.graph import run_step
-from services.llm import set_api_key, set_qwen_api_key
+from services.llm import set_api_key, set_qwen_api_key, set_deepseek_model
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +53,7 @@ def _key_error_stream():
     return gen()
 
 
-async def _step_events(req: PlayRequest, api_key: str = "", qwen_api_key: str = ""):
+async def _step_events(req: PlayRequest, api_key: str = "", qwen_api_key: str = "", deepseek_model: str = ""):
     """生成 SSE 事件流——协议顺序: scene → chunk* → state → options → phase → done"""
     from engine.state import from_dict
     from engine.director import view_scene
@@ -61,6 +61,7 @@ async def _step_events(req: PlayRequest, api_key: str = "", qwen_api_key: str = 
     # BYOK：请求级密钥入 ContextVar，LangGraph 引擎各节点经 services.llm 读取
     set_api_key(api_key)
     set_qwen_api_key(qwen_api_key)  # 双模型试验：Qwen 主控密钥（可选，未填回退 DeepSeek）
+    set_deepseek_model(deepseek_model)  # DeepSeek 模型选择（玩家下拉，默认 deepseek-v4-flash）
 
     # ── SSE keepalive（每 15s 发心跳注释，防 nginx/proxy 60s 超时）──
     events: asyncio.Queue = asyncio.Queue()
@@ -174,8 +175,9 @@ async def play_step(req: PlayRequest, request: Request):
     if not api_key:
         return StreamingResponse(_key_error_stream(), media_type="text/event-stream")
     qwen_api_key = request.headers.get("x-qwen-api-key", "").strip()  # 可选：Qwen 主控密钥
+    deepseek_model = request.headers.get("x-deepseek-model", "").strip()  # 可选：DeepSeek 模型选择
     return StreamingResponse(
-        _step_events(req, api_key, qwen_api_key),
+        _step_events(req, api_key, qwen_api_key, deepseek_model),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 _api_key_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("api_key", default="")
 # 双模型试验：Qwen 主控密钥（X-QWEN-API-Key 请求头）——玩家可选，未填则主控回退 DeepSeek
 _qwen_key_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("qwen_api_key", default="")
+# DeepSeek 模型选择（X-DEEPSEEK-MODEL 请求头）：玩家可切换 flash/v4-pro 等，默认 deepseek-v4-flash
+_model_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("deepseek_model", default="")
 
 
 def set_api_key(key: str) -> None:
@@ -26,6 +28,11 @@ def set_api_key(key: str) -> None:
 def set_qwen_api_key(key: str) -> None:
     """双模型试验：设置玩家 Qwen 主控密钥（空串=未配置，主控回退 DeepSeek）。"""
     _qwen_key_ctx.set(key.strip() if key else "")
+
+
+def set_deepseek_model(model: str) -> None:
+    """设置玩家选择的 DeepSeek 模型名（空串=用 .env 默认）。"""
+    _model_ctx.set(model.strip() if model else "")
 
 
 async def stream_chat(
@@ -62,11 +69,15 @@ async def stream_chat(
     if not key:
         yield f"[错误] 未配置API密钥——请先到星图的'设置'星球，填入你自己的{missing_hint}。"
         return
+    # DeepSeek 模型：玩家请求头选择优先（X-DEEPSEEK-MODEL），未选回退 .env 默认
+    _model = model
+    if not _model and not is_ctrl:
+        _model = _model_ctx.get() or DEEPSEEK_MODEL
     try:
         async for chunk in _stream_openai_compatible(
             base_url=base_url or DEEPSEEK_BASE_URL,
             api_key=key,
-            model=model or DEEPSEEK_MODEL,
+            model=_model or DEEPSEEK_MODEL,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temperature,

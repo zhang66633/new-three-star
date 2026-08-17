@@ -183,9 +183,10 @@ def _postprocess(draft: str) -> str:
 
 
 async def write(brief, state: StoryState, history: list,
-                action: str, is_first_turn: bool, api_key: str = "") -> str:
+                action: str, is_first_turn: bool, api_key: str = "", model: str | None = None) -> str:
     """Writer 唯一入口。v3.2: 格式规则嵌入用户消息（V4系统提示词遵守度弱）。
-    api_key：玩家自己的DeepSeek密钥（来自X-API-Key头），透传给所有LLM调用。"""
+    api_key：玩家自己的DeepSeek密钥（来自X-API-Key头），透传给所有LLM调用。
+    model：玩家在设置星球选择的 DeepSeek 模型（可选，未选用 .env 默认）。"""
     instruction = build_instruction(brief, state, is_first_turn, action)
 
     # 构建消息列表：
@@ -231,6 +232,7 @@ async def write(brief, state: StoryState, history: list,
         stop=STOP_SEQUENCES,
         prefix=prefix,
         api_key=api_key,
+        model=model,
     ):
         draft += chunk
 
