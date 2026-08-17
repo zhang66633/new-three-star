@@ -109,7 +109,7 @@ const aboutYou = computed(() => {
 })
 const aboutYouUnseen = computed(() => events.value.filter(e => e.related_to_player === 'strong' && !e.seen).length)
 
-// 今日头条：近期时间线大事件（timeline/period source，最近日期）
+// 今日头条：近期时间线大事件（timeline/period source，最近日期）——只显示大事件
 const headlines = computed(() => {
   const es = events.value
     .filter(e => e.source === 'timeline' || e.source === 'period')
@@ -117,12 +117,17 @@ const headlines = computed(() => {
   return [...es.filter(e => !e.seen), ...es.filter(e => e.seen)].slice(0, 5)
 })
 
-// 世界公告：所有事件（含简报文本）——未读优先展示（与红点一致：有未读就先看到）
+// 世界公告：头条以外的动静（player 玩家引发 / daily 日常 / timeskip 跳时 / 其余弱相关）
+// 与头条排他——同一事件不会同时出现在两个区（避免"黄金军起义"重复显示）
 const announcements = computed(() => {
-  const es = events.value.slice()
+  const es = events.value.filter(
+    e => e.source !== 'timeline' && e.source !== 'period'
+  )
   return [...es.filter(e => !e.seen), ...es.filter(e => e.seen)].slice(0, 5)
 })
-const announceUnseen = computed(() => events.value.filter(e => !e.seen).length)
+const announceUnseen = computed(() =>
+  events.value.filter(e => !e.seen && e.source !== 'timeline' && e.source !== 'period').length
+)
 
 // 街头传闻：world_rumors + 地点传闻
 const street = computed(() => props.worldRumors ?? [])
