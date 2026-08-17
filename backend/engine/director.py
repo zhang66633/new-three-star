@@ -307,6 +307,13 @@ def view_scene(state: GameState) -> ScenePlan:
         if spec.get("hint") and spec.get("hint") not in setting_lines:
             # 暗线钩子：以"叙事内自然带出"的指令语气注入（不带【暗线】标记——
             # 标记会被 LLM 当正文直出，玩家看到"【暗线】"元标签就出戏）
+            # 去重：hint 已在历史叙事里自然出现过（玩家见过该细节）→ 不再注入，
+            # 防同一人物/场景每拍重复出场（如"脚步稳的汉子"两拍擦肩而过两次）
+            _seen_hist = ' '.join(str(h.get('assistant', '')) for h in (state.get('history') or [])[-6:])
+            # 核心片段匹配：hint 拆 2-4 字核心词（人名/地点/特征词），任一段在历史里出现即视为已带出
+            _frags = [spec['hint'][i:i+4] for i in range(0, len(spec['hint'])-3, 4)][:3]
+            if any(_f and _f in _seen_hist for _f in _frags):
+                continue
             setting_lines.append(f"本场可自然带出的细节（融入叙事，别直出标记）：{spec['hint']}")
     # 审查修复：已触发暗线的下游回声——flag 落地为可体验的后续（信物被认出/故人寻来），
     # 让「推荐信 P3 见曹操 / 信物 P3 情报 / 同路人 P2 同行」的承诺有兑现点
