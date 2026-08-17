@@ -1,11 +1,91 @@
 {
   "events": [
     {
+      "event_id": "e_184_06_yingchuan_laji",
+      "event": "颍川拉锯——黄金军跟官军在颍川来回拉锯，今天你烧我村、明天我抢你粮，老百姓在夹缝里种地收尸两不误",
+      "locations": [
+        "颍川",
+        "洛阳"
+      ],
+      "key_npcs": [
+        "张角",
+        "皇甫嵩"
+      ],
+      "player_interactions": [
+        {
+          "type": "observe",
+          "desc": "在颍川官道旁看两军隔田对峙的日常：黄金军田埂上插木牌喊口号，官军扎营按兵不动，两边谁都不先动手——像两个互相放狠话又不敢先上的街溜子。",
+          "related_to_player": "weak",
+          "achievement": null,
+          "title": null
+        },
+        {
+          "type": "participate",
+          "desc": "跟着一队流民逃出拉锯区：一路上躲箭、绕火、听老兵讲「哪边能捡便宜」，惊险又狼狈。",
+          "related_to_player": "strong",
+          "achievement": "逃出拉锯区",
+          "title": null
+        },
+        {
+          "type": "conflict",
+          "desc": "被溃兵当成黄金军细作盘问：他们看你眼生，怀疑你是对面派来的探子，一言不合就要拿你祭旗。",
+          "related_to_player": "strong",
+          "achievement": null,
+          "title": null
+        }
+      ],
+      "historical_outcome": "皇甫嵩与朱儁合兵进讨颍川黄巾，战局胶着，颍川成为拉锯战场。",
+      "new_three_quirks": [
+        "两军隔田对峙的场面拍得像菜市场吵架：谁都不先动手，全靠嗓门和旗号撑气势。"
+      ]
+    },
+    {
+      "event_id": "e_184_08_changshe_huogong",
+      "event": "长社火攻前哨——皇甫嵩夜袭放火，黄金军草营烧成火海，天下大势开始悄悄倒向官军",
+      "locations": [
+        "颍川",
+        "洛阳",
+        "冀州"
+      ],
+      "key_npcs": [
+        "皇甫嵩",
+        "张角"
+      ],
+      "player_interactions": [
+        {
+          "type": "observe",
+          "desc": "站在高处看长社方向火光冲天：官军一把火把黄金军的草营烧了个精光，隔十里都能听见惨叫和马蹄乱——这仗，要见分晓了。",
+          "related_to_player": "weak",
+          "achievement": null,
+          "title": null
+        },
+        {
+          "type": "influence",
+          "desc": "帮官军带路/帮黄金军通风报信（选一边）：你的情报可能影响长社一战的走向，事后两边都会记得你。",
+          "related_to_player": "strong",
+          "achievement": "长社风云",
+          "title": null
+        }
+      ],
+      "historical_outcome": "皇甫嵩夜纵火、大风助阵，大破长社黄巾，斩首数万，黄巾主力元气大伤。",
+      "new_three_quirks": [
+        "皇甫嵩这手火攻干脆利落——就是烧完这一把，还有多少把等着没人知道。"
+      ]
+    },
+    {
       "event_id": "e_184_02_huangjin_qiyi",
       "date": "184-02",
       "event": "黄金军起义爆发——造反还自带贵金属品牌包装，'苍天已死黄金当立'喊得震天响",
-      "locations": ["洛阳", "冀州"],
-      "key_npcs": ["张角", "刘备", "关羽", "张飞"],
+      "locations": [
+        "洛阳",
+        "冀州"
+      ],
+      "key_npcs": [
+        "张角",
+        "刘备",
+        "关羽",
+        "张飞"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -52,11 +132,62 @@
       ]
     },
     {
+      "event_id": "e_184_04_huangjin_kuozhang",
+      "date": "184-04",
+      "event": "黄金军扩张——张角一声令下，三十六方同日造反，官军被打了个措手不及，州郡告急文书堆成小山",
+      "locations": [
+        "冀州",
+        "颍川",
+        "洛阳"
+      ],
+      "key_npcs": [
+        "张角",
+        "张宝",
+        "张梁"
+      ],
+      "player_interactions": [
+        {
+          "type": "observe",
+          "desc": "在官道边围观官府急调兵马的鸡飞狗跳：征发民夫、催粮告示、守城官兵互相打听黄金军打哪边来了——兵荒马乱的氛围感拉满，白看一出大戏。",
+          "related_to_player": "weak",
+          "achievement": null,
+          "title": null
+        },
+        {
+          "type": "conflict",
+          "desc": "撞上一伙趁乱打劫的黄金军游骑：他们要你交「买路钱」，还问你要不要入伙吃香的喝辣的——拒绝就得比划比划。",
+          "related_to_player": "strong",
+          "achievement": "击退黄金游骑",
+          "title": null
+        },
+        {
+          "type": "trade",
+          "desc": "拿干粮跟流民换情报：他们知道哪条路安全、哪座城已经破了，消息虽杂但管用。",
+          "related_to_player": "weak",
+          "achievement": null,
+          "title": null
+        }
+      ],
+      "historical_outcome": "黄金军势大，张角自称天公将军，弟张宝地公将军、张梁人公将军，天下响应，京师震动。",
+      "new_three_quirks": [
+        "造反声势浩大到离谱：三十六方同日举事，各州告急文书堆成山，可官军跟黄金军开打时双方愣是没人扎黄头巾——观众都分不清谁打谁。"
+      ]
+    },
+    {
       "event_id": "e_184_10_huangjin_canbing",
       "date": "184-10",
       "event": "黄金军溃兵——第八个月就\"平息\"的大起义，留下满山遍野的假张角",
-      "locations": ["冀州", "颍川", "洛阳"],
-      "key_npcs": ["张角", "关羽", "张宝", "张梁"],
+      "locations": [
+        "冀州",
+        "颍川",
+        "洛阳"
+      ],
+      "key_npcs": [
+        "张角",
+        "关羽",
+        "张宝",
+        "张梁"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -106,8 +237,16 @@
       "event_id": "e_189_08_dongzhuo_jinjing",
       "date": "189-08",
       "event": "董卓进京——刘关张原地蒸发，满朝当场认爹，西凉全村野人",
-      "locations": ["洛阳", "长安"],
-      "key_npcs": ["董卓", "曹操", "王允", "袁绍"],
+      "locations": [
+        "洛阳",
+        "长安"
+      ],
+      "key_npcs": [
+        "董卓",
+        "曹操",
+        "王允",
+        "袁绍"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -157,8 +296,17 @@
       "event_id": "e_189_09_yuan_shao_chuben",
       "date": "189-09",
       "event": "袁绍出奔冀州——废帝这局我不跟了，十八路诸侯的锅先替我背好",
-      "locations": ["洛阳", "冀州", "陈留"],
-      "key_npcs": ["袁绍", "董卓", "曹操", "汉献帝"],
+      "locations": [
+        "洛阳",
+        "冀州",
+        "陈留"
+      ],
+      "key_npcs": [
+        "袁绍",
+        "董卓",
+        "曹操",
+        "汉献帝"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -208,8 +356,19 @@
       "event_id": "e_189_09_cao_cao_xian_dao",
       "date": "189-09",
       "event": "曹操刺董——王允借刀、七星刀变激光剑，董卓当场被大铜镜晃醒",
-      "locations": ["洛阳", "中牟", "成皋", "陈留"],
-      "key_npcs": ["曹操", "王允", "董卓", "吕布", "陈宫"],
+      "locations": [
+        "洛阳",
+        "中牟",
+        "成皋",
+        "陈留"
+      ],
+      "key_npcs": [
+        "曹操",
+        "王允",
+        "董卓",
+        "吕布",
+        "陈宫"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -253,8 +412,16 @@
       "event_id": "e_189_10_zhuofangcao",
       "date": "189-10",
       "event": "捉放曹——中牟夜审，虫系宝可梦大师陈宫一罐蛐蛐放走行走的千金万户侯",
-      "locations": ["中牟", "洛阳", "陈留"],
-      "key_npcs": ["曹操", "陈宫", "吕伯奢"],
+      "locations": [
+        "中牟",
+        "洛阳",
+        "陈留"
+      ],
+      "key_npcs": [
+        "曹操",
+        "陈宫",
+        "吕伯奢"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -298,8 +465,15 @@
       "event_id": "e_189_10_lu_boshe_killing",
       "date": "189-10",
       "event": "屠吕伯奢——猪是白杀的、锅是马背的、蛐蛐儿才是真有情有义",
-      "locations": ["中牟", "陈留"],
-      "key_npcs": ["曹操", "陈宫", "吕伯奢"],
+      "locations": [
+        "中牟",
+        "陈留"
+      ],
+      "key_npcs": [
+        "曹操",
+        "陈宫",
+        "吕伯奢"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -350,8 +524,21 @@
       "event_id": "e_190_01_zhuhou_huimeng",
       "date": "190-01",
       "event": "十八路诸侯会盟讨董——皇叔领到小马扎，曹操当众念假诏",
-      "locations": ["陈留", "洛阳", "荆州"],
-      "key_npcs": ["曹操", "刘备", "关羽", "张飞", "袁绍", "袁术", "华雄", "孙坚"],
+      "locations": [
+        "陈留",
+        "洛阳",
+        "荆州"
+      ],
+      "key_npcs": [
+        "曹操",
+        "刘备",
+        "关羽",
+        "张飞",
+        "袁绍",
+        "袁术",
+        "华雄",
+        "孙坚"
+      ],
       "player_interactions": [
         {
           "type": "participate",
@@ -395,8 +582,22 @@
       "event_id": "e_190_02_wenjiu_huaxiong",
       "date": "190-02",
       "event": "温酒斩华雄——华雄变身人马兽，关羽的酒也没了",
-      "locations": ["陈留", "汜水关", "荆州", "洛阳"],
-      "key_npcs": ["关羽", "华雄", "曹操", "袁绍", "袁术", "刘备", "张飞", "董卓"],
+      "locations": [
+        "陈留",
+        "汜水关",
+        "荆州",
+        "洛阳"
+      ],
+      "key_npcs": [
+        "关羽",
+        "华雄",
+        "曹操",
+        "袁绍",
+        "袁术",
+        "刘备",
+        "张飞",
+        "董卓"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -447,8 +648,20 @@
       "event_id": "e_190_02_sanying_zhan_lvbu",
       "date": "190-02",
       "event": "三英战吕布——一人包围五十万，三英战关羽（当阳郡限定版打戏）",
-      "locations": ["成皋", "南郡", "陈留"],
-      "key_npcs": ["吕布", "张飞", "关羽", "刘备", "袁绍", "曹操", "董卓"],
+      "locations": [
+        "成皋",
+        "南郡",
+        "陈留"
+      ],
+      "key_npcs": [
+        "吕布",
+        "张飞",
+        "关羽",
+        "刘备",
+        "袁绍",
+        "曹操",
+        "董卓"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -499,8 +712,22 @@
       "event_id": "e_190_02_du_zhuo_fen_luoyang",
       "date": "190-02",
       "event": "董卓焚洛阳迁都长安——说走就走的搬家，配上恋爱脑的私奔",
-      "locations": ["洛阳", "长安", "陈留", "冀州"],
-      "key_npcs": ["董卓", "曹操", "孙坚", "吕布", "貂蝉", "王允", "汉献帝", "袁绍"],
+      "locations": [
+        "洛阳",
+        "长安",
+        "陈留",
+        "冀州"
+      ],
+      "key_npcs": [
+        "董卓",
+        "曹操",
+        "孙坚",
+        "吕布",
+        "貂蝉",
+        "王允",
+        "汉献帝",
+        "袁绍"
+      ],
       "player_interactions": [
         {
           "type": "observe",
@@ -551,8 +778,22 @@
       "event_id": "e_190_03_yuxi_alliance_collapse",
       "date": "190-03",
       "event": "孙坚喜提传国玉玺，联盟当场解散，铠甲还是吸铁石做的",
-      "locations": ["洛阳", "荆州", "冀州", "长安"],
-      "key_npcs": ["孙坚", "孙策", "孙权", "袁绍", "袁术", "曹操", "蔡瑁", "刘备"],
+      "locations": [
+        "洛阳",
+        "荆州",
+        "冀州",
+        "长安"
+      ],
+      "key_npcs": [
+        "孙坚",
+        "孙策",
+        "孙权",
+        "袁绍",
+        "袁术",
+        "曹操",
+        "蔡瑁",
+        "刘备"
+      ],
       "player_interactions": [
         {
           "type": "observe",

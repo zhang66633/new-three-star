@@ -334,9 +334,11 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
                     _old["player_interactions"] = ev.get("player_interactions", [])
                     new_briefing = True
                     break
-    # 3. 历史压缩：驻留空闲且距下一事件 >12 月 → 跳时（带过平淡期，跳时窗补 due_events）
+    # 3. 历史压缩：驻留空闲且距下一事件 >4 月 → 跳时（带过平淡期，跳时窗补 due_events）
+    #    快速跳转（"静观其变/等待时机/静候"等）→ 无视间隔强制跳到下一事件
     if is_idle_action(action):
-        skip = next_timeline_skip(new_wd)
+        _force = any(k in (action or "") for k in ("静观其变", "等待时机", "静候", "按兵不动", "静待"))
+        skip = next_timeline_skip(new_wd, force=_force)
         if skip:
             old_wd = dict(new_wd)
             new_wd = skip["date"]
@@ -391,15 +393,17 @@ def is_idle_action(action: str) -> bool:
     a = (action or "").strip()
     if not a:
         return False  # 开局首拍无行动，不跳
-    IDLE_KW = ("休息", "睡", "歇", "休整", "养伤", "躺", "等待", "等等", "无所事事", "发呆", "闲逛")
+    IDLE_KW = ("休息", "睡", "歇", "休整", "养伤", "躺", "等待", "等等", "无所事事", "发呆", "闲逛",
+               "静观其变", "等待时机", "按兵不动", "养精蓄锐", "静待时局", "静候")
     return any(k in a for k in IDLE_KW)
 
 
-def next_timeline_skip(world_date: dict) -> dict | None:
-    """历史压缩（§1.3）：若距下一时间线事件过远（>12 个月）→ 自动跳时。
+def next_timeline_skip(world_date: dict, force: bool = False) -> dict | None:
+    """历史压缩（§1.3）：若距下一时间线事件过远（>4 个月）→ 自动跳时。
 
-    返回 {"date": 目标日期, "event": 简报事件} 或 None（间隔小不跳）。
-    玩家驻留日常时世界大步向前，跳时以简报带过（"几年过去，谁干成了什么"）。
+    force=True（快速跳转按钮触发）：无视间隔门槛，直接跳到下一时间线事件
+    （玩家"静观其变/等待时机"→ 世界大步向前到下一件大事）。
+    返回 {"date": 目标日期, "event": 简报事件} 或 None（无下一事件）。
     """
     from .worlddata import load_timeline, _ym
     y = int(world_date.get("year", 0) or 0)
@@ -414,8 +418,8 @@ def next_timeline_skip(world_date: dict) -> dict | None:
         return None
     ny, nm = _ym(nxt.get("date", ""))
     gap = (ny - y) * 12 + (nm - m)
-    if gap <= 4:
-        return None  # 间隔小（≤4 个月），不跳时（保留当前事件密集期的体验）
+    if gap <= 4 and not force:
+        return None  # 间隔小（≤4 个月），不跳时（保留当前事件密集期的体验）；快速跳转不受限
     return {
         "date": {"year": ny, "month": nm, "day": 1},
         "event": {

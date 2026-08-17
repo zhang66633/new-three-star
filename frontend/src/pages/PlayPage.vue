@@ -133,6 +133,7 @@
         @ask="askRumor"
         @toggle-pin="togglePin"
         @read="markMenuRead"
+        @fast-forward="() => sendAction('静观其变，等待时机', 0)"
       />
     </div>
   </div>

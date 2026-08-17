@@ -15,6 +15,7 @@
         <div class="menu-header">
           <span class="menu-title">天 下 事</span>
           <span class="menu-date">{{ worldDateLabel }}</span>
+          <button class="menu-fast" title="静观其变，直接跳到下一件大事" @click="emit('fastForward')">⏭ 跳到下一事件</button>
         </div>
 
         <!-- 与你有关（红点优先展示） -->
@@ -80,7 +81,7 @@ const props = defineProps<{
   worldDate?: { year: number; month: number; day: number }
   embedded?: boolean   // 主菜单页嵌入模式：不渲染 toggle 按钮与固定外壳，内容区由菜单 tab 容器布局
 }>()
-const emit = defineEmits<{ (e: 'read'): void }>()
+const emit = defineEmits<{ (e: 'read'): void; (e: 'fastForward'): void }>()
 
 const open = ref(false)
 
@@ -190,18 +191,19 @@ const hasAny = computed(() =>
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(16px);
 }
-/* 主菜单页嵌入：中和 fixed 四角定位，由菜单 tab 容器流式布局 */
+/* 主菜单页嵌入：中和 fixed 四角定位，由菜单 tab 容器流式布局；
+   限高 + 内部滚动——避免内容多时撑爆菜单面板挡住其他 tab */
 .menu-drawer.wm-embedded {
   position: static;
   width: 100%;
   max-width: none;
-  max-height: none;
-  overflow-y: visible;
+  max-height: 52vh;
+  overflow-y: auto;
   background: transparent;
   border: none;
   box-shadow: none;
   backdrop-filter: none;
-  padding: 0;
+  padding: 0 2px 0 0;
 }
 .menu-header {
   display: flex;
@@ -220,6 +222,22 @@ const hasAny = computed(() =>
 .menu-date {
   font-size: 0.75rem;
   color: rgba(148, 163, 184, 0.6);
+  margin-right: auto;
+}
+.menu-fast {
+  font-size: 0.7rem;
+  color: #e8c88c;
+  background: rgba(202, 138, 4, 0.12);
+  border: 1px solid rgba(202, 138, 4, 0.3);
+  border-radius: 999px;
+  padding: 3px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.25s;
+}
+.menu-fast:hover {
+  background: rgba(202, 138, 4, 0.25);
+  border-color: rgba(202, 138, 4, 0.55);
 }
 .menu-section { margin-bottom: 16px; }
 .menu-section-title {

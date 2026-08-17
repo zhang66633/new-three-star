@@ -72,6 +72,7 @@
               :briefing="briefing"
               :world-date="worldDate"
               @read="() => emit('read')"
+              @fast-forward="emit('fastForward')"
             />
           </div>
 
@@ -160,6 +161,7 @@ const emit = defineEmits<{
   (e: 'ask', name: string): void
   (e: 'togglePin', id: string): void
   (e: 'read'): void
+  (e: 'fastForward'): void
 }>()
 
 const open = ref(false)
