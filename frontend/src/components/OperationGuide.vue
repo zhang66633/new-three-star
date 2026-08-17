@@ -22,6 +22,10 @@
           <span class="ops-desc">右下打开 地图 / 档案 / 在场 / 天下事 / 关系网，随时查看自身处境</span>
         </div>
         <div class="ops-item">
+          <span class="ops-key">⏳ 时间流转</span>
+          <span class="ops-desc">输入「休息」或「静观其变」可让时日流转——天下事面板还有「⏭ 跳到下一事件」按钮，直接快进到下一件大事</span>
+        </div>
+        <div class="ops-item">
           <span class="ops-key">💾 自动存档</span>
           <span class="ops-desc">每拍自动落盘，可随时回到星图，下次接着来</span>
         </div>
