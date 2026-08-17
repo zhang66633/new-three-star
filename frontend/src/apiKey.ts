@@ -11,12 +11,20 @@ const QWEN_MODEL_STORE = 'sg_qwen_model'
 /** 可选 DeepSeek 模型列表（默认第一个为缺省；deepseek-chat 已下架不再提供） */
 export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro']
 
-/** 可选 Qwen 主控模型列表（只挑指令遵循强的，默认第一个）：
- *  qwen3.5-plus —— 旗舰，指令遵循最强（贵）
+/** 可选 Qwen 主控模型列表（默认第一个）：
+ *  qwen3.7-flash / qwen3.6-flash / qwen3.5-flash —— 快速轻量（新增）
  *  qwen3.5-35b-a3b —— 35B总参/3B活跃，性价比之王，指令遵循强（推荐）
+ *  qwen3.5-plus —— 旗舰，指令遵循最强（贵）
  *  qwen3.5-27b —— 中端，指令遵循稳（轻量）
  */
-export const QWEN_MODELS = ['qwen3.5-35b-a3b', 'qwen3.5-plus', 'qwen3.5-27b']
+export const QWEN_MODELS = [
+  'qwen3.7-flash',
+  'qwen3.6-flash',
+  'qwen3.5-flash',
+  'qwen3.5-35b-a3b',
+  'qwen3.5-plus',
+  'qwen3.5-27b',
+]
 
 export function getApiKey(): string {
   try {
