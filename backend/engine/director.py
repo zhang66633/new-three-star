@@ -314,7 +314,10 @@ def view_scene(state: GameState) -> ScenePlan:
             _frags = [spec['hint'][i:i+4] for i in range(0, len(spec['hint'])-3, 4)][:3]
             if any(_f and _f in _seen_hist for _f in _frags):
                 continue
-            setting_lines.append(f"本场可自然带出的细节（融入叙事，别直出标记）：{spec['hint']}")
+            setting_lines.append(
+                f"本场可自然带出的细节（融入叙事，别直出标记；涉及人物请给足存在感："
+                f"鲜明外貌/动作 + 与玩家的目光或语言互动，让玩家对他留下印象）：{spec['hint']}"
+            )
     # 审查修复：已触发暗线的下游回声——flag 落地为可体验的后续（信物被认出/故人寻来），
     # 让「推荐信 P3 见曹操 / 信物 P3 情报 / 同路人 P2 同行」的承诺有兑现点
     _DARKLINE_FOLLOWUP = {
