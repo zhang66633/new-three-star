@@ -619,7 +619,9 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     # 尾部残留 user（本轮动作尚未有 assistant 回拍，如开局后首次动作前）也透传，保证动作不丢
     if pending_user:
         messages.append({"role": "user", "content": pending_user})
-    # 玩家当前行动：单独一条最高优先级指令（规则 0）——确保不被历史截断淹没，LLM 必须先回应
+    messages.append({"role": "user", "content": instruction})
+    # 玩家当前行动：作为**最后一条** user 消息（LLM 最后看到的最强指令）——
+    # 放在 instruction 之前会被 4-6KB 长指令淹没，LLM 只顾演场景背景、无视行动
     cur_action = ""
     for h in reversed(state.get("history", [])):
         if h.get("user"):
@@ -628,9 +630,8 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     if cur_action.strip():
         messages.append({
             "role": "user",
-            "content": "★★ 玩家刚刚的行动：" + "\n" + cur_action.strip() + "\n\n先回应这个行动（规则 0），再推进场景。",
+            "content": "★★ 你（玩家）刚刚的行动（最高优先级，本拍必须先演它）：" + "\n" + cur_action.strip(),
         })
-    messages.append({"role": "user", "content": instruction})
     return messages
 
 
