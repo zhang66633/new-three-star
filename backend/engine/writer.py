@@ -164,7 +164,7 @@ WRITER_INSTRUCTION = """
    events：本拍 1-3 条关键事件（actor/action/result 客观陈述，不写内心独白/风景；无则省）
    player_updates：资产增减/金钱/属性变化/新称号/声望（reputation_delta +10~-10，当众义举或恶名才给）。注意：休息/吃(进食/觅食/买吃的)/治伤(疗伤/看伤/包扎/敷药)的系统恢复与医药费由引擎自动结算，禁止在 stats_delta/coins_delta 重复声明——stats_delta 只声明叙事性身体变化（受伤/被救/被抢/中毒等）
    world_events_add：玩家行为的持久痕迹（救下的人报恩/惹的仇家寻仇/壮举成传闻，1-2 条），受"历史大势不可推翻"约束不得改名场面结局；无则省
-   character_updates：本拍互动的角色软状态变化（doing=在做什么/goal=目标/attitude_delta=对你的态度 ±10/tags_add=性格标签/notes_add=备注，无则省）。只改软状态，不得改角色位置/生死（引擎管事实）
+   character_updates：本拍互动的角色软状态变化（doing=在做什么/goal=目标/attitude_delta=对你的态度 ±10/tags_add=性格标签/notes_add=备注，无则省）。只改软状态，不得改角色位置/生死（引擎管事实）。【重要】本拍**新出场的有名有姓角色**（与玩家搭话/同行/对峙的具体人物，如主动报名的旅伴）必须列进 character_updates（doing 写他在做什么）——否则他不会出现在在场面板；纯背景群像（难民/兵丁/路人甲）不用列
    failure：玩家本拍失败（战败/中计/被擒/偷窃失手等）→ 声明代价 {{"kind":"combat|scheme|social","penalty":{{"stats_delta":{{"wound":N}},"coins_delta":-N,"assets_remove":["..."],"relations_delta":{{"X":-N}},"reputation_delta":-N}}}}；无则省。玩家绝不真死（引擎保证）
 6. 时空跳跃（跨年/大段路程）须显式交代，不得无标记硬切
 7. 世界差异克制（黄金/黄巾等）：无论首次还是后续都只是背景细节，不展开、不吐槽、不反复念叨，靠"被动遇见"自然带出；派系名称'黄金军''黄金兵'每场至多 1-2 次，其余用代称（贼军/溃兵/那支人马/叛军/他们）；口号只按锁定台词逐字出现
@@ -632,6 +632,14 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
             "role": "user",
             "content": "★★ 你（玩家）刚刚的行动（最高优先级，本拍必须先演它）：" + "\n" + cur_action.strip(),
         })
+        # 离谱动作（起飞/飞天/法术/隔空取物等超现实）：明确要求世界幽默拒绝——
+        # 玩家尝试必然滑稽落空（原地蹦跶/纹丝不动/NPC 当笑话），但要演出喜剧而非无视
+        _ABSURD = ("飞", "法术", "召唤", "瞬移", "隐身", "读心", "穿越", "开挂", "作弊", "创造", "无敌", "长生", "变出", "凭空")
+        if any(_k in cur_action for _k in _ABSURD):
+            messages.append({
+                "role": "user",
+                "content": "（注意：玩家这个动作离谱/超现实。按规则：世界不得真的改变——演喜剧式落空：尝试滑稽失败、周围人看笑话或当他饿晕了，选项给个正常出路。但必须演出来，不能无视。）",
+            })
     return messages
 
 
