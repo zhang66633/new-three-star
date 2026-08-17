@@ -322,6 +322,12 @@ async def remember_node(state: GameState) -> dict:
         # 必须并入 ret 才会被 LangGraph 写回（否则每拍静默丢弃，态度面板永远停在种子值）。
         # 引擎事实（update_char_facts）在 _commit 里对 result 原地更新，此处只回带软状态合并结果。
         "character_states": st.get("character_states", {}),
+        # 本拍在场名单（权威）：distance_map 键（按地点过滤的已登记角色/到点事件主角/名场面说话人）
+        # + 本拍互动角色（LLM character_updates 声明的即兴人物，如卖茶妇人/说书老头——当拍在场）
+        # 前端据此渲染在场面板：场景切换自动换人、新人物登场即时出现、旧人物随切换退出
+        "present": sorted(set(
+            (ps.get("distance_map") or {}).keys()
+        ) | set((updates.get("character_updates") or {}).keys())),
     }
     # 6. 连续性子系统：每拍写回 scene_state（next_anchor/performed_lines/player_choice）
     ps = state.get("meta", {}).get("plan_summary")

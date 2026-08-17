@@ -607,6 +607,8 @@ async function sendAction(action: string, tension: number) {
     },
     onState: (state) => {
       sceneDatePreview.value = null   // 世界日期已由 state 权威值接管
+      // 在场名单以 state 权威为准（distance_map + 本拍互动角色）：新人物登场即时出现、旧人物随切换退出
+      if (Array.isArray((state as any).present)) scenePresent.value = (state as any).present
       const prev = gameState.value
       gameState.value = state
       // 关羽之歌节律触发：每 ~5 回合概率响（天意存档梗，带 90s 冷却防轰炸）
