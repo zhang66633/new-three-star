@@ -175,9 +175,18 @@ def merge_character_soft_state(state: dict, updates: dict) -> None:
     if states is None:
         states = {}
         state["character_states"] = states
+    # 泛型/即兴 NPC 过滤：LLM 常即兴创建"胖妇人/瘸腿老头/茶棚掌柜"这类场景背景角色，
+    # 若全部 ensure_character 登记会永久污染在场面板（且无地点关联，离场逻辑清不掉）。
+    # 规则：GENERIC_NAMES（明确泛型）→ 跳过；陌生名字（未登记且非 KNOWN）→ 跳过；
+    # 只接受已登记角色或知名角色的软状态更新（决策 14：只维护玩家接触过的角色）。
+    from .writer import GENERIC_NAMES, KNOWN_NAMES
     for name, up in (updates or {}).items():
         if not isinstance(up, dict):
             continue
+        if name in GENERIC_NAMES:
+            continue  # 明确泛型（老者/乡绅/管家…）
+        if name not in states and name not in KNOWN_NAMES:
+            continue  # 陌生即兴 NPC（胖妇人/瘸腿老头…）不登记，避免污染在场面板
         st = ensure_character(state, name)
         if "doing" in up and isinstance(up["doing"], str):
             st["activity"] = up["doing"][:40]  # doing → activity（统一键，勿双轨）
@@ -194,3 +203,10 @@ def merge_character_soft_state(state: dict, updates: dict) -> None:
             if isinstance(note, str) and note not in st["notes"]:
                 st["notes"].append(note[:60])
         st["notes"] = st["notes"][:3]
+    # 清理历史脏数据：登记了但"无地点关联 + 非知名角色"的即兴 NPC（旧存档的胖妇人/瘸腿老头等）
+    # → 移除出 character_states（不再污染在场面板；玩家真正互动过的知名角色不受影响）
+    _junk = [n for n, st in states.items()
+             if n not in KNOWN_NAMES and n not in GENERIC_NAMES
+             and not (st or {}).get("location") and not (st or {}).get("known")]
+    for n in _junk:
+        states.pop(n, None)

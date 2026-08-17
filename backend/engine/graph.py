@@ -257,9 +257,14 @@ async def remember_node(state: GameState) -> dict:
     # 2.4 初次相遇落地：first_impressions（新角色初见好感 10-60）→ relations/trust 写入 + encountered 登记。
     #    relations_delta 对已有角色默认 50 起点；初见则直接设 LLM 生成的初始值（不叠加 50）。
     encountered = list(state.get("encountered", []))
+    # 泛型/即兴 NPC 不建关系（胖妇人/瘸腿老头等场景背景角色不进关系网）
+    from .writer import GENERIC_NAMES, KNOWN_NAMES
+    _known_set = set(KNOWN_NAMES)
     for name, imp in (updates.get("first_impressions") or {}).items():
         if not isinstance(imp, dict) or name in relations:
             continue
+        if name in GENERIC_NAMES or (name not in _known_set and name not in set(state.get("character_states") or {})):
+            continue  # 泛型或陌生即兴 NPC：不建关系
         try:
             relations[name] = max(0, min(100, int(imp.get("relation", 30))))
             trust[name] = max(0, min(100, int(imp.get("trust", 30))))
