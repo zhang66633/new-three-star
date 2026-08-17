@@ -299,6 +299,9 @@ def view_scene(state: GameState) -> ScenePlan:
     #     按 era.chapter 加载对应章节暗线表（P1-P6），不再锁死 P1
     from .player_data import _load_darklines, _chapter_of_state
     dl_data = _load_darklines(_chapter_of_state(state))
+    # 分流：每拍最多注入 2 条未触发暗线（轮转）——避免所有线挤在同一场，
+    # 其余暗线后续拍自然带出（玩家有喘息，每条线有独立存在感）
+    _darkline_injected = 0
     for line, spec in dl_data.items():
         if not isinstance(spec, dict) or line.startswith("_"):
             continue
@@ -318,6 +321,9 @@ def view_scene(state: GameState) -> ScenePlan:
                 f"本场可自然带出的细节（融入叙事，别直出标记；涉及人物请给足存在感："
                 f"鲜明外貌/动作 + 与玩家的目光或语言互动，让玩家对他留下印象）：{spec['hint']}"
             )
+            _darkline_injected += 1
+            if _darkline_injected >= 2:
+                break  # 每拍最多 2 条，其余轮转到后续拍
     # 审查修复：已触发暗线的下游回声——flag 落地为可体验的后续（信物被认出/故人寻来），
     # 让「推荐信 P3 见曹操 / 信物 P3 情报 / 同路人 P2 同行」的承诺有兑现点
     _DARKLINE_FOLLOWUP = {
