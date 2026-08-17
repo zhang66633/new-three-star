@@ -76,11 +76,10 @@ async def apply_correction(state: dict, output: dict, scene_desc: str, tier: str
         {"role": "system", "content": "你是世界修正器，输出严格 JSON。世界侧一切正常。"},
         {"role": "user", "content": prompt},
     ]
-    # 双模型试验：修正（主控）走 Qwen3.5——结构化 JSON 输出稳；未配 Qwen key 回退 DeepSeek
+    # 双模型试验：修正（主控）走 Qwen3.5——结构化 JSON 输出稳；key 由 stream_chat 解析
+    # （请求级 X-QWEN-API-Key 优先，无则回退 DeepSeek key=单模型模式）
     raw = ""
-    _ctrl = dict(
-        base_url=QWEN_BASE_URL, model=QWEN_MODEL, api_key=QWEN_API_KEY,
-    ) if QWEN_API_KEY else {}
+    _ctrl = dict(base_url=QWEN_BASE_URL, model=QWEN_MODEL)
     async for chunk in stream_chat(messages, max_tokens=2048, **PARAMS_NARRATIVE, stop=STOP_SEQUENCES, **_ctrl):
         raw += chunk
 

@@ -82,11 +82,9 @@ async def promote_stm_to_ltm(state: dict) -> dict:
         {"role": "system", "content": "你是记忆整理器，输出严格 JSON 数组。"},
         {"role": "user", "content": prompt},
     ]
-    # 双模型试验：记忆压缩（主控）走 Qwen；未配 Qwen key 回退 DeepSeek
+    # 双模型试验：记忆压缩（主控）走 Qwen；key 由 stream_chat 解析
     raw = ""
-    _ctrl = dict(
-        base_url=QWEN_BASE_URL, model=QWEN_MODEL, api_key=QWEN_API_KEY,
-    ) if QWEN_API_KEY else {}
+    _ctrl = dict(base_url=QWEN_BASE_URL, model=QWEN_MODEL)
     async for chunk in stream_chat(messages, max_tokens=1024, **PARAMS_FORMAT, stop=STOP_SEQUENCES, **_ctrl):
         raw += chunk
 

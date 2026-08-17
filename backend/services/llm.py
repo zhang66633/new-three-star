@@ -14,11 +14,18 @@ logger = logging.getLogger(__name__)
 # BYOK：玩家自带的 DeepSeek 密钥（X-API-Key 请求头）经请求级 ContextVar 传递，
 # 让 LangGraph 引擎各节点（narrate/validate/corrector/remember）无需改签名即可读到。
 _api_key_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("api_key", default="")
+# 双模型试验：Qwen 主控密钥（X-QWEN-API-Key 请求头）——玩家可选，未填则主控回退 DeepSeek
+_qwen_key_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("qwen_api_key", default="")
 
 
 def set_api_key(key: str) -> None:
     """请求处理器在进入引擎前设置；空串 → stream_chat 按严格 BYOK 报错。"""
     _api_key_ctx.set(key.strip() if key else "")
+
+
+def set_qwen_api_key(key: str) -> None:
+    """双模型试验：设置玩家 Qwen 主控密钥（空串=未配置，主控回退 DeepSeek）。"""
+    _qwen_key_ctx.set(key.strip() if key else "")
 
 
 async def stream_chat(
@@ -42,9 +49,18 @@ async def stream_chat(
     严格不兑底——玩家不填 key 就明说，绝不悄悄走服务器账户（服务器 key 仅供
     RAG embedding 等系统内部用，不承接玩家叙事）。
     """
-    key = api_key if api_key else _api_key_ctx.get()
+    # 双模型试验：主控调用（显式传了 base_url/model）优先用请求级 Qwen key；
+    # 无 Qwen key 时回退 DeepSeek key（单模型模式）。叙事调用（无 base_url/model）恒用 DeepSeek key。
+    is_ctrl = bool(base_url or model)
+    qwen_key_ctx = _qwen_key_ctx.get()
+    if is_ctrl and (qwen_key_ctx or api_key):
+        key = api_key if api_key else qwen_key_ctx
+        missing_hint = "Qwen 密钥"
+    else:
+        key = api_key if api_key else _api_key_ctx.get()
+        missing_hint = "DeepSeek 密钥"
     if not key:
-        yield "[错误] 未配置API密钥——请先到星图的'设置'星球，填入你自己的DeepSeek密钥。"
+        yield f"[错误] 未配置API密钥——请先到星图的'设置'星球，填入你自己的{missing_hint}。"
         return
     try:
         async for chunk in _stream_openai_compatible(

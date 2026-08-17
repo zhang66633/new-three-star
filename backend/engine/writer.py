@@ -950,11 +950,9 @@ async def synthesize_briefing(events: list, prev_date: dict = None, cur_date: di
         {"role": "user", "content": f"时间跨度：{span}\n期间事件：\n{ev_lines}"},
     ]
     try:
-        # 双模型试验：世界简报（主控）走 Qwen；未配 Qwen key 回退 DeepSeek
+        # 双模型试验：世界简报（主控）走 Qwen；key 由 stream_chat 解析
         draft = ""
-        _ctrl = dict(
-            base_url=QWEN_BASE_URL, model=QWEN_MODEL, api_key=QWEN_API_KEY,
-        ) if QWEN_API_KEY else {}
+        _ctrl = dict(base_url=QWEN_BASE_URL, model=QWEN_MODEL)
         async for chunk in stream_chat(messages, max_tokens=300, **PARAMS_FORMAT, stop=STOP_SEQUENCES, **_ctrl):
             draft += chunk
         # LLM 全挂检测（与 narrate 同款）：双 provider 失败时 stream_chat yield 错误占位字符串而非抛异常，
