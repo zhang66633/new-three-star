@@ -5,6 +5,7 @@ import contextvars
 from typing import AsyncGenerator
 from config import (
     DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL,
+    QWEN_MODEL,
     MAX_TOKENS_VERDICT,
     PARAMS_NARRATIVE,
 )
@@ -18,6 +19,8 @@ _api_key_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("api_key", de
 _qwen_key_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("qwen_api_key", default="")
 # DeepSeek 模型选择（X-DEEPSEEK-MODEL 请求头）：玩家可切换 flash/v4-pro 等，默认 deepseek-v4-flash
 _model_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("deepseek_model", default="")
+# Qwen 模型选择（X-QWEN-MODEL 请求头）：玩家可切换 35b-a3b/plus/27b 等，默认 qwen3.5-35b-a3b
+_qwen_model_ctx: contextvars.ContextVar[str] = contextvars.ContextVar("qwen_model", default="")
 
 
 def set_api_key(key: str) -> None:
@@ -33,6 +36,11 @@ def set_qwen_api_key(key: str) -> None:
 def set_deepseek_model(model: str) -> None:
     """设置玩家选择的 DeepSeek 模型名（空串=用 .env 默认）。"""
     _model_ctx.set(model.strip() if model else "")
+
+
+def set_qwen_model(model: str) -> None:
+    """双模型试验：设置玩家选择的 Qwen 主控模型名（空串=用 .env 默认）。"""
+    _qwen_model_ctx.set(model.strip() if model else "")
 
 
 async def stream_chat(
@@ -73,6 +81,9 @@ async def stream_chat(
     _model = model
     if not _model and not is_ctrl:
         _model = _model_ctx.get() or DEEPSEEK_MODEL
+    elif not _model and is_ctrl:
+        # Qwen 主控模型：玩家选择优先（X-QWEN-MODEL），未选回退 .env QWEN_MODEL
+        _model = _qwen_model_ctx.get() or QWEN_MODEL
     try:
         async for chunk in _stream_openai_compatible(
             base_url=base_url or DEEPSEEK_BASE_URL,

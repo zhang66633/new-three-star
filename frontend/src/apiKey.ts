@@ -6,9 +6,17 @@
 const KEY_STORE = 'sg_deepseek_key'
 const QWEN_KEY_STORE = 'sg_qwen_key'
 const MODEL_STORE = 'sg_deepseek_model'
+const QWEN_MODEL_STORE = 'sg_qwen_model'
 
 /** 可选 DeepSeek 模型列表（默认第一个为缺省） */
 export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat']
+
+/** 可选 Qwen 主控模型列表（只挑指令遵循强的，默认第一个）：
+ *  qwen3.5-plus —— 旗舰，指令遵循最强（贵）
+ *  qwen3.5-35b-a3b —— 35B总参/3B活跃，性价比之王，指令遵循强（推荐）
+ *  qwen3.5-27b —— 中端，指令遵循稳（轻量）
+ */
+export const QWEN_MODELS = ['qwen3.5-35b-a3b', 'qwen3.5-plus', 'qwen3.5-27b']
 
 export function getApiKey(): string {
   try {
@@ -75,14 +83,33 @@ export function setDeepSeekModel(model: string): void {
   }
 }
 
+export function getQwenModel(): string {
+  try {
+    const m = localStorage.getItem(QWEN_MODEL_STORE)
+    return m && QWEN_MODELS.includes(m) ? m : QWEN_MODELS[0]
+  } catch {
+    return QWEN_MODELS[0]
+  }
+}
+
+export function setQwenModel(model: string): void {
+  try {
+    localStorage.setItem(QWEN_MODEL_STORE, model)
+  } catch {
+    /* ignore */
+  }
+}
+
 /** 给 fetch 追加的请求头；未配置密钥时不带头（后端会提示先配置）。 */
 export function apiKeyHeaders(): Record<string, string> {
   const k = getApiKey()
   const q = getQwenApiKey()
   const m = getDeepSeekModel()
+  const qm = getQwenModel()
   const h: Record<string, string> = {}
   if (k) h['X-API-Key'] = k
   if (q) h['X-QWEN-API-Key'] = q
   h['X-DEEPSEEK-MODEL'] = m
+  h['X-QWEN-MODEL'] = qm
   return h
 }
