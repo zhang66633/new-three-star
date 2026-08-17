@@ -8,8 +8,8 @@ const QWEN_KEY_STORE = 'sg_qwen_key'
 const MODEL_STORE = 'sg_deepseek_model'
 const QWEN_MODEL_STORE = 'sg_qwen_model'
 
-/** 可选 DeepSeek 模型列表（默认第一个为缺省） */
-export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro', 'deepseek-chat']
+/** 可选 DeepSeek 模型列表（默认第一个为缺省；deepseek-chat 已下架不再提供） */
+export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro']
 
 /** 可选 Qwen 主控模型列表（只挑指令遵循强的，默认第一个）：
  *  qwen3.5-plus —— 旗舰，指令遵循最强（贵）
