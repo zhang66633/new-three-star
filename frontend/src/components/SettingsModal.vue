@@ -36,13 +36,15 @@
         </div>
       </div>
 
-      <!-- Qwen 板块 -->
+      <!-- Qwen 板块（可选：作为主控） -->
       <div class="provider-block">
         <div class="provider-head">
           <span class="provider-name">Qwen</span>
           <span class="provider-role">主控（校验/修正/记忆）</span>
+          <span class="provider-badge">可选</span>
           <span class="provider-status" :class="hasQwenKey ? 'ok' : 'warn'">{{ hasQwenKey ? '已配置' : '未配置' }}</span>
         </div>
+        <p class="provider-tip">作为主控：不填则自动回退 DeepSeek，仅叙事不受影响</p>
         <input
           v-model="qwenInput"
           :type="showQwenKey ? 'text' : 'password'"
@@ -165,6 +167,20 @@ function clear() {
 .provider-status { font-size: 11px; padding: 1px 8px; border-radius: 999px; }
 .provider-status.ok { color: #34d399; background: rgba(52,211,153,0.12); }
 .provider-status.warn { color: #fbbf24; background: rgba(251,191,36,0.12); }
+.provider-badge {
+  font-size: 10px;
+  color: rgba(148,163,184,0.8);
+  border: 1px solid rgba(148,163,184,0.35);
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+}
+.provider-tip {
+  margin: 0 0 8px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: rgba(148,163,184,0.65);
+}
 .key-input {
   width: 100%;
   box-sizing: border-box;
