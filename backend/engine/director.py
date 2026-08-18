@@ -8,6 +8,7 @@ Director（导演层 · 纯代码，零 LLM）
 import json
 import logging
 import os
+import random
 from typing import Optional
 
 from .state import GameState
@@ -278,6 +279,11 @@ def view_scene(state: GameState) -> ScenePlan:
     lc = wctx.get("location_normal")
     if lc:
         setting_lines.append(f"【{lc.get('name', '')}】{lc.get('status', '')}")
+        # 场景自由度：从本地点日常动态（daily_scenes）随机抽 1 条作为"眼前的场景细节"注入——
+        # 每次开局看到的具体画面不同（路边尸首/长社大火/流民念叨），打破固定文案重复
+        _scenes = lc.get("daily_scenes") or []
+        if _scenes:
+            setting_lines.append(f"眼前的细节（从下面随机选一条自然呈现，别生硬念出）：{random.choice(_scenes)[:80]}")
     # 2. 到点事件（本拍在场 → witnessable，注入"现场正在发生"）
     prev_wd = {"year": int(wd.get("year", 0)), "month": int(wd.get("month", 1) or 1) - 1, "day": 1}
     due = due_events(prev_wd, wd, loc)
