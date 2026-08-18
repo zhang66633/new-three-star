@@ -215,7 +215,7 @@ def render_continuity_block(state, plan) -> str:
         lines.append("· 本拍任务：只交代开场情境与在场者，把路线/方向选择留给玩家选项——不替玩家做未选择的行为，不提前开启逃亡/战斗/暗线。")
     else:
         lines.append("· 本拍任务：从上一拍结尾继续推进，只写本拍新发生的事。")
-        lines.append("· 禁止重描：场景背景（环境/火光/木牌/难民潮/已出场人物及其来历）上一拍已确立，本拍直接演新动作与新对话——不要重新介绍场景、不要重复人物出场、不要重演已发生的事件。")
+        lines.append("· 禁止重描与位置倒退：场景背景与玩家位置上一拍已确立（见上「上拍结尾」），本拍从那里继续——已经进了门就不要再从门口演起，已经在府内/屋内就不要再从街上写起；直接演新动作与新对话，不重演已发生的事。")
     return "\n".join(lines)
 
 
@@ -253,9 +253,20 @@ def resolve_player_choice(action: str, plan) -> dict:
 # ═════════ 内部工具 ═════════
 
 def _last_sentence(text: str) -> str:
-    """叙事最后一句完整句（next_anchor 用）；无句读时取末尾 80 字。"""
+    """叙事结尾锚点（next_anchor 用）：取结尾约 100 字（2-4 个完整句）。
+
+    只取最后一句会丢位置信息（如结尾"这顿饭，怕是不好吃"不含"你在廊下"），
+    下一拍 LLM 位置倒退（已进府却从府门口重演）。取结尾多句覆盖位置/状态。
+    """
     t = text.strip()
     if not t:
         return ""
     m = re.findall(r'[^。！？]*[。！？]', t)
-    return m[-1].strip() if m else t[-80:]
+    if not m:
+        return t[-80:]
+    out = ""
+    for s in reversed(m):
+        if len(out) + len(s) > 110:
+            break
+        out = s + out
+    return out.strip()

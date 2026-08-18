@@ -641,9 +641,17 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
             cur_action = str(h["user"])[:200]
             break
     if cur_action.strip():
+        # 位置锚定：上拍结尾玩家所在的位置/状态，随行动一起注入——防 LLM 位置倒退
+        # （已进府却从府门口重演"还没摸到石狮子"）
+        _anchor_hint = ""
+        _ss = state.get("scene_state") or {}
+        if isinstance(_ss, dict):
+            _anchor = (_ss.get("next_anchor") or "").strip()
+            if _anchor:
+                _anchor_hint = "\n（上一拍结尾你在这里：……" + _anchor[:60] + "。本拍从该位置继续执行此行动，不得重置/倒退到更早的位置。）"
         messages.append({
             "role": "user",
-            "content": "★★ 你（玩家）刚刚的行动（最高优先级，本拍必须先演它）：" + "\n" + cur_action.strip(),
+            "content": "★★ 你（玩家）刚刚的行动（最高优先级，本拍必须先演它）：" + "\n" + cur_action.strip() + _anchor_hint,
         })
         # 离谱动作（起飞/飞天/法术/隔空取物等超现实）：明确要求世界幽默拒绝——
         # 玩家尝试必然滑稽落空（原地蹦跶/纹丝不动/NPC 当笑话），但要演出喜剧而非无视
