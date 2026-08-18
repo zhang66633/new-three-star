@@ -7,6 +7,26 @@ import { apiKeyHeaders } from '../apiKey'
 
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
+export interface StartNode {
+  id: string
+  kind: 'chapter' | 'scene'
+  name: string
+  date: string
+  world_date: { year: number; month: number; day: number }
+  location: string
+}
+
+/** 拉取开局可选剧情节点（8 篇章起始 + 名场面事件） */
+export async function fetchStartNodes(): Promise<StartNode[]> {
+  try {
+    const resp = await fetch(`${API_BASE}/api/play/nodes`)
+    const data = await resp.json()
+    return (data && data.nodes) || []
+  } catch {
+    return []
+  }
+}
+
 export function usePlaySse() {
   const isStreaming = ref(false)
   const error = ref('')

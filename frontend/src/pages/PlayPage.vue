@@ -18,7 +18,7 @@
 
     <!-- 开场（IntroOverlay 自管理：高清墨彩视频背景 + 标题 + 穿越旁白 + 规则） -->
     <transition name="intro-fade">
-      <IntroOverlay v-if="showIntro" @begin="beginAdventure" @back="goBack" />
+      <IntroOverlay v-if="showIntro" @begin="beginAdventure" @back="goBack" @chooseNode="openNodePicker" />
     </transition>
 
     <!-- 断点续玩确认层（有存档时取代开场：继续历险 / 新开历险） -->
@@ -31,6 +31,22 @@
           <button class="resume-btn resume-continue" @click="resumeGame()">继续历险</button>
           <button class="resume-btn resume-new" @click="startNewAdventure">新开历险</button>
         </div>
+      </div>
+    </transition>
+
+    <!-- 选择剧情节点（开局直入某篇章/名场面） -->
+    <transition name="resume-fade">
+      <div v-if="nodeDialog" class="node-dialog">
+        <div class="node-title">选择剧情节点</div>
+        <div class="node-sub">从某个篇章或名场面直入，跳过前期铺陈</div>
+        <div class="node-list">
+          <button v-for="n in nodes" :key="n.id" class="node-item" @click="chooseNode(n)">
+            <span class="node-kind" :class="'node-' + n.kind">{{ n.kind === 'chapter' ? '篇章' : '名场面' }}</span>
+            <span class="node-name">{{ n.name }}</span>
+            <span class="node-date">{{ n.date }}</span>
+          </button>
+        </div>
+        <button class="node-close" @click="nodeDialog = false">返回开场</button>
       </div>
     </transition>
 
@@ -157,7 +173,7 @@ import NarrativeArea from '../components/NarrativeArea.vue'
 import ChoiceArea from '../components/ChoiceArea.vue'
 import AchievementToast from '../components/AchievementToast.vue'
 import OperationGuide from '../components/OperationGuide.vue'
-import { usePlaySse } from '../composables/usePlaySse'
+import { usePlaySse, fetchStartNodes, type StartNode } from '../composables/usePlaySse'
 import { useNarrativeBlocks } from '../composables/useNarrativeBlocks'
 import { useInkSplash } from '../composables/useInkSplash'
 import { clearPlayerId, deletePlayer, getPlayerId, loadPlayer, savePlayer } from '../composables/useSaveSystem'
@@ -195,6 +211,8 @@ function queueSave(st: GameState | null) {
 }
 const errorMessage = ref('')   // 请求失败的用户可见错误提示
 const showIntro = ref(true)    // 开场叙述页（IntroOverlay）
+const nodeDialog = ref(false)  // 选择剧情节点弹层（选章节直入）
+const nodes = ref<StartNode[]>([])   // 可选剧情节点列表
 const started = ref(false)     // 首次流式开始后主界面常显（与 turn 解耦）
 const lastSceneId = ref('')    // 场景门控：仅 scene_id 变化才触发加载器/分隔
 const scenePresent = ref<string[]>([])   // 后端权威在场名单（scene 事件下发）
@@ -352,6 +370,21 @@ function beginAdventure() {
   startGame()
 }
 
+/** 选择剧情节点直入：拉取节点列表并弹层 */
+async function openNodePicker() {
+  showIntro.value = false
+  nodeDialog.value = true
+  if (!nodes.value.length) {
+    nodes.value = await fetchStartNodes()
+  }
+}
+
+/** 选中节点 → 关弹层并以该节点开局 */
+function chooseNode(n: StartNode) {
+  nodeDialog.value = false
+  startGame(n)
+}
+
 /** 检测存档：有则弹「继续/新开」（不播开场旁白），无则正常开场 */
 async function checkResume() {
   const { hasSave, state } = await loadPlayer()
@@ -422,11 +455,11 @@ async function reloadFromDeath() {
   }
 }
 
-async function startGame() {
+async function startGame(node: StartNode | null = null) {
   loaderVisible.value = true
   loadPhase.value = 'cinematic'
   loaderTitle.value = '三国'
-  loaderChapterLabel.value = '184 年 · 颍川'
+  loaderChapterLabel.value = node ? `${node.world_date.year} 年` : '184 年 · 颍川'
   loaderStatus.value = LOADING_STATUS[Math.floor(Math.random() * LOADING_STATUS.length)]
   gameState.value = null
   resetBlocks()
@@ -438,7 +471,14 @@ async function startGame() {
   sceneDatePreview.value = null
   newMemCount.value = 0
 
-  await playStep('', {} as GameState, 0, {
+  // 选节点直入：传初始 world_date + location（后端 from_dict 合并进 new_game_state，director 首拍据此派生 era/场景）
+  const initState = node ? {
+    world_date: node.world_date,
+    player: { location: node.location || '颍川' },
+    era: { location: node.location || '颍川' },
+  } as GameState : {} as GameState
+
+  await playStep('', initState, 0, {
     onScene: (ev) => {
       // ① 场景就绪 → 切到思维链阶段（环境立即可见）
       lastSceneId.value = ev.scene.scene_id
@@ -940,6 +980,103 @@ function retryAfterError() {
   -webkit-backdrop-filter: blur(8px);
   overflow-y: auto;          /* 小屏/横屏内容超高时可滚动 */
   -webkit-overflow-scrolling: touch;
+}
+.node-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 16px;
+  gap: 10px;
+  background: rgba(4, 4, 6, 0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.node-title {
+  font-family: "Noto Serif SC", "STKaiti", serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.35em;
+  color: #e8c88c;
+  text-shadow: 0 0 30px rgba(232, 200, 140, 0.2);
+}
+.node-sub {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: rgba(226, 232, 240, 0.6);
+  margin-bottom: 8px;
+}
+.node-list {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.node-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 16px;
+  background: rgba(15, 15, 30, 0.55);
+  border: 1px solid rgba(232, 200, 140, 0.15);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.node-item:hover {
+  border-color: rgba(232, 200, 140, 0.5);
+  background: rgba(232, 200, 140, 0.07);
+}
+.node-kind {
+  flex-shrink: 0;
+  font-size: 0.68rem;
+  letter-spacing: 0.1em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(202, 138, 4, 0.4);
+  color: rgba(202, 138, 4, 0.85);
+}
+.node-kind.node-scene {
+  border-color: rgba(148, 163, 184, 0.35);
+  color: rgba(148, 163, 184, 0.8);
+}
+.node-name {
+  flex: 1;
+  font-size: 0.9rem;
+  color: rgba(236, 236, 242, 0.9);
+  letter-spacing: 0.03em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.node-date {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: rgba(148, 163, 184, 0.65);
+  font-variant-numeric: tabular-nums;
+}
+.node-close {
+  margin-top: 14px;
+  font-family: "Noto Serif SC", "STKaiti", serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.2em;
+  padding: 10px 30px;
+  color: rgba(226, 232, 240, 0.7);
+  background: rgba(226, 232, 240, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.2);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.node-close:hover {
+  color: #ececf2;
+  border-color: rgba(226, 232, 240, 0.4);
 }
 .resume-title {
   font-family: "Noto Serif SC", "STKaiti", serif;

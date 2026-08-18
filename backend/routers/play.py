@@ -173,6 +173,44 @@ async def _step_events(req: PlayRequest, api_key: str = "", qwen_api_key: str = 
                 pass
 
 
+@router.get("/play/nodes")
+async def play_nodes():
+    """开局可选剧情节点：8 篇章起始 + 名场面事件（供前端「选章节直入」跳过前期）。"""
+    from engine.worlddata import CHAPTERS, load_timeline, _ym
+    timeline = load_timeline()
+    nodes = []
+    for ch in CHAPTERS:
+        y, m = _ym(ch["start"])
+        ey, em = _ym(ch["end"])
+        loc = ""
+        for e in timeline:
+            _ey, _em = _ym(e.get("date", ""))
+            if (y, m) <= (_ey, _em) <= (ey, em):
+                loc = (e.get("locations") or [""])[0]
+                break
+        nodes.append({
+            "id": f"chapter_{ch['id']}",
+            "kind": "chapter",
+            "name": ch["name"],
+            "date": ch["start"],
+            "world_date": {"year": y, "month": m, "day": 1},
+            "location": loc,
+        })
+    for e in timeline:
+        ey, em = _ym(e.get("date", ""))
+        if (ey, em) == (0, 0):
+            continue
+        nodes.append({
+            "id": e.get("event_id", ""),
+            "kind": "scene",
+            "name": str(e.get("event", ""))[:24],
+            "date": e.get("date", ""),
+            "world_date": {"year": ey, "month": em, "day": 1},
+            "location": (e.get("locations") or [""])[0],
+        })
+    return {"ok": True, "nodes": nodes}
+
+
 @router.post("/play/step")
 async def play_step(req: PlayRequest, request: Request):
     """SSE 流式：引擎完整跑完 → 最终叙事分块实时透出，末尾 state/options/done。

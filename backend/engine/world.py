@@ -300,7 +300,11 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
     from .worlddata import phase_of, match_location, chapter_of
     # 1. 移动解析：玩家「前往X」→ 目标地点（决定到达后在场判定与 era.location 写回）
     #    非地点动作 → 目标 = 当前地点（驻留，loc 不变）
-    cur_loc = (state.get("player") or {}).get("location", "") or (result.get("era") or {}).get("location", "") or "颍川"
+    # cur_loc 优先读 result（图执行后，含 director 跳转前移写回的新位置），再 fallback state——
+    # 否则 force 跳转当拍 result.player 已是冀州，却按旧 state 的颍川算 target，又把 era.location 覆盖回颍川
+    cur_loc = ((result.get("player") or {}).get("location", "")
+               or (state.get("player") or {}).get("location", "")
+               or (result.get("era") or {}).get("location", "") or "颍川")
     target = match_location(action) or cur_loc
     # 1.5 推进日期（按行动类型耗时；location 供赶路距离解析）
     days = action_days(action, [], cur_loc)

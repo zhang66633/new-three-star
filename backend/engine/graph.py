@@ -175,6 +175,11 @@ def director_node(state: GameState) -> dict:
             **({"rumor_unlock": plan.rumor_unlock} if plan.rumor_unlock else {}),
         },
         "era": era,
+        # 跳转前移：_pre_skip 已更新局部 state 的 world_date/player.location，必须写回
+        # LangGraph state——否则 _commit 的 advance_world 还用旧 world_date/位置，出现
+        # 「事件变了(冀州)时间没改(184-02)」+ 后续跳转卡死（永远跳到同一目标）。
+        "world_date": state.get("world_date"),
+        "player": state.get("player"),
         "flags": flags,
         "skeleton_pos": skeleton_pos,
         "location_state": _location_state(state, plan.rumor_unlock),  # 地点面板状态（current/unlocked/next_station/rumored）

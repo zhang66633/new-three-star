@@ -24,6 +24,7 @@
         </div>
       </transition>
       <button v-if="introDone" class="intro-begin" @click="begin">开始历险</button>
+      <button v-if="introDone" class="intro-node" @click="emit('chooseNode')">选择剧情节点直入 ▾</button>
     </div>
   </div>
 </template>
@@ -34,7 +35,7 @@
 import { ref, onMounted, onBeforeUnmount } from 'vue'
 import IntroBackground from './IntroBackground.vue'
 
-const emit = defineEmits<{ (e: 'begin'): void; (e: 'back'): void }>()
+const emit = defineEmits<{ (e: 'begin'): void; (e: 'back'): void; (e: 'chooseNode'): void }>()
 
 // 穿越旁白：一段一段渐渐浮现（宇宙漂浮感）
 const INTRO_LINES = [
@@ -219,6 +220,24 @@ onBeforeUnmount(() => window.clearTimeout(introTimer))
 .intro-begin:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 32px rgba(232, 200, 140, 0.4);
+}
+.intro-node {
+  margin-top: 14px;
+  font-family: "Noto Serif SC", "STKaiti", "KaiTi", serif;
+  font-size: 0.92rem;
+  letter-spacing: 0.15em;
+  padding: 10px 26px;
+  color: rgba(232, 200, 140, 0.85);
+  background: transparent;
+  border: 1px solid rgba(232, 200, 140, 0.4);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.intro-node:hover {
+  color: #f0dcae;
+  border-color: rgba(232, 200, 140, 0.8);
+  background: rgba(232, 200, 140, 0.08);
 }
 /* 页面 <transition name="intro-fade"> 包本组件根 → 过渡类放本组件 scoped 才能命中根元素 */
 .intro-fade-enter-active { transition: opacity 0.8s; }
