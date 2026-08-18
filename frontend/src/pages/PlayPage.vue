@@ -609,6 +609,10 @@ async function sendAction(action: string, tension: number) {
       sceneDatePreview.value = null   // 世界日期已由 state 权威值接管
       // 在场名单以 state 权威为准（distance_map + 本拍互动角色）：新人物登场即时出现、旧人物随切换退出
       if (Array.isArray((state as any).present)) scenePresent.value = (state as any).present
+      // 壁纸同步：state 事件带本拍最终 atmo（meta.plan_summary.atmo）——移动当拍叙事结束即换新场景壁纸，
+      // 消除"scene 事件用旧位置算 atmo"导致的滞后一拍感知
+      const psAtmo = (state as any).meta?.plan_summary?.atmo
+      if (psAtmo) currentAtmo.value = psAtmo
       const prev = gameState.value
       gameState.value = state
       // 关羽之歌节律触发：每 ~5 回合概率响（天意存档梗，带 90s 冷却防轰炸）
