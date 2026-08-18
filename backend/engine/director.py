@@ -272,7 +272,9 @@ def view_scene(state: GameState) -> ScenePlan:
     setting_lines = [f"{loc}·{wctx.get('phase_name', '')}"]
     n = wctx.get("normal") or {}
     if n.get("world", {}).get("summary"):
-        setting_lines.append(f"天下大势：{n['world']['summary']}")
+        # 世界观铆钉：底层设定（含吐槽梗）注入作背景底色——但注明"不要反复念叨原句/句式"，
+        # 防 LLM 每场复读"贵金属品牌包装""内部军演"等固定梗（第一幕重复观感问题）
+        setting_lines.append(f"天下大势（背景底色，融入叙事即可、切勿复读原句或句式）：{n['world']['summary']}")
     lc = wctx.get("location_normal")
     if lc:
         setting_lines.append(f"【{lc.get('name', '')}】{lc.get('status', '')}")
@@ -402,7 +404,7 @@ def view_scene(state: GameState) -> ScenePlan:
         "setting": setting,
         "world_normal": "世界侧一切正常运转，NPC 各忙各的。玩家是其中的自由参与者。",
         "player_pov": (state.get("player") or {}).get("notes", []) or [
-            "你总觉得这世道有哪里不对——可仔细想，又想不起该是什么样",
+            "你心里有些似曾相识的疑惑（史书和眼前对不上），但眼下顾不上细想——先把眼前的事应付过去",
         ],
         "locked_lines": [],
         "options": opts,
