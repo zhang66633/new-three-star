@@ -54,6 +54,12 @@ VALIDATOR_PROMPT = """你是叙事质量审核员，检查 LLM 生成的三国�
 
 def check_options_count(options: list) -> list[str]:
     """P7a: 选项数 1-3"""
+    # 选项 text 元数据泄漏（防回潮）：type=/tension=/（type… 出现在玩家可见文本即不合格
+    for o in options or []:
+        _t = str(o.get("text", "")) if isinstance(o, dict) else ""
+        if "type=" in _t or "tension=" in _t or "（type" in _t or "(type" in _t:
+            return [f"P7: 选项文本泄漏内部元数据『{_t[:30]}』——type/tension/effect 括号不得出现在玩家可见的选项 text 里"]
+    return []
     n = len(options)
     if n < 1:
         return ["P7: 无选项（应给 2-3 个）"]
@@ -434,7 +440,8 @@ def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str
     hard += check_meta_words(output.get("narrative", ""))
 
     # ── 软：质量自检（记录不重写）──
-    soft += [r for r in opt_reasons if "无选项" not in r]
+    soft += [r for r in opt_reasons if "无选项" not in r and "泄漏内部元数据" not in r]
+    soft += [r for r in opt_reasons if "泄漏内部元数据" in r]
     soft += check_locked_lines(
         output.get("narrative", ""),
         (state.get("meta") or {}).get("plan_summary", {}).get("locked_lines", []),

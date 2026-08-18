@@ -7,6 +7,7 @@ Phase 2: director → narrate ⇄ validate(重写≤2) → corrector(按tension)
 """
 import copy
 import logging
+import re
 from typing import Literal
 
 from langgraph.graph import StateGraph, START, END
@@ -20,6 +21,46 @@ from .remember import stm_append, promote_stm_to_ltm, retrieve_memories
 from .continuity import on_scene_entry, after_beat, resolve_player_choice
 
 logger = logging.getLogger(__name__)
+
+# 对话说话人提取（在场名单兜底）：长词在前，避免"说道"被"说"截胡
+_SPEAK_VERBS = (
+    "咧嘴乐了", "念叨着", "嘟囔着", "嘀咕着", "笑着说", "提醒道", "催促道",
+    "招呼道", "骂骂咧咧", "说道", "问道", "答道", "喊道", "喝道", "嚷道",
+    "叫道", "叹道", "劝道", "笑道", "接话", "答话", "搭话", "开口",
+    "念叨", "嘟囔", "嘀咕", "喝问", "吼", "嚷", "喊", "叫", "问", "答", "说",
+)
+
+
+def _extract_speakers(narrative: str, name_pool: set) -> set:
+    """名单驱动对话说话人提取：在叙事中找已知角色名，名字附近（±15 字）出现
+    对话引号或说话动词 → 判定本拍有台词/对话互动（在场）。
+
+    比"动词前抓名字"可靠：叙事常把说话人前置一整句（'许褚…随即咧嘴乐了：'），
+    动词前紧贴的是"随即/嘴里"这类副词而非名字；名单驱动则无此问题，也不会把
+    "嘴里/但听"等描述片段误当名字（它们不在名单里，天然过滤）。
+    """
+    verbs = "|".join(_SPEAK_VERBS)
+    quotes = "['\"“”『「]"
+    near = re.compile(quotes + r"|(?:" + verbs + r")")
+    found = set()
+    for nm in name_pool:
+        if not nm:
+            continue
+        for m in re.finditer(re.escape(nm), narrative):
+            # 名字后 40 字内找对话引号/说话动词，且中间无句末标点
+            # （'张飞。刘备叹道' 这类"被提及+别人说话"不算张飞在场）
+            tail = narrative[m.end():m.end() + 40]
+            for mm in near.finditer(tail):
+                seg = tail[:mm.start()]
+                if re.search(r'[。！？]', seg):
+                    break  # 名字与说话之间有句号 → 非同一对话场景
+                found.add(nm)
+                break
+            else:
+                continue
+            break  # 该名字确认在场一次即可
+    return found
+
 
 MAX_RETRY = 2
 
@@ -311,6 +352,26 @@ async def remember_node(state: GameState) -> dict:
             flags.append(f)
 
     # 本拍在场名单计算（ret 用）：distance_map + character_updates + events.actor
+    # + 叙事说话人兜底：LLM 常漏写 character_updates/events，实际有互动的具名角色
+    # （如许褚）就不在场面板。从叙事文本提取说话人，知名/已登记角色自动补
+    # character_updates 空声明——既进 present，又被 merge 登记为"已出场"，
+    # 下一拍连续性块据此锁定，防重复介绍/身份漂移（乡绅许褚→壮汉许褚同拍二演）。
+    _narr_text = str(output.get("narrative") or "")
+    if _narr_text:
+        _name_pool = set(_known_set) | set((st.get("character_states") or {}).keys())
+        _spk = _extract_speakers(_narr_text, _name_pool)
+        _cu = updates.get("character_updates")
+        if not isinstance(_cu, dict):
+            _cu = {}
+            updates["character_updates"] = _cu
+        _states_now = set((st.get("character_states") or {}).keys())
+        for _n in _spk:
+            if _n == "你" or _n in GENERIC_NAMES:
+                continue
+            if _n not in _known_set and _n not in _states_now:
+                continue  # 只自动登记知名/已登记角色，陌生即兴 NPC 不建卡
+            if _n not in _cu:
+                _cu[_n] = {}
     _present = set((ps.get("distance_map") or {}).keys())
     _present |= set((updates.get("character_updates") or {}).keys())
     if isinstance(updates.get("events"), list):

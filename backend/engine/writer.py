@@ -161,7 +161,7 @@ WRITER_INSTRUCTION = """
    g) 感官至少两类（视觉/听觉优先），动作和对话推进。
    h) 防重复句式：同一感叹（这世道/这年头/好家伙）与同一比喻（灶台成精/被撵的鸡/内部军演/贵金属包装）全剧只许出现一次——背景底色的梗融入即可，绝不复读原句或句式，每拍用新的说法；禁止连续两拍出现相同结构的开头句。
 
-4. 结尾 2-3 个选项，每个：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30/局部 31-70/硬 71-100）+ effect（对玩家可见的后果说明）+ category（地点行动分类 §5.4：打探=打听消息/赶路=移动/停留=驻守休息/互动=与人物来往；2-3 个中至少覆盖 打探 或 互动 之一）
+4. 结尾 2-3 个选项，每个：text（行动描述）+ type（major=重大/minor=轻）+ tension（历史干预度 0-100，顺应史实 0-30/局部 31-70/硬 71-100）+ effect（对玩家可见的后果说明）+ category（地点行动分类 §5.4：打探=打听消息/赶路=移动/停留=驻守休息/互动=与人物来往；2-3 个中至少覆盖 打探 或 互动 之一）。⚠️ type/tension/effect 是 JSON 字段，只许出现在字段值里；text 只写行动描述，严禁在 text 里带出它们（不得出现"（type=… tension=…｜…）"这类括号）
 5. 输出严格 JSON（单行，不要 markdown 代码围栏，不要换行，直接输出 JSON 对象），格式：
 {{"narrative":"...","options":[{{"text":"...","type":"major|minor","tension":25,"effect":"...","category":"互动"}}],"first_impressions":{{"新角色名":{{"relation":35,"trust":30,"reason":"帮了他"}}}},"relations_delta":{{"曹操":2}},"trust_delta":{{"曹操":1}},"events":[{{"actor":"黑影","action":"问话后跑掉","result":"你决定先找地方避雨"}}],"player_updates":{{"assets_add":["半块干粮"],"coins_delta":5,"stats_delta":{{"stamina":-10,"hunger":15}},"title_add":null,"reputation_delta":5}},"world_events_add":[{{"event":"你在中牟救下的客商转头拿你名字报恩","location":"中牟"}}],"character_updates":{{"曹操":{{"doing":"正领乡勇操练","attitude_delta":2,"tags_add":["欣赏你"]}}}}}}
    events：本拍 1-3 条关键事件（actor/action/result 客观陈述，不写内心独白/风景；无则省）
@@ -180,7 +180,8 @@ WRITER_INSTRUCTION = """
 13. 打听传闻（§5.2）：玩家「打听/探听某地」→ 演打听到确切消息（NPC 按自己身份说他知道的），确认传闻地可前往（依面板 🗺 远方传闻）；叙事收在"路问明白了"，不打空转
 14. 严禁全知旁白宣告世界侧无觉察（'没人觉得不对''无人察觉'）；世界差异只经玩家内心/观察呈现
 15. 选项 text/effect 严禁 meta 词与现代词出口给 NPC；玩家向 NPC 说出异常认知时，NPC 以世界逻辑自然接住或当他疯话
-16. 后设词汇红线：NPC 台词/旁白叙述严禁出现"服务器/管理员/系统/NPC/进程/存档/剧本/代码/脚本/数据"等现代系统词——这些只允许出现在玩家内心吐槽里（点到即止）；角色卡中的『后设身份』仅供你理解角色行为动机，不得直出""".strip()
+16. 后设词汇红线：NPC 台词/旁白叙述严禁出现"服务器/管理员/系统/NPC/进程/存档/剧本/代码/脚本/数据"等现代系统词——这些只允许出现在玩家内心吐槽里（点到即止）；角色卡中的『后设身份』仅供你理解角色行为动机，不得直出
+17. 角色亮相纪律：同一拍内一个角色只允许出场/亮相一次——他已登场后，本拍其余部分只写他的行动与对话，禁止再次"登场亮相"（不能再描写他骑马赶来/从人群走出/重新介绍他姓甚名谁字什么、是何身份）；新出场角色第一次出现时一次性带出姓名与身份，此后不得重复介绍（自我介绍过了，旁白就不要再介绍一遍）""".strip()
 
 
 def _load_persona_layer(names: list[str], distance_map: dict) -> str:
@@ -576,10 +577,10 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     scene_opts = plan.scene.get("options", []) or plan.options
     if scene_opts:
         pool = "\n".join(
-            f"- {o.get('text', '')}（type={o.get('type', 'minor')} tension={o.get('tension', 0)}｜{o.get('effect', '')}）"
+            f"- {o.get('text', '')}（内部元数据：type={o.get('type', 'minor')}，tension={o.get('tension', 0)}，effect={o.get('effect', '')}）"
             for o in scene_opts[:3]
         )
-        instruction += "\n\n【可选骨架选项（必须原样采用 text 与 tension，不得改变行动方向/语义；仅可做人称与前后衔接微调；至少保留 2-3 个）】\n" + pool
+        instruction += "\n\n【可选骨架选项（必须原样采用 text 与 tension，不得改变行动方向/语义；仅可做人称与前后衔接微调；至少保留 2-3 个）】\n" + pool + "\n⚠️ 选项 text 只写玩家可见的行动描述；括号里 type/tension/effect 是内部元数据，严禁把它们写进任何选项的 text"
 
     # 重写失败原因注入
     retry = getattr(plan, "meta_retry", None)
@@ -734,7 +735,10 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
     # P0-1 修复：只替换世界侧叙述（旁白/NPC 台词），保护玩家内心/回忆句——
     # 玩家记忆设定是"史书上是黄巾，世界是黄金"，无差别替换会把玩家记忆也改成黄金，核心悬念崩坏。
     _parts = re.split(r'(?<=[。！？])(?=[^。！？' + chr(10) + '])', data["narrative"])
-    _inner_kw = ('你心想', '你嘀咕', '你记得', '你记忆', '你回忆', '你琢磨', '你寻思', '你暗想', '你心里')
+    _inner_kw = ('你心想', '你心说', '你心道', '你暗道', '你嘀咕', '你记得', '你记忆', '你回忆',
+                 '你回想', '你想起', '你琢磨', '你寻思', '你暗想', '你暗忖', '你心里', '你脑子',
+                 '你脑中', '你心头', '你卡住', '你愣', '犯嘀咕', '犯难', '犯愁', '你盘算', '你合计', '你明白',
+                 '你意识到', '你觉得', '你感觉', '你猜想', '你怀疑', '你默念')
     _fixed = []
     for _s in _parts:
         if any(_k in _s for _k in _inner_kw):
@@ -765,6 +769,9 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
     # 选项硬上限 3、类型/数值/分类规范（category 对齐自由沙盒 §5.4 地点行动分类）
     CATS = {"打探", "赶路", "停留", "互动"}
     for opt in options[:3]:
+        # 选项元数据防泄漏：LLM 常把骨架选项括号里的 type/tension/effect 抄进 text 给玩家看
+        _t = re.sub(r'[（(]\s*type=\s*(?:major|minor)[^）)]*[）)]', '', opt.get("text", "") or "")
+        opt["text"] = _t.strip()
         opt["type"] = "major" if opt.get("type") == "major" else "minor"
         opt["category"] = opt.get("category") if opt.get("category") in CATS else "互动"
         try:
