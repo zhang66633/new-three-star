@@ -718,6 +718,14 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
 
     # 后处理链（services.validator 面向旧脚本格式，对散文近空操作且重复 deslop，已移除）
     draft = deslop(draft)
+    # 高频句式硬替换（输出层兜底，防 LLM 复读知识库梗词——源头已改写，这里双保险）
+    _REPEAT_BAN = (
+        ("这世道", "这年月"), ("这年头", "眼下的光景"), ("这乱世", "这兵荒马乱的时节"),
+        ("品牌包装", "金字招牌的排场"), ("贵金属", "金贵的"), ("内部军演", "自己人打自己人"),
+        ("造反还自带", "造反还讲究"), ("跟闹着玩似的", "跟摆摊似的"),
+    )
+    for _o, _n in _REPEAT_BAN:
+        draft = draft.replace(_o, _n)
     data = parse_output(draft)
     data["narrative"] = data.get("narrative", draft)
     # 世界统一称呼兜底：数据层已统一世界侧为"黄金"（黄巾/黄天已清除），此处防 LLM 自身串味
