@@ -338,7 +338,9 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
     #    快速跳转（"静观其变/等待时机/静候"等）→ 无视间隔强制跳到下一事件
     if is_idle_action(action):
         _force = any(k in (action or "") for k in ("静观其变", "等待时机", "静候", "按兵不动", "静待"))
-        skip = next_timeline_skip(new_wd, force=_force)
+        # 已由 director 预判跳转（_skip_done）→ 本拍不再重复跳（否则连续跳两事件）
+        _skip_done = bool((result.get("meta") or {}).get("_skip_done"))
+        skip = None if _skip_done else next_timeline_skip(new_wd, force=_force)
         if skip:
             old_wd = dict(new_wd)
             new_wd = skip["date"]

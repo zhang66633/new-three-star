@@ -75,6 +75,34 @@ MAX_RETRY = 2
 
 # ═════════ 节点实现 ═════════
 
+def _pre_skip(state: dict):
+    """force 跳转预判（P0-4 时序修复）：玩家「静观其变/等待时机/静候/按兵不动/静待」→
+    在生成叙事前就跳到下一时间线事件，返回提前跳时后的 state 增量。
+
+    否则跳转发生在 _commit（叙事生成之后），当拍叙事/在场/选项仍是旧位置——
+    出现「189年八月·洛阳」却显示「此处暂无相识之人」+ 旧地点选项的脱节。
+    """
+    _action = ""
+    for h in reversed(state.get("history") or []):
+        if h.get("user"):
+            _action = h["user"]
+            break
+    if not _action or not any(k in _action for k in ("静观其变", "等待时机", "静候", "按兵不动", "静待")):
+        return None
+    from .world import next_timeline_skip
+    _wd = dict(state.get("world_date") or {"year": 184, "month": 2, "day": 1})
+    _skip = next_timeline_skip(_wd, force=True)
+    if not _skip:
+        return None
+    _loc = _skip.get("location", "") or (state.get("player") or {}).get("location", "")
+    return {
+        "world_date": _skip["date"],
+        "player": {**(state.get("player") or {}), "location": _loc},
+        "era": {**(state.get("era") or {}), "location": _loc},
+        "meta": {**(state.get("meta") or {}), "_skip_done": True},
+    }
+
+
 def director_node(state: GameState) -> dict:
     """合成视野，plan 可序列化摘要存入 meta（ScenePlan 对象不落 state）
 
@@ -82,6 +110,10 @@ def director_node(state: GameState) -> dict:
     world_date/phase_of，取代旧场景静态年——杜绝"189-02 仍判 P1"）。
     供前端 eraLabel、validator P0 时间连续性、writer 时空面板、remember 时间标签使用。
     """
+    # force 跳转预判：提前跳时，让本拍 plan（叙事/选项/在场）落在跳转后位置
+    _skip_inc = _pre_skip(state)
+    if _skip_inc:
+        state = {**state, **_skip_inc}
     plan = view_scene(state)
     # 时代状态写回（统一时钟：era 由 world_date 派生，单调向前不回退）
     era = dict(state.get("era", {}))
@@ -542,6 +574,16 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
                                   prev_location=(state.get("player") or {}).get("location", ""))
             except Exception:
                 logger.exception("角色事实更新失败")
+            # 跳时后重算在场名单：present 在 remember_node 用「跳转前位置」算（跳转当拍为空），
+            # 跳转已把 world_date/location 更新到新位置 → 按新位置重算 distance_map 覆盖 present，
+            # 否则"189年八月·洛阳"仍显示"此处暂无相识之人"（位置变了但 present 停在跳转前）。
+            if world_inc.get("timeskip_note"):
+                try:
+                    from .director import view_scene
+                    _post_plan = view_scene(result)
+                    result["present"] = sorted((_post_plan.distance_map or {}).keys())
+                except Exception:
+                    logger.exception("跳转后 present 重算失败")
             # 2. 玩家数据（LLM 声明的 player_updates + 行动恢复）
             # action 传入：恢复类动作的系统结算独家，剥离 LLM 重复声明的 stats_delta/coins_delta（审查⑨）
             result = apply_player_updates(result, result.get("last_output") or {}, action)
