@@ -342,6 +342,15 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
         if skip:
             old_wd = dict(new_wd)
             new_wd = skip["date"]
+            _timeskip_gap = (new_wd.get("year", 0) - old_wd.get("year", 0)) * 12 + (new_wd.get("month", 1) - old_wd.get("month", 1))
+            _timeskip_note = f"时间跳跃 {max(_timeskip_gap, 1)} 个月"  # P0-4: 供 writer 感知跳转
+            # P0-2 修复：快速跳转时同步玩家位置到目标事件主地点——
+            # 否则只改日期不改 location，标题到 189 洛阳但正文还在颍川演 184（日期/位置脱节）
+            if _force and skip.get("location"):
+                loc = skip["location"]
+                era["location"] = loc
+                if isinstance(result.get("player"), dict):
+                    result["player"]["location"] = loc
             # 跳时窗内到点事件统一由 due_events 吸收（不重复 timeskip 事件）
             for ev in due_events(old_wd, new_wd, loc):
                 all_due.append(ev)
@@ -380,6 +389,7 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
         "new_briefing": new_briefing,
         "era": era,
         "scene_turns": scene_turns,
+        "timeskip_note": _timeskip_note if _force and skip else "",  # P0-4: 跳转标记（writer 感知）
         "due_events": all_due,
     }
 
@@ -422,6 +432,7 @@ def next_timeline_skip(world_date: dict, force: bool = False) -> dict | None:
         return None  # 间隔小（≤4 个月），不跳时（保留当前事件密集期的体验）；快速跳转不受限
     return {
         "date": {"year": ny, "month": nm, "day": 1},
+        "location": (nxt.get("locations") or [""])[0],  # P0-2：目标事件主地点（供跳转同步位置）
         "event": {
             "event_id": f"timeskip_{ny}_{nm}",
             "date": f"{ny:03d}-{nm:02d}",

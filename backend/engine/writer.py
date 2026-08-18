@@ -135,6 +135,8 @@ WORLD_BASE = """
 【玩家】玩家是偶然落入此世的"无名奇人"：无来历、无户籍、查无此人，所以世界默认接纳他；玩家知道"大概的历史走向"（似曾相识的直觉），但细节模糊、时代错乱；说出预言应验则"言多中验"声望大涨，频频预言则被视为狂人；不能使用现代词汇/知识解释世界（会被当作疯子）。
 
 【铁律】历史大势不可推翻（但修正留痕、过程可被改写）；玩家的关系、声望、记忆永远生效；NPC 对玩家来历从不过问、正常对话自然接纳。meta 语言/点明不对劲/玩家视角差异/选项 meta 词等禁令见叙事指令（此处不重复）。
+
+【叙事风格基调】你是看戏的损友旁白，写口语化网文：短句短段、一行一镜头，把平常事物往滑稽里说；NPC 越一本正经越要扒他一层滑稽；玩家内心是懒洋洋毒舌的吐槽。绝不文艺腔、绝不煽情诉苦、绝不上价值。这个基调贯穿全文，具体执行规则见叙事指令。
 """.strip()
 
 # 叙事生成指令
@@ -606,7 +608,7 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     # （如旧场景"我想飞"在切场景后又被演一遍）。跨场景上下文由连续性块 transition_note 承载。
     pending_user = None          # 待归属的玩家动作（等待同拍 assistant 决定归属场景）
     current_scene = plan.scene_id
-    for h in state.get("history", [])[-6:]:
+    for h in state.get("history", [])[-12:]:  # P0-3: 历史窗口 6→12 条(≈6轮)，防 3 轮前事件被挤出导致 LLM 失忆重演
         if h.get("user"):
             pending_user = h["user"]
         elif h.get("assistant"):
@@ -728,8 +730,18 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
         draft = draft.replace(_o, _n)
     data = parse_output(draft)
     data["narrative"] = data.get("narrative", draft)
-    # 世界统一称呼兜底：数据层已统一世界侧为"黄金"（黄巾/黄天已清除），此处防 LLM 自身串味
-    data["narrative"] = data["narrative"].replace("黄巾", "黄金")
+    # 世界统一称呼兜底：数据层已统一世界侧为"黄金"（黄巾/黄天已清除），此处防 LLM 自身串味。
+    # P0-1 修复：只替换世界侧叙述（旁白/NPC 台词），保护玩家内心/回忆句——
+    # 玩家记忆设定是"史书上是黄巾，世界是黄金"，无差别替换会把玩家记忆也改成黄金，核心悬念崩坏。
+    _parts = re.split(r'(?<=[。！？])(?=[^。！？' + chr(10) + '])', data["narrative"])
+    _inner_kw = ('你心想', '你嘀咕', '你记得', '你记忆', '你回忆', '你琢磨', '你寻思', '你暗想', '你心里')
+    _fixed = []
+    for _s in _parts:
+        if any(_k in _s for _k in _inner_kw):
+            _fixed.append(_s)  # 玩家内心句：保留"黄巾"（玩家记得真相）
+        else:
+            _fixed.append(_s.replace('黄巾', '黄金'))  # 世界侧：统一为黄金
+    data["narrative"] = ''.join(_fixed)
     # 自动分段（防 LLM 一整段不换行）：无自然段落时按句号切句，每 60 字或出现中文引号断一段
     _narr = data["narrative"]
     if '\n\n' not in _narr and len(_narr) > 200:

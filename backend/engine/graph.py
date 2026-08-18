@@ -310,6 +310,14 @@ async def remember_node(state: GameState) -> dict:
         if f not in flags:
             flags.append(f)
 
+    # 本拍在场名单计算（ret 用）：distance_map + character_updates + events.actor
+    _present = set((ps.get("distance_map") or {}).keys())
+    _present |= set((updates.get("character_updates") or {}).keys())
+    if isinstance(updates.get("events"), list):
+        for _ev in updates.get("events"):
+            _act = _ev.get("actor", "") if isinstance(_ev, dict) else ""
+            if isinstance(_act, str) and _act.strip() and len(_act) <= 8:
+                _present.add(_act.strip())
     ret = {
         "memory": st.get("memory", {}),
         "relations": relations,
@@ -324,10 +332,9 @@ async def remember_node(state: GameState) -> dict:
         "character_states": st.get("character_states", {}),
         # 本拍在场名单（权威）：distance_map 键（按地点过滤的已登记角色/到点事件主角/名场面说话人）
         # + 本拍互动角色（LLM character_updates 声明的即兴人物，如卖茶妇人/说书老头——当拍在场）
+        # + 本拍 events actor（LLM 叙事里明确互动但没写 character_updates 的人物——黑脸汉子/逃兵等）
         # 前端据此渲染在场面板：场景切换自动换人、新人物登场即时出现、旧人物随切换退出
-        "present": sorted(set(
-            (ps.get("distance_map") or {}).keys()
-        ) | set((updates.get("character_updates") or {}).keys())),
+        "present": sorted(_present),
     }
     # 6. 连续性子系统：每拍写回 scene_state（next_anchor/performed_lines/player_choice）
     ps = state.get("meta", {}).get("plan_summary")

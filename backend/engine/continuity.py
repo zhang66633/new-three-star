@@ -125,12 +125,22 @@ def after_beat(state, output, plan, player_choice: dict = None) -> dict:
 
     # performed_events：当拍 memory_add（LLM events 摘要 / 兜底事件句）进已演出事件，
     # 供连续性块"已演出事件"注入 → 后续拍不重演
+    # P0-3：关键词去重——LLM 每次生成摘要措辞不同（如"逃兵喊仙人"vs"披甲人求救"），
+    # 全文去重会失效导致重演。按核心词（前 6 字 + 关键词）匹配，同事件只记一次。
     new_events = ((output or {}).get("state_updates") or {}).get("memory_add") or []
     evts = list(ss.get("performed_events") or [])
     for ev in new_events:
-        if ev and ev not in evts:
+        if not ev:
+            continue
+        _key = ev[:6]  # 事件摘要前 6 字作为核心词（"逃兵跪地""披甲人求"…）
+        _dup = False
+        for _old in evts:
+            if _key in _old or _old[:6] in ev:
+                _dup = True
+                break
+        if not _dup:
             evts.append(ev)
-    ss["performed_events"] = evts[-8:]
+    ss["performed_events"] = evts[-12:]
 
     ss["first_beat_done"] = True
     ss["beat_index"] = int(ss.get("beat_index", 0)) + 1

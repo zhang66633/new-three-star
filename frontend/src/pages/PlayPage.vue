@@ -198,6 +198,7 @@ const showIntro = ref(true)    // 开场叙述页（IntroOverlay）
 const started = ref(false)     // 首次流式开始后主界面常显（与 turn 解耦）
 const lastSceneId = ref('')    // 场景门控：仅 scene_id 变化才触发加载器/分隔
 const scenePresent = ref<string[]>([])   // 后端权威在场名单（scene 事件下发）
+const prevWorldDate = ref<{ year: number; month: number } | null>(null)  // P0-4: 时间跳跃检测用
 const turnCount = ref(0)                 // 回合计数（关羽之歌节律触发用）
 let lastGuanyuAt = 0                     // 上次关羽之歌时间戳（冷却 90s 防轰炸）
 const currentAtmo = ref('雨夜沉静')  // 当前氛围标签（驱动 AtmoBackground 切换）
@@ -607,6 +608,16 @@ async function sendAction(action: string, tension: number) {
     },
     onState: (state) => {
       sceneDatePreview.value = null   // 世界日期已由 state 权威值接管
+      // P0-4 时间跳跃感知：state 到达时对比上一拍日期，差 >1 个月弹「一晃 X 个月」提示
+      const _wd = state?.world_date as { year?: number; month?: number } | undefined
+      const _old = prevWorldDate.value
+      if (_wd?.year && _old?.year) {
+        const _gap = (_wd.year - _old.year) * 12 + ((_wd.month ?? 1) - (_old.month ?? 1))
+        if (_gap >= 2) {
+          showLiteBanner(`一晃 ${_gap} 个月`, '时间流转')
+        }
+      }
+      prevWorldDate.value = { year: _wd?.year ?? 184, month: _wd?.month ?? 1 }
       // 在场名单以 state 权威为准（distance_map + 本拍互动角色）：新人物登场即时出现、旧人物随切换退出
       if (Array.isArray((state as any).present)) scenePresent.value = (state as any).present
       // 壁纸同步：state 事件带本拍最终 atmo（meta.plan_summary.atmo）——移动当拍叙事结束即换新场景壁纸，
