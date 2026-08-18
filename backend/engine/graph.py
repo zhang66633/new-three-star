@@ -168,9 +168,15 @@ async def narrate_node(state: GameState) -> dict:
         plan.meta_retry = retry_reasons  # type: ignore
 
     # 记忆检索注入（PIN + top5 LTM + STM）
+    # query 聚焦「玩家动作 + 当前地点 + 在场角色名」：实体化查询比整段 setting 更能命中
+    # 相关 LTM（setting 是常量场景描述，会让开场记忆反复命中、挤掉真正相关的旧事）。
     player_action = (state.get("history") or [{}])[-1].get("user", "") if state.get("history") else ""
-    # 检索以玩家动作为主（setting 是常量，会让开场记忆反复命中占据检索结果）
-    memory_pack = retrieve_memories(state, player_action or plan.setting)
+    _q_parts = [player_action]
+    if plan.location:
+        _q_parts.append(plan.location)
+    _q_parts += [n for n in (plan.distance_map or {}) if n][:6]
+    _query = " ".join(p for p in _q_parts if p)
+    memory_pack = retrieve_memories(state, _query or player_action or plan.setting)
 
     # 叙事生成（SSE 流式由 play.py 跑完引擎后分块，这里不接流式回调）
     output = await narrate(state, plan, memory_pack=memory_pack)
@@ -518,6 +524,8 @@ def _commit(result: dict, state: GameState, action: str) -> dict:
             result["world_events"] = world_inc["world_events"]
             result["new_briefing"] = bool(result.get("new_briefing") or world_inc["new_briefing"])
             result["scene_turns"] = world_inc["scene_turns"]
+            # 时间跳跃标记写入持久化字段，下一拍 narrate 感知后消费（P0-4 后端闭环）
+            result["timeskip_note"] = world_inc.get("timeskip_note", "")
             if isinstance(result.get("era"), dict):
                 result["era"]["chapter"] = world_inc["era"].get("chapter", (result["era"] or {}).get("chapter", "P1 黄金风起"))
                 result["era"]["year"] = world_inc["era"].get("year", int(new_wd.get("year", 0)))

@@ -351,7 +351,12 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
                 era["location"] = loc
                 if isinstance(result.get("player"), dict):
                     result["player"]["location"] = loc
+            # 跳时自身作为一条"时间如水"事件入队（玩家能在天下事看到"一晃过去 N 个月"），
             # 跳时窗内到点事件统一由 due_events 吸收（不重复 timeskip 事件）
+            if skip.get("event") and skip["event"].get("event_id") not in seen_ids:
+                world_events.append(skip["event"])
+                seen_ids.add(skip["event"]["event_id"])
+                new_briefing = True
             for ev in due_events(old_wd, new_wd, loc):
                 all_due.append(ev)
                 if ev.get("event_id") not in seen_ids:
@@ -371,8 +376,9 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
     same_place = bool(target) and bool(cur_loc) and (target in cur_loc or cur_loc in target)
     scene_turns = 1 if not same_place else scene_turns + 1
     # 时间间隔触发：跨 7 天（如休息N天/长途赶路）也补一条日常，让"歇着世界也转"成立
-    _day_delta = int((new_wd.get("day") or 0) * 1) - int((wd.get("day") or 0) * 1)
-    _day_delta += (int(new_wd.get("month") or 1) - int(wd.get("month") or 1)) * 30
+    # 跨年修复：用 year*12+month 的月差计算（旧版只比 month，12月→1月跨年会算出 -11*30 负数）
+    _month_delta = (int(new_wd.get("year") or 1) - int(wd.get("year") or 1)) * 12 + (int(new_wd.get("month") or 1) - int(wd.get("month") or 1))
+    _day_delta = _month_delta * 30 + (int(new_wd.get("day") or 1) - int(wd.get("day") or 1))
     if (scene_turns > 0 and scene_turns % 4 == 0) or _day_delta >= 7:
         daily = generate_events(state, new_wd, False, loc)
         for ev in daily:
@@ -389,7 +395,7 @@ def advance_world(state: dict, action: str, result: dict) -> dict:
         "new_briefing": new_briefing,
         "era": era,
         "scene_turns": scene_turns,
-        "timeskip_note": _timeskip_note if _force and skip else "",  # P0-4: 跳转标记（writer 感知）
+        "timeskip_note": _timeskip_note if skip else "",  # P0-4: 跳转标记（writer 感知）——自动跳时（gap>4月）也要返回，否则 writer 无感知
         "due_events": all_due,
     }
 

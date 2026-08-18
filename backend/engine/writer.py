@@ -589,6 +589,12 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     if retry:
         instruction += "\n\n【上次校验失败原因（必须针对性修复）】\n" + "\n".join(f"- {r}" for r in retry)
 
+    # 时间跳跃感知（P0-4 后端闭环）：上一拍世界时间大跨度前进（跳时/快进）→
+    # 本拍开头自然交代时光流逝，不硬切、不继续演上一拍没演完的当下。
+    _tn = (state.get("timeskip_note") or "").strip()
+    if _tn:
+        instruction += f"\n\n【时间跳跃 · 上一拍世界大步向前】{_tn}。本拍开头用一两句自然交代时光流逝（季节更替/环境变化/人事已非，旧人旧事或已远去），再直接接当下场景——不要无标记硬切、不要继续演上一拍没演完的当下、不要重演已过去的事。"
+
     # 离谱动作检测：meta/越权/作弊类 free-input → 标记让 LLM 按规则 15 嘲讽拒绝 + 重输出口
     # 只保留明确的多字 meta/作弊短语。不用"系统/无限/召唤/法术/传送/复制"等常用词做子串拦截，
     # 它们会误伤正常 RP（"系统地分析局势""无限感激""召唤兵丁抬走尸体""把文书传送给洛阳"），

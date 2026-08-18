@@ -16,18 +16,32 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-STM_CAP = 6
+STM_CAP = 8          # 扩容（原 6）：压缩失败时留缓冲，防满 6 后 stm_append 截断静默丢旧事实
+COMPRESS_AT = 6        # 满 6 条即触发晋升（低于 STM_CAP，留 2 条缓冲兜底）
 RETRIEVE_LTM_TOP = 5
+LTM_CAP = 40           # 长期记忆软上限：超过则最旧若干条二次合并（防 JSON 回传随时长无限膨胀）
 
 COMPRESS_PROMPT = """把以下 {n} 条短期记忆压缩为 1 条长期记忆（120-150 字）。
-要求：
+要求（信息密度优先，宁全勿漏）：
 - 合并重复信息，保留关键事实（谁/何时/何地/何事/后果）
 - 客观陈述，不添加主观评价
-- 保留与玩家的关系、承诺、伏笔
+- 【铁律】绝不可丢失：与具体人物的关系变化、未兑现的承诺/约定、伏笔、玩家未竟目标、
+  玩家拥有/失去的重要物品、生死信息——这些即使字数紧张也要保留一句
 - 文本开头嵌入时间场景上下文（如"光和七年·颍川雨夜：……"）
 
 【短期记忆】
 {stm_text}
+
+【输出】严格 JSON 数组: ["..."]（只输出 1 条）""".strip()
+
+
+CONSOLIDATE_PROMPT = """把以下 {n} 条较早的长期记忆合并为 1 条（120-150 字），做记忆巩固与遗忘：
+- 保留：与具体人物的关系、未兑现的承诺、伏笔、玩家身份/称号、生死信息、关键因果
+- 丢弃：已过时的环境描写、可再生的细节、重复的铺垫
+- 客观陈述，时间场景上下文嵌入开头
+
+【较早的长期记忆】
+{ltm_text}
 
 【输出】严格 JSON 数组: ["..."]（只输出 1 条）""".strip()
 
@@ -58,7 +72,7 @@ def stm_append(state: dict, entry: str, scene_label: str = "", time_label: str =
     if time_label:
         item["time"] = time_label
     stm.append(item)
-    mem["stm"] = stm[-STM_CAP:]  # 超上限截断
+    mem["stm"] = stm[-STM_CAP:]  # 超上限截断（STM_CAP=8，留压缩失败缓冲）
     state["memory"] = mem
     return state
 
@@ -67,7 +81,7 @@ async def promote_stm_to_ltm(state: dict) -> dict:
     """STM 满 6 条 → LLM 压缩 → LTM + 清 STM"""
     mem = state.get("memory", {})
     stm = mem.get("stm", [])
-    if len(stm) < STM_CAP:
+    if len(stm) < COMPRESS_AT:
         return state
 
     from services.llm import stream_chat
@@ -118,6 +132,61 @@ async def promote_stm_to_ltm(state: dict) -> dict:
     mem["stm"] = []
     state["memory"] = mem
     logger.info(f"记忆晋升: STM {len(stm)} 条 → LTM {len(items)} 条（共 {len(ltm)} 条）")
+    # 记忆巩固 + 遗忘衰败（技术 14/15/19）：LTM 超软上限 → 最旧若干条二次合并
+    if len(ltm) > LTM_CAP:
+        state = await _consolidate_ltm(state)
+    return state
+
+
+async def _consolidate_ltm(state: dict) -> dict:
+    """LTM 超软上限（LTM_CAP=40）→ 最旧 10 条合并为 1 条。
+
+    对应「记忆巩固 + 内存压缩 + 遗忘衰败」：把久远的环境细节压掉、保留
+    关系/承诺/伏笔/身份等长期关键，防 JSON 回传体积随时长无限膨胀。
+    低频（约 240 拍触发一次），额外 LLM 调用成本可接受。
+    """
+    mem = state.get("memory", {})
+    ltm = list(mem.get("ltm", []))
+    if len(ltm) <= LTM_CAP:
+        return state
+
+    from services.llm import stream_chat
+    from config import PARAMS_FORMAT, STOP_SEQUENCES, QWEN_API_KEY, QWEN_BASE_URL, QWEN_MODEL
+
+    old = ltm[:10]
+    rest = ltm[10:]
+    ltm_text = "\n".join(f"{i+1}. {m['text']}" for i, m in enumerate(old))
+    prompt = CONSOLIDATE_PROMPT.format(n=len(old), ltm_text=ltm_text)
+    messages = [
+        {"role": "system", "content": "你是记忆整理器，输出严格 JSON 数组。"},
+        {"role": "user", "content": prompt},
+    ]
+    raw = ""
+    _ctrl = dict(base_url=QWEN_BASE_URL, model=QWEN_MODEL)
+    async for chunk in stream_chat(messages, max_tokens=1024, **PARAMS_FORMAT, stop=STOP_SEQUENCES, **_ctrl):
+        raw += chunk
+
+    try:
+        items = json.loads(raw.strip())
+        if not isinstance(items, list):
+            items = []
+    except json.JSONDecodeError:
+        import re
+        m = re.search(r'\[.*\]', raw, re.S)
+        try:
+            items = json.loads(m.group(0)) if m else []
+        except json.JSONDecodeError:
+            items = []
+    items = [str(i)[:150] for i in items if str(i).strip()]
+    if not items:
+        logger.warning("LTM 二次合并失败（压缩空/解析失败），保留现状")
+        return state
+
+    ts = state.get("turn", 0)
+    merged = {"id": _new_id(items[0], ts), "text": items[0], "ts": ts}
+    mem["ltm"] = [merged] + rest
+    state["memory"] = mem
+    logger.info(f"LTM 二次合并：最旧 {len(old)} 条 → 1 条（剩 {len(mem['ltm'])} 条）")
     return state
 
 

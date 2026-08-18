@@ -285,7 +285,12 @@ def view_scene(state: GameState) -> ScenePlan:
         if _scenes:
             setting_lines.append(f"眼前的细节（从下面随机选一条自然呈现，别生硬念出）：{random.choice(_scenes)[:80]}")
     # 2. 到点事件（本拍在场 → witnessable，注入"现场正在发生"）
-    prev_wd = {"year": int(wd.get("year", 0)), "month": int(wd.get("month", 1) or 1) - 1, "day": 1}
+    # prev 月窗：month-1 到 0/负 时借位到上一年 12 月（否则 184-01 会漏判当月事件）
+    _pm = int(wd.get("month", 1) or 1) - 1
+    _py = int(wd.get("year", 0) or 0)
+    if _pm <= 0:
+        _pm, _py = 12, _py - 1
+    prev_wd = {"year": _py, "month": _pm, "day": 1}
     due = due_events(prev_wd, wd, loc)
     # 2.5 名场面接线：事件到点+在场 → 命中 registry 场景（锁定台词/选项/flag 注入视野）
     famous_ev, famous_scene = _match_famous_scene(due)

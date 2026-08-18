@@ -91,6 +91,7 @@ class GameState(TypedDict):
     corrected: list[str]          # 已发生的修正记录
     foreshadowing: list[str]      # 未解伏笔/承诺追踪（如"曹操欠你一个人情"）
     briefing: str                 # 本拍 LLM 合成世界简报（§3.3：时间跨度+相关点；无动态=''）
+    timeskip_note: str             # 上一拍发生的时间大跨度跳跃标记（"时间跳跃 N 个月"），本拍 writer 感知后清空
     world_rumors: list[str]       # 传闻层（NPC 传的、未证实的话）
     world_events: list[dict]      # 事实层：世界事件队列（离开时预生成，见自由沙盒重构设计 §二）
     world_date: dict              # 世界具体日期 {year, month, day}（取代 turns_left 时节）
@@ -182,6 +183,7 @@ def new_game_state() -> GameState:
         "corrected": [],
         "foreshadowing": [],
         "briefing": "",            # 本拍 LLM 合成世界简报（§3.3）
+        "timeskip_note": "",        # 上一拍时间大跨度跳跃标记（writer 感知用，本拍消费后清空）
         "world_rumors": ["颍川传言：黄金军近日在附近出没", "朝廷发榜征兵"],
         "world_events": [],           # 事实层：世界事件队列（离开时预生成，见自由沙盒重构设计）
         "world_date": {"year": 184, "month": 2, "day": 1},  # 世界具体日期（取代 turns_left 时节）
