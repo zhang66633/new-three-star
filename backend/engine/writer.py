@@ -730,6 +730,20 @@ async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -
     data["narrative"] = data.get("narrative", draft)
     # 世界统一称呼兜底：数据层已统一世界侧为"黄金"（黄巾/黄天已清除），此处防 LLM 自身串味
     data["narrative"] = data["narrative"].replace("黄巾", "黄金")
+    # 自动分段（防 LLM 一整段不换行）：无自然段落时按句号切句，每 60 字或出现中文引号断一段
+    _narr = data["narrative"]
+    if '\n\n' not in _narr and len(_narr) > 200:
+        _sents = re.findall(r'[^。！？]+[。！？]', _narr)
+        _tail = _narr[len(''.join(_sents)):]
+        if _tail: _sents.append(_tail)
+        _lines, _buf = [], []
+        for _s in _sents:
+            _buf.append(_s)
+            _joined = ''.join(_buf)
+            if len(_joined) >= 60 or any(_c in _joined for _c in ('“', '”')):
+                _lines.append(_joined); _buf = []
+        if _buf: _lines.append(''.join(_buf))
+        data["narrative"] = '\n\n'.join(_lines)
     options = data.get("options", [])
     # 容错：LLM 把 options 生成为对象/裸值 → 落回空列表
     if not isinstance(options, list):
