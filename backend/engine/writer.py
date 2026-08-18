@@ -668,21 +668,34 @@ def parse_output(text: str) -> dict:
 
 
 def _strip_json_tail(text: str) -> str:
-    """剥离叙事末尾粘连的残缺 JSON 尾巴（LLM 截断时 parse 失败，兜底 narrative 会带
-    `"options"`/`"relations_delta"` 等片段直接给玩家看）。
+    """剥离叙事末尾粘连的残缺 JSON 尾巴（LLM 截断/畸形输出时 parse 失败，兜底 narrative
+    会带 `"options"`/`"world_event"`/`"character_updates"` 等字段片段直接给玩家看——
+    这是"后台信息泄露"的根因：JSON 字段名原样进正文）。
 
-    仅当文本以 `{"narrative": "` 开头才处理：正文 = 引号后到下一个 `",` 或 `"}` 结束。
-    中文叙事正常不含裸 ASCII 双引号，该启发式在兜底路径（已退化的输出）下可接受。
+    策略（双保险）：
+    1. 文本以 `{"narrative":` 开头 → 正文 = 引号后到下一个 `",` 或 `"}`；
+    2. 任何文本：若尾部出现 JSON 字段标记（"options"/"world_event"/"character_updates"
+       等后跟冒号），截断到该标记之前——无论开头是否标准 JSON。
     """
+    # 保险 1：标准 JSON 开头
     m = re.match(r'^\s*\{\s*"narrative":\s*"(.*)', text, re.S)
-    if not m:
-        return text
-    body = m.group(1)
-    for marker in ('",', '"}'):
-        idx = body.find(marker)
-        if idx >= 0:
-            return body[:idx]
-    return body
+    if m:
+        body = m.group(1)
+        for marker in ('",', '"}'):
+            idx = body.find(marker)
+            if idx >= 0:
+                return body[:idx]
+        return body
+    # 保险 2：任意文本中找 JSON 字段标记，截断
+    markers = (
+        r'",\s*"(?:options|world_event|character_updates|relations_delta|trust_delta|'
+        r'player_updates|events|first_impressions|foreshadowing|flags|tension|narrative|'
+        r'failure|state_updates|world_events_add)"\s*:'
+    )
+    m2 = re.search(markers, text, re.S)
+    if m2:
+        return text[:m2.start()].rstrip().rstrip('"\',,').rstrip(chr(0xFF0C)).rstrip('"\',,')
+    return text
 
 
 async def narrate(state: GameState, plan: ScenePlan, memory_pack: list = None) -> dict:
