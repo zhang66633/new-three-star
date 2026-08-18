@@ -75,6 +75,46 @@ def _derive_atmo(loc: str, wd: dict = None) -> str:
     return "荒野苍茫"
 
 
+# 名场面描述性 atmo 标签 → 12 张基础氛围图。
+# registry 里 40 个 atmo 标签中 34 个是描述性的（雨后黄昏/金殿烟尘/红烛刀影…），
+# 前端 atmo_map.json 只有 12 张基础图 → 这些标签 resolveImage 返回 null，名场面
+# 接线时背景不换/黑屏。此处把描述性标签收敛到语义最接近的基础图。
+_ATMO_ALIAS: dict[str, str] = {
+    # 雨 → 雨夜沉静
+    "雨后黄昏": "雨夜沉静", "雨后惊雷": "雨夜沉静", "雨后箭光": "雨夜沉静", "雨后刀光": "雨夜沉静",
+    # 雪/夜 → 雪夜孤城
+    "雨雪围城": "雪夜孤城", "雪夜穷途": "雪夜孤城", "永安宫夜": "雪夜孤城",
+    # 火/战 → 战火远方
+    "夜火连营": "战火远方", "连营火海": "战火远方", "诈败狼烟": "战火远方",
+    "乱军铁骑": "战火远方", "乱箭穿林": "战火远方", "八百夜袭": "战火远方",
+    "刀斧开山": "战火远方", "点火未燃": "战火远方",
+    # 血/残阳 → 血色残阳
+    "残阳如血": "血色残阳", "血水黄昏": "血色残阳",
+    # 水 → 黄河怒涛
+    "大水登高一望": "黄河怒涛", "单刀孤舟": "黄河怒涛", "东南风起": "黄河怒涛",
+    # 宫/城/纸 → 洛阳暗巷
+    "深宫杀机": "洛阳暗巷", "清平暗流": "洛阳暗巷", "金殿烟尘": "洛阳暗巷",
+    "禅让大典": "洛阳暗巷", "开门易主": "洛阳暗巷", "借据纸声": "洛阳暗巷",
+    "鸡肋断案": "洛阳暗巷",
+    # 烛/宴/帐 → 帐中暖光
+    "红烛刀影": "帐中暖光", "群舞刀光": "帐中暖光", "酒席三日": "帐中暖光",
+    "病榻烛火": "帐中暖光", "遗书祭火": "帐中暖光",
+    # 清幽/野外
+    "春睡初醒": "水墨山岚", "泥泞窄道": "荒野苍茫",
+}
+
+
+def _resolve_atmo(tag: str) -> str:
+    """名场面 atmo 标签 → 12 张基础氛围图标签（无匹配返回空，调用方用地点派生兜底）。"""
+    if not tag:
+        return ""
+    _BASE = {"雨夜沉静", "荒野苍茫", "战火远方", "洛阳暗巷", "水墨山岚", "破晓行军",
+             "竹林清幽", "黄河怒涛", "帐中暖光", "雪夜孤城", "星空原野", "血色残阳"}
+    if tag in _BASE:
+        return tag
+    return _ATMO_ALIAS.get(tag, "")
+
+
 def load_registry() -> dict:
     """加载场景注册表（mtime 缓存：JSON 文件变了就重读，开发期免重启）"""
     global _REGISTRY, _REGISTRY_MTIME
@@ -429,7 +469,9 @@ def view_scene(state: GameState) -> ScenePlan:
         scene["year"] = int(famous_scene.get("year", scene["year"]) or 0)
         scene["season"] = famous_scene.get("season", scene["season"])
         scene["location"] = famous_scene.get("location", scene["location"])
-        scene["atmo"] = famous_scene.get("atmo", scene["atmo"])
+        # 名场面 atmo 收敛：描述性标签（雨后黄昏等）映射到 12 张基础图，
+        # 无匹配则按地点派生——保证前端 atmo_map.json 一定能命中，背景必换不黑屏
+        scene["atmo"] = _resolve_atmo(famous_scene.get("atmo", "")) or _derive_atmo(loc, wd)
         scene["music"] = famous_scene.get("music", scene["music"])
         scene["title"] = famous_scene.get("title", scene["title"])
         scene["setting"] = famous_scene.get("setting", scene["setting"])

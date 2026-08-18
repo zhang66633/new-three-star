@@ -46,7 +46,8 @@ let reqSeq = 0   // 单调递增请求序号：crossfade 期间连续切换时�
 
 // atmo 标签 → 图片文件名
 function resolveImage(tag: string): string | null {
-  const id = (atmoMap as Record<string, string>)[tag]
+  let id = (atmoMap as Record<string, string>)[tag]
+  if (!id) id = (atmoMap as Record<string, string>)['荒野苍茫']  // 未知标签兜底，防黑屏/背景不换
   if (!id) return null
   // Vite 静态资源：相对路径引用
   return new URL(`../assets/atmo/${id}.png`, import.meta.url).href
