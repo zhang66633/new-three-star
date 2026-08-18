@@ -43,6 +43,11 @@ def _extract_speakers(narrative: str, name_pool: set) -> set:
     quotes = "['\"“”『「]"
     near = re.compile(quotes + r"|(?:" + verbs + r")")
     found = set()
+    # 模式3：引号内自报家门（'波才，黄金军渠帅。'）——名字在引号开头 2-4 字，
+    # 且确在名单里（'小兄弟/苍天已死/饿了吧' 等非名单词天然过滤）
+    for _m in re.finditer(r"['\"“”『「]([^，。！？\s'\"“”『「』」]{2,4})[，。！？]", narrative):
+        if _m.group(1) in name_pool:
+            found.add(_m.group(1))
     for nm in name_pool:
         if not nm:
             continue
@@ -301,6 +306,33 @@ async def remember_node(state: GameState) -> dict:
     # 泛型/即兴 NPC 不建关系（胖妇人/瘸腿老头等场景背景角色不进关系网）
     from .writer import GENERIC_NAMES, KNOWN_NAMES
     _known_set = set(KNOWN_NAMES)
+    # 说话人兜底（必须在本循环之前）：LLM 常漏写 character_updates/events/first_impressions，
+    # 实际有对话互动的具名角色就不在场面板、关系网空转（截图中"关系网 0 人"）。
+    # 从叙事文本提取说话人（知名/已登记角色），自动补：
+    # ① first_impressions 默认 30/30 → 关系网可见；② character_updates 空声明 → 在场面板 +
+    # merge 登记"已出场" → 下一拍连续性块锁定，防重复介绍/身份漂移。
+    _narr_text = str(output.get("narrative") or "")
+    if _narr_text:
+        _name_pool = set(_known_set) | set((st.get("character_states") or {}).keys())
+        _spk = _extract_speakers(_narr_text, _name_pool)
+        _cu = updates.get("character_updates")
+        if not isinstance(_cu, dict):
+            _cu = {}
+            updates["character_updates"] = _cu
+        _fi = updates.get("first_impressions")
+        if not isinstance(_fi, dict):
+            _fi = {}
+            updates["first_impressions"] = _fi
+        _states_now = set((st.get("character_states") or {}).keys())
+        for _n in _spk:
+            if _n == "你" or _n in GENERIC_NAMES:
+                continue
+            if _n not in _known_set and _n not in _states_now:
+                continue  # 只自动登记知名/已登记角色，陌生即兴 NPC 不建卡
+            if _n not in _cu:
+                _cu[_n] = {}
+            if _n not in relations and _n not in _fi:
+                _fi[_n] = {"relation": 30, "trust": 30, "reason": "本拍对话互动（自动登记）"}
     for name, imp in (updates.get("first_impressions") or {}).items():
         if not isinstance(imp, dict) or name in relations:
             continue
@@ -352,26 +384,7 @@ async def remember_node(state: GameState) -> dict:
             flags.append(f)
 
     # 本拍在场名单计算（ret 用）：distance_map + character_updates + events.actor
-    # + 叙事说话人兜底：LLM 常漏写 character_updates/events，实际有互动的具名角色
-    # （如许褚）就不在场面板。从叙事文本提取说话人，知名/已登记角色自动补
-    # character_updates 空声明——既进 present，又被 merge 登记为"已出场"，
-    # 下一拍连续性块据此锁定，防重复介绍/身份漂移（乡绅许褚→壮汉许褚同拍二演）。
-    _narr_text = str(output.get("narrative") or "")
-    if _narr_text:
-        _name_pool = set(_known_set) | set((st.get("character_states") or {}).keys())
-        _spk = _extract_speakers(_narr_text, _name_pool)
-        _cu = updates.get("character_updates")
-        if not isinstance(_cu, dict):
-            _cu = {}
-            updates["character_updates"] = _cu
-        _states_now = set((st.get("character_states") or {}).keys())
-        for _n in _spk:
-            if _n == "你" or _n in GENERIC_NAMES:
-                continue
-            if _n not in _known_set and _n not in _states_now:
-                continue  # 只自动登记知名/已登记角色，陌生即兴 NPC 不建卡
-            if _n not in _cu:
-                _cu[_n] = {}
+    # （说话人兜底已在上方 first_impressions 合并前执行，此处只算名单）
     _present = set((ps.get("distance_map") or {}).keys())
     _present |= set((updates.get("character_updates") or {}).keys())
     if isinstance(updates.get("events"), list):

@@ -68,6 +68,26 @@ def check_options_count(options: list) -> list[str]:
     return []
 
 
+def check_identity_flip(narrative: str) -> list[str]:
+    """拍内身份翻转检测：同一角色多次自报家门且名字不同（'我叫刘辟'…'我叫赵忠'）
+    → 叙事身份漂移，硬失败触发重写（曾出现灰衣人四连变：上将军→波才→赵忠→赵大柱）。
+    头衔/代词（上将军/统领/俺…）不算名字，避免"自称上将军"误报。
+    """
+    _titles = {"上将军", "将军", "凤凰", "统领", "渠帅", "壮士", "侠客", "高手", "大师",
+               "道人", "居士", "大人", "公子", "先生", "老板", "掌柜", "老乡", "兄弟",
+               "恩公", "英雄", "好汉", "姑娘", "夫人", "老爷", "小民", "小人", "本人",
+               "老朽", "贫道", "俺", "你", "他", "她", "我", "老子", "在下", "奴家"}
+    names = set()
+    for m in re.finditer(
+            r'(?:名叫|我叫|可叫|本叫|唤作|唤做)([^，。！？\s」』]{1,6})', narrative):
+        nm = m.group(1)
+        if nm and len(nm) >= 2 and nm not in _titles:
+            names.add(nm)
+    if len(names) >= 2:
+        return [f"P7: 身份翻转——同一拍自报多个名字『{'、'.join(sorted(names))}』，角色身份漂移，须统一为一人一名"]
+    return []
+
+
 def _distinctive_fragments(s: str, min_len: int = 6, max_len: int = 12) -> set:
     """取文本中所有连续片段（min_len..max_len），作为泄漏判定的特征。
 
@@ -438,6 +458,8 @@ def deterministic_checks(state: dict, output: dict) -> tuple[list[str], list[str
     hard += check_no_pointing_out(output.get("narrative", ""))
     # ── 硬：铁律1 meta 词泄漏（现代系统词禁入叙事）──
     hard += check_meta_words(output.get("narrative", ""))
+    # ── 硬：身份翻转（同拍自报多名，角色漂移不可用）──
+    hard += check_identity_flip(output.get("narrative", ""))
 
     # ── 软：质量自检（记录不重写）──
     soft += [r for r in opt_reasons if "无选项" not in r and "泄漏内部元数据" not in r]
