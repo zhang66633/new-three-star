@@ -493,6 +493,11 @@ def view_scene(state: GameState) -> ScenePlan:
         scene["music"] = famous_scene.get("music", scene["music"])
         scene["title"] = famous_scene.get("title", scene["title"])
         scene["setting"] = famous_scene.get("setting", scene["setting"])
+        # 折棒吐槽点注入：名场面事件自带 new_three_quirks（半人马/无酒斩华雄/城门写当阳…），
+        # 拼进 setting 让 LLM 自然融入叙事（当成"世界细节"写，别直念"折棒吐槽"字样）
+        if famous_ev and isinstance(famous_ev, dict) and famous_ev.get("new_three_quirks"):
+            _quirks = "；".join(str(q) for q in famous_ev["new_three_quirks"][:3])
+            scene["setting"] += f"\n世界细节（融入叙事，别直念出处）：{_quirks}"
         scene["world_normal"] = famous_scene.get("world_normal", scene["world_normal"])
         scene["player_pov"] = famous_scene.get("player_pov", scene["player_pov"])
         scene["locked_lines"] = famous_scene.get("locked_lines", scene["locked_lines"])

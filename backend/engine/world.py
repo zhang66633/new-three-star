@@ -280,6 +280,8 @@ def due_events(prev_wd: dict, cur_wd: dict, location: str = "") -> list[dict]:
             "witnessable": bool(in_place),
             "interaction_types": [i.get("type") for i in interactions if isinstance(i, dict) and i.get("type")][:5],
             "player_interactions": interactions[:3],  # 在场亲历时 writer 可用的互动模板
+            # 折棒吐槽点（新三国梗）：名场面接线时注入 setting，让叙事自带吐槽味
+            "new_three_quirks": list(e.get("new_three_quirks") or [])[:3],
             "seen": False,
             "source": "timeline",
         }
