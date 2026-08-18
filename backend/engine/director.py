@@ -300,7 +300,7 @@ def view_scene(state: GameState) -> ScenePlan:
       - options = 过程化选项种子（Step 3 升级为 LLM 引导；此处先给世界行动引导）
     world_date 是唯一时钟——杜绝"189-02 仍判 P1"（时期由世界日期判，非场景静态年）。
     """
-    from .worlddata import world_context, LOCATIONS, phase_of, chapter_of
+    from .worlddata import world_context, LOCATIONS, phase_of, chapter_of, load_timeline, _ym as _ty_ym
     from .world import season_of, due_events
 
     wd = state.get("world_date") or {"year": 184, "month": 2, "day": 1}
@@ -439,6 +439,24 @@ def view_scene(state: GameState) -> ScenePlan:
     if unlocked:
         opts.append({"text": f"前往{unlocked[0]}（赶路）",
                      "type": "minor", "tension": 0, "effect": "移动至其他地点，耗费旅途时间", "category": "赶路"})
+    # 事件链推进（A 补丁）：下一时间线事件存在 → 「随大势而行」选项。
+    # 点它 → 日期自然推进到下一事件月（非突变），叙事写过渡，随后到点事件触发——
+    # 名场面一个接一个，玩家随时可选其他选项停下自由活动。
+    _nxt_ev = None
+    _chain_opt = None
+    for _e in load_timeline():
+        _ey, _em = _ty_ym(_e.get("date", ""))
+        if (_ey, _em) > (int(wd.get("year", 0) or 0), int(wd.get("month", 1) or 1)):
+            _nxt_ev = _e
+            break
+    if _nxt_ev:
+        _chain_opt = {
+            "text": f"随大势而行，赶赴下一件大事（{str(_nxt_ev.get('event', ''))[:10]}）",
+            "type": "major", "tension": 0,   # 顺应历史=零干预，不计 tension
+            "effect": "顺历史大势而行，见证下一件大事",
+            "category": "赶路",
+        }
+        opts.append(_chain_opt)
     opts.append({"text": "在此歇脚，等天色亮些再说", "type": "minor", "tension": 0,
                  "effect": "休息恢复，世界时间流逝", "category": "停留"})
 
@@ -483,6 +501,9 @@ def view_scene(state: GameState) -> ScenePlan:
             {"text": "不掺和，退到一边，把这出热闹看完", "type": "minor", "tension": 0,
              "effect": "旁观名场面，不介入", "category": "停留"},
         ]
+        # 事件链出口放最前：名场面演完也能「随大势而行」接下一件大事（骨架池前 3 必含）
+        if _chain_opt:
+            scene["options"] = [_chain_opt] + scene["options"]
         scene["flags_on_enter"] = famous_scene.get("flags_on_enter", scene["flags_on_enter"])
         scene["aftermath"] = famous_scene.get("aftermath", scene["aftermath"])
     plan = ScenePlan(scene, distance_map, "")

@@ -596,6 +596,8 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
             for o in scene_opts[:3]
         )
         instruction += "\n\n【可选骨架选项（必须原样采用 text 与 tension，不得改变行动方向/语义；仅可做人称与前后衔接微调；至少保留 2-3 个）】\n" + pool + "\n⚠️ 选项 text 只写玩家可见的行动描述；括号里 type/tension/effect 是内部元数据，严禁把它们写进任何选项的 text"
+        if any("随大势而行" in str(o.get("text", "")) for o in scene_opts[:3]):
+            instruction += "\n（其中「随大势而行」是历史大势推进选项，必须原样保留为一个选项，不得改写或丢弃）"
 
     # 重写失败原因注入
     retry = getattr(plan, "meta_retry", None)
@@ -607,6 +609,11 @@ def build_messages(state: GameState, plan: ScenePlan, memory_pack: list = None) 
     _tn = (state.get("timeskip_note") or "").strip()
     if _tn:
         instruction += f"\n\n【时间跳跃 · 上一拍世界大步向前】{_tn}。本拍开头用一两句自然交代时光流逝（季节更替/环境变化/人事已非，旧人旧事或已远去），再直接接当下场景——不要无标记硬切、不要继续演上一拍没演完的当下、不要重演已过去的事。"
+
+    # 随大势而行（事件链推进 A 补丁）：上一拍玩家选了随大势而行 → 本拍写过渡 + 直接演到点大事
+    _chain = ((state.get("meta") or {}).get("_chain_note") or "").strip()
+    if _chain:
+        instruction += f"\n\n【随大势而行】上一拍玩家随历史大势赶路，时光流逝{_chain}。本拍开头用一两句写过渡（赶路的日子、路上听说的风声、旧事渐远、季节变化），随后直接落到到点的大事现场演事件本身——不写赶路细节、不回顾上一拍场景。"
 
     # 离谱动作检测：meta/越权/作弊类 free-input → 标记让 LLM 按规则 15 嘲讽拒绝 + 重输出口
     # 只保留明确的多字 meta/作弊短语。不用"系统/无限/召唤/法术/传送/复制"等常用词做子串拦截，

@@ -87,7 +87,11 @@ def _pre_skip(state: dict):
         if h.get("user"):
             _action = h["user"]
             break
-    if not _action or not any(k in _action for k in ("静观其变", "等待时机", "静候", "按兵不动", "静待")):
+    if not _action:
+        return None
+    _is_force = any(k in _action for k in ("静观其变", "等待时机", "静候", "按兵不动", "静待"))
+    _is_chain = any(k in _action for k in ("随大势而行", "随大势"))
+    if not (_is_force or _is_chain):
         return None
     from .world import next_timeline_skip
     _wd = dict(state.get("world_date") or {"year": 184, "month": 2, "day": 1})
@@ -95,11 +99,17 @@ def _pre_skip(state: dict):
     if not _skip:
         return None
     _loc = _skip.get("location", "") or (state.get("player") or {}).get("location", "")
+    _meta = {**(state.get("meta") or {}), "_skip_done": True}
+    if _is_chain:
+        # 随大势而行（事件链推进 A 补丁）：记录跨越月数，writer 据此写过渡叙事
+        _gap = ((_skip["date"].get("year", 0) - _wd.get("year", 0)) * 12
+                + (_skip["date"].get("month", 1) - _wd.get("month", 1)))
+        _meta["_chain_note"] = f"约 {max(_gap, 1)} 个月"
     return {
         "world_date": _skip["date"],
         "player": {**(state.get("player") or {}), "location": _loc},
         "era": {**(state.get("era") or {}), "location": _loc},
-        "meta": {**(state.get("meta") or {}), "_skip_done": True},
+        "meta": _meta,
     }
 
 
