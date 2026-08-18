@@ -344,11 +344,11 @@ async def remember_node(state: GameState) -> dict:
     # 泛型/即兴 NPC 不建关系（胖妇人/瘸腿老头等场景背景角色不进关系网）
     from .writer import GENERIC_NAMES, KNOWN_NAMES
     _known_set = set(KNOWN_NAMES)
-    # 说话人兜底（必须在本循环之前）：LLM 常漏写 character_updates/events/first_impressions，
-    # 实际有对话互动的具名角色就不在场面板、关系网空转（截图中"关系网 0 人"）。
-    # 从叙事文本提取说话人（知名/已登记角色），自动补：
-    # ① first_impressions 默认 30/30 → 关系网可见；② character_updates 空声明 → 在场面板 +
+    # 说话人兜底（必须在本循环之前）：LLM 常漏写 character_updates/events，实际有对话互动的
+    # 具名角色就不在场面板。从叙事文本提取说话人，只补 character_updates 空声明 → 在场面板 +
     # merge 登记"已出场" → 下一拍连续性块锁定，防重复介绍/身份漂移。
+    # 注意：此处【不】再自动建 first_impressions——"说话即登记 30"会把名场面旁观的角色
+    # （董卓/吕布/王允只是说锁定台词、玩家没互动）也拉进关系网（"有的我根本不认识"）。
     _narr_text = str(output.get("narrative") or "")
     if _narr_text:
         _name_pool = set(_known_set) | set((st.get("character_states") or {}).keys())
@@ -368,9 +368,22 @@ async def remember_node(state: GameState) -> dict:
             if _n not in _known_set and _n not in _states_now:
                 continue  # 只自动登记知名/已登记角色，陌生即兴 NPC 不建卡
             if _n not in _cu:
-                _cu[_n] = {}
-            if _n not in relations and _n not in _fi:
-                _fi[_n] = {"relation": 30, "trust": 30, "reason": "本拍对话互动（自动登记）"}
+                _cu[_n] = {}   # 只进在场面板（present），不建关系网
+    # 关系网只认「玩家真正互动」：玩家 action 主动提到的角色名才自动建关系（35/35，
+    # 主动接触比旁观近）。旁观的说话人（名场面里只是说台词）不进关系网。
+    _action_text = ""
+    for _h in reversed(state.get("history") or []):
+        if _h.get("user"):
+            _action_text = _h["user"]
+            break
+    if _action_text:
+        _fi = updates.get("first_impressions")
+        if not isinstance(_fi, dict):
+            _fi = {}
+            updates["first_impressions"] = _fi
+        for _n in _known_set:
+            if _n in _action_text and _n not in relations and _n not in _fi:
+                _fi[_n] = {"relation": 35, "trust": 35, "reason": "玩家主动接触（自动登记）"}
     for name, imp in (updates.get("first_impressions") or {}).items():
         if not isinstance(imp, dict) or name in relations:
             continue
