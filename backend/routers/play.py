@@ -180,22 +180,35 @@ async def play_nodes():
     timeline = load_timeline()
     nodes = []
     for ch in CHAPTERS:
-        y, m = _ym(ch["start"])
+        # 篇章节点对齐「该篇第一个时间线事件」——日历起始常是空窗期
+        # （如洛阳暗夜 189-01 起，但董卓进京在 189-08，选 189-01 无事件可演且常态错乱）
+        cy, cm = _ym(ch["start"])
         ey, em = _ym(ch["end"])
-        loc = ""
+        first = None
         for e in timeline:
             _ey, _em = _ym(e.get("date", ""))
-            if (y, m) <= (_ey, _em) <= (ey, em):
-                loc = (e.get("locations") or [""])[0]
+            if (cy, cm) <= (_ey, _em) <= (ey, em):
+                first = e
                 break
-        nodes.append({
-            "id": f"chapter_{ch['id']}",
-            "kind": "chapter",
-            "name": ch["name"],
-            "date": ch["start"],
-            "world_date": {"year": y, "month": m, "day": 1},
-            "location": loc,
-        })
+        if first:
+            fy, fm = _ym(first.get("date", ""))
+            nodes.append({
+                "id": f"chapter_{ch['id']}",
+                "kind": "chapter",
+                "name": f"{ch['name']} · {str(first.get('event', ''))[:14]}",
+                "date": first.get("date", ch["start"]),
+                "world_date": {"year": fy, "month": fm, "day": 1},
+                "location": (first.get("locations") or [""])[0],
+            })
+        else:
+            nodes.append({
+                "id": f"chapter_{ch['id']}",
+                "kind": "chapter",
+                "name": ch["name"],
+                "date": ch["start"],
+                "world_date": {"year": cy, "month": cm, "day": 1},
+                "location": "",
+            })
     for e in timeline:
         ey, em = _ym(e.get("date", ""))
         if (ey, em) == (0, 0):
