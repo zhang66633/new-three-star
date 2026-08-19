@@ -1,6 +1,6 @@
 <div align="center">
 
-# 新三国 · 星空 — 天意星球!
+# 新三国 · 星图 — 天意星球!
 
 ![Uploading image.png…](docs/8354fd73e6e00cd35dce00b767cfc384.png)
 
