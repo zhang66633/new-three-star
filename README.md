@@ -2,7 +2,7 @@
 
 # 新三国 · 星空 — 天意星球
 
-![Uploading 8354fd73e6e00cd35dce00b767cfc384.png…]()
+![Uploading 8354fd73e6e00cd35dce00b767cfc384.png…]
 
 
 
