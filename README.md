@@ -2,7 +2,7 @@
 
 # 新三国 · 星空 — 天意星球!
 
-![Uploading image.png…](docs/scenes/)
+![Uploading image.png…](docs/8354fd73e6e00cd35dce00b767cfc384.png)
 
 
 **一个由蹩脚 AI 生成的三国世界**
