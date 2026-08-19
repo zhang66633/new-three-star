@@ -1,6 +1,7 @@
 <div align="center">
 
 # 新三国 · 星空 — 天意星球
+![Uploading image.png…]()
 
 **一个由蹩脚 AI 生成的三国世界**
 
