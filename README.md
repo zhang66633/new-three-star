@@ -2,7 +2,8 @@
 
 # 新三国 · 星空 — 天意星球!
 
-https://github.com/zhang66633/new-three-star/blob/master/docs/8354fd73e6e00cd35dce00b767cfc384.png?raw=true
+![Uploading image.png…]()
+
 
 **一个由蹩脚 AI 生成的三国世界**
 
